@@ -4,6 +4,14 @@ import type { Role } from "@/lib/role";
 
 const COOKIE = "sabok_session";
 
+/** 내부망 HTTP(http://IP:포트) 배포 시 production이라도 Secure 쿠키는 브라우저가 안 보냄 → 로그인 루프. HTTPS 앞단이면 COOKIE_SECURE=1 */
+function secureCookieFlag(): boolean {
+  const v = process.env.COOKIE_SECURE?.trim().toLowerCase();
+  if (v === "1" || v === "true") return true;
+  if (v === "0" || v === "false") return false;
+  return false;
+}
+
 export type SessionPayload = {
   sub: string;
   email: string;
@@ -71,7 +79,7 @@ export async function setSessionCookie(token: string, maxAgeSec: number) {
   store.set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: secureCookieFlag(),
     path: "/",
     maxAge: maxAgeSec,
   });
