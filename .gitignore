@@ -1,6 +1,6 @@
 node_modules
 .next
-.env
+# .env 는 팀 클론 편의를 위해 저장소에 포함합니다. PC·운영 전용 값은 .env.local 에 두세요.
 .env.local
 dist
 src-tauri/target
