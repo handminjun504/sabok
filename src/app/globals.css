@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0f1419;
+  --surface: #1a2332;
+  --border: #2d3a4f;
+  --text: #e8ecf1;
+  --muted: #8b9cb3;
+  --accent: #3d8bfd;
+  --accent-dim: #2563eb;
+  --success: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+@layer utilities {
+  .surface {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+  }
+}

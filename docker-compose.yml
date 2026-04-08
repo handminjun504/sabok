@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sabok
+      POSTGRES_PASSWORD: sabok
+      POSTGRES_DB: sabok
+    ports:
+      - "5433:5432"
+    volumes:
+      - sabok_pg:/var/lib/postgresql/data
+
+volumes:
+  sabok_pg:
