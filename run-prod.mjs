@@ -1,8 +1,9 @@
 /**
- * GL 서버 PM2용: PocketBase 시드 후 next start
- * SABOK_SKIP_DB_SETUP=1 이면 시드 생략
- * 시드 실패 시 기본은 Next 계속 기동(SABOK_STRICT_SEED=1 이면 종료)
- * PM2는 .env를 자동 주입하지 않으므로, 여기서 프로젝트 루트 .env / .env.local 을 읽는다.
+ * GL 서버 PM2용: next start (기본은 기동 시 pb:seed 안 함)
+ * 매 기동 시 시드: .env 에 SABOK_RUN_SEED_ON_START=1
+ * 시드 실패: SABOK_STRICT_SEED=1 이면 프로세스 종료, 아니면 Next 계속 기동
+ * 레거시: SABOK_SKIP_DB_SETUP=1 → 시드 생략(SABOK_RUN_SEED_ON_START 없을 때와 동일)
+ * PM2는 .env를 자동 주입하지 않으므로, 여기서 .env / .env.local 을 읽는다.
  */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -53,8 +54,20 @@ if (!sessionSecret || sessionSecret.length < 16) {
 }
 
 function runPbSeed() {
-  if (process.env.SABOK_SKIP_DB_SETUP === "1" || process.env.SABOK_SKIP_DB_SETUP === "true") {
-    console.log("[sabok] SABOK_SKIP_DB_SETUP set — skipping pb:seed");
+  const skip =
+    process.env.SABOK_SKIP_DB_SETUP === "1" ||
+    process.env.SABOK_SKIP_DB_SETUP === "true";
+  const run =
+    process.env.SABOK_RUN_SEED_ON_START === "1" ||
+    process.env.SABOK_RUN_SEED_ON_START === "true";
+  if (skip || !run) {
+    if (skip) {
+      console.log("[sabok] SABOK_SKIP_DB_SETUP — skipping pb:seed");
+    } else {
+      console.log(
+        "[sabok] pb:seed skipped on boot (set SABOK_RUN_SEED_ON_START=1 to run). Manual: npm run pb:seed",
+      );
+    }
     return 0;
   }
   console.log("[sabok] PocketBase seed …");
@@ -90,6 +103,13 @@ const child = spawn(process.execPath, [nextBin, "start", "-H", "0.0.0.0", "-p", 
 });
 
 child.on("exit", (code, signal) => {
-  if (signal) process.kill(process.pid, signal);
+  if (signal) {
+    console.error("[sabok] next process killed by signal:", signal);
+    process.kill(process.pid, signal);
+    return;
+  }
+  if (code !== 0 && code != null) {
+    console.error("[sabok] next process exited with code:", code, "(check port", port, "EADDRINUSE / logs above)");
+  }
   process.exit(code ?? 0);
 });

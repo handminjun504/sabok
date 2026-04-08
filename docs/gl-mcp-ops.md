@@ -28,7 +28,7 @@
 1. **PocketBase**: GL에서 PB 프로세스를 기동하고 공개 URL(내부망이면 그 주소)을 확정한다.
 2. **컬렉션·유니크**: Admin UI로 수동 생성하거나, 위 **MCP만으로 sabok 스키마** 절차를 따른다([pb-collections.md](./pb-collections.md)와 동일 규칙).
 3. **환경 변수**: `update_env`로 `POCKETBASE_URL`, `POCKETBASE_ADMIN_EMAIL`, `POCKETBASE_ADMIN_PASSWORD`, `SESSION_SECRET`(16자 이상) 주입 후 앱 재시작.
-4. **시드**: 배포 후 `npm run pb:seed` 또는 PM2 `run-prod.mjs`가 기동 시 자동 실행(`SABOK_SKIP_DB_SETUP=1`이면 생략).
+4. **시드**: 배포 후 `npm run pb:seed`(권장). PM2 기동 시마다 시드하려면 `.env`에 `SABOK_RUN_SEED_ON_START=1`(기본은 기동 시 시드 안 함).
 5. **GL 동기화**: 앱은 `GlSyncJob` payload에 `tenantId`, 고객사 코드·이름을 넣어 업체별 요청을 분리한다.
 
 ## Vercel 등 서버리스 배포 시
@@ -45,7 +45,7 @@
 2. **설치**: `npm install --include=dev` 권장(`next build`용 devDependency).
 3. **빌드**: `npm run build`를 끝까지 실행.
 4. **PM2**: `run-prod.mjs`를 `command`(절대 경로), `interpreter`=`node`, `cwd`=앱 루트, `env`에 `PORT`, `NODE_ENV=production`, **`POCKETBASE_*`**, **`SESSION_SECRET`**.
-5. **시드**: `run-prod.mjs`는 기동 시 `npm run pb:seed` 실행(반복 upsert). 끄려면 `SABOK_SKIP_DB_SETUP=1`.
+5. **시드**: `run-prod.mjs`는 기본적으로 시드 생략. 기동 시 시드 필요 시 `SABOK_RUN_SEED_ON_START=1`. 레거시: `SABOK_SKIP_DB_SETUP=1`도 생략.
 6. **재배포**: `git pull` → `npm install` → `npm run build` → `restart_app`.
 
 `exec_command`의 `cwd`가 무시되면 `Set-Location '...'; npm ...` 형태로 경로를 고정한다.
