@@ -29,6 +29,8 @@ Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사
 | role             | text | yes  | ADMIN/SENIOR/JUNIOR |
 | isPlatformAdmin  | bool | yes  | default false |
 
+시드(`pb:seed`) 실패 시 400 + `isPlatformAdmin` 오류면, Admin에서 위 필드가 **bool·필수**로 존재하는지 확인한다(없으면 추가).
+
 ## `sabok_user_tenants`
 
 | 필드     | 타입 | 필수 | 비고 |

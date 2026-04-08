@@ -216,7 +216,14 @@ async function main() {
   );
 }
 
-main().catch((e) => {
+main().catch((e: unknown) => {
+  if (e && typeof e === "object" && "response" in e) {
+    try {
+      console.error("PocketBase 상세:", JSON.stringify((e as { response: unknown }).response, null, 2));
+    } catch {
+      /* ignore */
+    }
+  }
   console.error(e);
   process.exit(1);
 });
