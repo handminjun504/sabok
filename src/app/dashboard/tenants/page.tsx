@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { tenantListAllByCodeAscWithCounts } from "@/lib/pb/repository";
 import { requireSession } from "@/lib/auth-context";
 import {
   assignUserToTenantFormAction,
@@ -13,10 +13,7 @@ export default async function TenantsAdminPage() {
     redirect("/dashboard");
   }
 
-  const tenants = await prisma.tenant.findMany({
-    orderBy: { code: "asc" },
-    include: { _count: { select: { userTenants: true, employees: true } } },
-  });
+  const tenants = await tenantListAllByCodeAscWithCounts();
 
   return (
     <div className="space-y-10">

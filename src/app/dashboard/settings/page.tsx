@@ -1,11 +1,11 @@
-import { prisma } from "@/lib/prisma";
+import { companySettingsByTenant } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings } from "@/lib/permissions";
 import { saveCompanySettingsFormAction } from "@/app/actions/settings";
 
 export default async function SettingsPage() {
   const { tenantId, role } = await requireTenantContext();
-  const s = await prisma.companySettings.findUnique({ where: { tenantId } });
+  const s = await companySettingsByTenant(tenantId);
   const canEdit = canEditCompanySettings(role);
 
   return (

@@ -1,22 +1,27 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import {
+  employeeCreate,
+  employeeDelete,
+  employeeFindFirst,
+  employeeUpdate,
+} from "@/lib/pb/repository";
 import { canEditEmployees } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
 
-function d(v: FormDataEntryValue | null): Prisma.Decimal {
+function d(v: FormDataEntryValue | null): number {
   const s = v == null || v === "" ? "0" : String(v).replace(/,/g, "");
-  return new Prisma.Decimal(s);
+  return Number(s.replace(/,/g, "")) || 0;
 }
 
-function optDec(v: FormDataEntryValue | null): Prisma.Decimal | null {
+function optDec(v: FormDataEntryValue | null): number | null {
   const s = v == null || v === "" ? null : String(v).replace(/,/g, "");
   if (s === null) return null;
-  return new Prisma.Decimal(s);
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
 }
 
 function chk(formData: FormData, key: string): boolean {
@@ -92,12 +97,9 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
 
   try {
     if (id) {
-      const emp = await prisma.employee.findFirst({ where: { id, tenantId: ctx.tenantId } });
+      const emp = await employeeFindFirst(id, ctx.tenantId);
       if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
-      await prisma.employee.update({
-        where: { id: emp.id },
-        data,
-      });
+      await employeeUpdate(emp.id, data);
       await writeAudit({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
@@ -107,9 +109,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
         payload: { employeeCode },
       });
     } else {
-      const created = await prisma.employee.create({
-        data: { ...data, tenantId: ctx.tenantId },
-      });
+      const created = await employeeCreate({ ...data, tenantId: ctx.tenantId });
       await writeAudit({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
@@ -134,9 +134,9 @@ export async function deleteEmployeeAction(employeeId: string): Promise<Employee
   if (!ctx.ok) return { 오류: ctx.message };
   if (!canEditEmployees(ctx.role)) return { 오류: "삭제 권한이 없습니다." };
   try {
-    const emp = await prisma.employee.findFirst({ where: { id: employeeId, tenantId: ctx.tenantId } });
+    const emp = await employeeFindFirst(employeeId, ctx.tenantId);
     if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
-    await prisma.employee.delete({ where: { id: emp.id } });
+    await employeeDelete(emp.id);
     await writeAudit({
       userId: ctx.userId,
       tenantId: ctx.tenantId,

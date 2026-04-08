@@ -1,5 +1,9 @@
-import type { Decimal } from "@prisma/client/runtime/library";
-import type { Employee, Level5Override, LevelPaymentRule, QuarterlyEmployeeConfig } from "@prisma/client";
+import type {
+  Employee,
+  Level5Override,
+  LevelPaymentRule,
+  QuarterlyEmployeeConfig,
+} from "@/types/models";
 import {
   FIXED_EVENT_MONTH,
   PAYMENT_EVENT,
@@ -17,10 +21,9 @@ export type MonthBreakdown = {
   totalWelfareMonth: number;
 };
 
-function toNum(v: Decimal | number | null | undefined): number {
+function toNum(v: number | null | undefined): number {
   if (v === null || v === undefined) return 0;
-  if (typeof v === "number") return v;
-  return Number(v.toString());
+  return Number(v) || 0;
 }
 
 export function resolveEventAmount(
@@ -128,14 +131,14 @@ export function computeQuarterlyAmountFromRates(
   >,
   itemKey: string,
   rate: {
-    amountPerInfant: Decimal | null;
-    amountPerPreschool: Decimal | null;
-    amountPerTeen: Decimal | null;
-    amountPerParent: Decimal | null;
-    amountPerInLaw: Decimal | null;
-    flatAmount: Decimal | null;
-    percentInsurance: Decimal | null;
-    percentLoanInterest: Decimal | null;
+    amountPerInfant: number | null;
+    amountPerPreschool: number | null;
+    amountPerTeen: number | null;
+    amountPerParent: number | null;
+    amountPerInLaw: number | null;
+    flatAmount: number | null;
+    percentInsurance: number | null;
+    percentLoanInterest: number | null;
   } | null
 ): number {
   if (!rate) return 0;
@@ -176,4 +179,62 @@ export function sumByPaidMonth(all: MonthBreakdown[]): Map<number, number> {
 
 export function yearlyWelfareTotal(rows: MonthBreakdown[]): number {
   return rows.reduce((s, r) => s + r.totalWelfareMonth, 0);
+}
+
+/** 월별 노트에서 연간 추가액 (지급월 합산용과 동일하게 연도 필터) */
+export function sumMonthlyNoteExtrasForYear(
+  notes: Pick<{ year: number; optionalExtraAmount: number | null }, "year" | "optionalExtraAmount">[],
+  year: number
+): number {
+  return notes
+    .filter((n) => n.year === year)
+    .reduce((s, n) => s + (n.optionalExtraAmount != null ? toNum(n.optionalExtraAmount) : 0), 0);
+}
+
+/**
+ * 정기·분기 스케줄 + 해당 연도 월별 노트 추가액을 합산한 연간 사복 실적.
+ * 스케줄 페이지·급여포함신고에서 동일 로직 사용.
+ */
+export function computeActualYearlyWelfareForEmployee(
+  employee: Employee,
+  year: number,
+  foundingMonth: number,
+  accrualCurrentMonthPayNext: boolean,
+  rules: LevelPaymentRule[],
+  overridesForEmployee: Level5Override[],
+  quarterlyForEmployee: QuarterlyEmployeeConfig[],
+  monthlyNotesForEmployee: Pick<
+    { year: number; optionalExtraAmount: number | null },
+    "year" | "optionalExtraAmount"
+  >[]
+): number {
+  const br = buildMonthlyBreakdown(
+    employee,
+    year,
+    foundingMonth,
+    rules,
+    overridesForEmployee,
+    quarterlyForEmployee,
+    accrualCurrentMonthPayNext
+  );
+  return yearlyWelfareTotal(br) + sumMonthlyNoteExtrasForYear(monthlyNotesForEmployee, year);
+}
+
+/** 사복지급분(welfareAllocation) 상한 대비 초과·급여포함신고용 미달 */
+export function computeWelfareCapVsActual(
+  welfareAllocation: number,
+  actualYearly: number
+): {
+  cap: number;
+  actual: number;
+  overage: number;
+  underForSalaryReport: number;
+  hasCap: boolean;
+} {
+  const cap = welfareAllocation;
+  const actual = actualYearly;
+  const hasCap = cap > 0;
+  const overage = Math.max(0, Math.round(actual - cap));
+  const underForSalaryReport = hasCap ? Math.max(0, Math.round(cap - actual)) : 0;
+  return { cap, actual, overage, underForSalaryReport, hasCap };
 }

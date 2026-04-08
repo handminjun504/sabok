@@ -1,5 +1,9 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import {
+  companySettingsByTenant,
+  employeeFindFirst,
+  level5OverrideListByEmployeeYear,
+} from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
 import { EmployeeForm } from "@/components/EmployeeForm";
@@ -13,9 +17,7 @@ async function OverrideForm({
   employeeId: string;
   year: number;
 }) {
-  const existing = await prisma.level5Override.findMany({
-    where: { employeeId, year },
-  });
+  const existing = await level5OverrideListByEmployeeYear(employeeId, year);
   const events = Object.values(PAYMENT_EVENT);
 
   return (
@@ -52,7 +54,7 @@ async function OverrideForm({
           <li key={o.id} className="flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2">
             <span>
               {PAYMENT_EVENT_LABELS[o.eventKey as PaymentEventKey] ?? o.eventKey}:{" "}
-              <strong>{o.amount.toString()}</strong> 원
+              <strong>{String(o.amount)}</strong> 원
             </span>
             <form action={deleteLevel5OverrideFormAction}>
               <input type="hidden" name="employeeId" value={employeeId} />
@@ -72,10 +74,10 @@ async function OverrideForm({
 export default async function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { tenantId, role } = await requireTenantContext();
-  const emp = await prisma.employee.findFirst({ where: { id, tenantId } });
+  const emp = await employeeFindFirst(id, tenantId);
   if (!emp) notFound();
 
-  const settings = await prisma.companySettings.findUnique({ where: { tenantId } });
+  const settings = await companySettingsByTenant(tenantId);
   const year = settings?.activeYear ?? new Date().getFullYear();
 
   return (

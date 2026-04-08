@@ -3,10 +3,10 @@
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/role";
 import { getSession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
+import { userCreate } from "@/lib/pb/repository";
 
 const schema = z.object({
   email: z.string().email(),
@@ -40,14 +40,12 @@ export async function createUserAction(_: UserState, formData: FormData): Promis
   const isPlatformAdmin = formData.get("isPlatformAdmin") === "on";
 
   try {
-    await prisma.user.create({
-      data: {
-        email: parsed.data.email,
-        name: parsed.data.name,
-        passwordHash,
-        role: parsed.data.role as Role,
-        isPlatformAdmin,
-      },
+    await userCreate({
+      email: parsed.data.email,
+      name: parsed.data.name,
+      passwordHash,
+      role: parsed.data.role as Role,
+      isPlatformAdmin,
     });
   } catch {
     return { 오류: "이메일이 이미 존재합니다." };

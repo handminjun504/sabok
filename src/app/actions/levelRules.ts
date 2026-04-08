@@ -1,8 +1,13 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import {
+  employeeFindFirst,
+  level5OverrideDelete,
+  level5OverrideUpsert,
+  levelPaymentRuleUpsert,
+  levelTargetUpsert,
+} from "@/lib/pb/repository";
 import { canEditLevelRules } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { PAYMENT_EVENT, type PaymentEventKey } from "@/lib/business-rules";
@@ -35,11 +40,13 @@ export async function saveLevelRulesAction(
       for (const eventKey of events) {
         const raw = formData.get(`amt_${level}_${eventKey}`);
         const s = raw == null || raw === "" ? "0" : String(raw).replace(/,/g, "");
-        const amount = new Prisma.Decimal(s);
-        await prisma.levelPaymentRule.upsert({
-          where: { tenantId_year_level_eventKey: { tenantId: ctx.tenantId, year, level, eventKey } },
-          create: { tenantId: ctx.tenantId, year, level, eventKey, amount },
-          update: { amount },
+        const amount = Number(s) || 0;
+        await levelPaymentRuleUpsert({
+          tenantId: ctx.tenantId,
+          year,
+          level,
+          eventKey,
+          amount,
         });
       }
     }
@@ -76,12 +83,8 @@ export async function saveLevelTargetAction(
     for (let level = 1; level <= 5; level++) {
       const raw = formData.get(`target_${level}`);
       const s = raw == null || raw === "" ? "0" : String(raw).replace(/,/g, "");
-      const targetAmount = new Prisma.Decimal(s);
-      await prisma.levelTarget.upsert({
-        where: { tenantId_year_level: { tenantId: ctx.tenantId, year, level } },
-        create: { tenantId: ctx.tenantId, year, level, targetAmount },
-        update: { targetAmount },
-      });
+      const targetAmount = Number(s) || 0;
+      await levelTargetUpsert({ tenantId: ctx.tenantId, year, level, targetAmount });
     }
   } catch (e) {
     console.error(e);
@@ -114,21 +117,13 @@ export async function saveLevel5OverrideAction(
   const rawAmt = formData.get("amount");
   if (!employeeId || !Number.isFinite(year) || !eventKey) return { 오류: "입력이 부족합니다." };
 
-  const emp = await prisma.employee.findFirst({
-    where: { id: employeeId, tenantId: ctx.tenantId },
-  });
+  const emp = await employeeFindFirst(employeeId, ctx.tenantId);
   if (!emp || emp.level !== 5) return { 오류: "레벨 5 직원만 오버라이드할 수 있습니다." };
 
   const s = rawAmt == null || rawAmt === "" ? "0" : String(rawAmt).replace(/,/g, "");
-  const amount = new Prisma.Decimal(s);
+  const amount = Number(s) || 0;
 
-  await prisma.level5Override.upsert({
-    where: {
-      employeeId_year_eventKey: { employeeId, year, eventKey },
-    },
-    create: { employeeId, year, eventKey, amount },
-    update: { amount },
-  });
+  await level5OverrideUpsert({ employeeId, year, eventKey, amount });
   await writeAudit({
     userId: ctx.userId,
     tenantId: ctx.tenantId,
@@ -161,17 +156,11 @@ export async function deleteLevel5OverrideAction(
   if (!ctx.ok) return { 오류: ctx.message };
   if (!canEditLevelRules(ctx.role)) return { 오류: "권한이 없습니다." };
 
-  const emp = await prisma.employee.findFirst({
-    where: { id: employeeId, tenantId: ctx.tenantId },
-  });
+  const emp = await employeeFindFirst(employeeId, ctx.tenantId);
   if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
 
   try {
-    await prisma.level5Override.delete({
-      where: {
-        employeeId_year_eventKey: { employeeId: emp.id, year, eventKey },
-      },
-    });
+    await level5OverrideDelete(emp.id, year, eventKey);
   } catch {
     return { 오류: "삭제할 항목이 없습니다." };
   }

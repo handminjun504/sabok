@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import type { Employee } from "@prisma/client";
+import type { Employee } from "@/types/models";
 import { saveEmployeeAction, type EmployeeActionState } from "@/app/actions/employee";
 
 const inputClass =

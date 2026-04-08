@@ -1,4 +1,4 @@
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/role";
 import { RBAC_MATRIX, type RoleKey } from "./business-rules";
 
 function mapRole(role: Role): RoleKey {

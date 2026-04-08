@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { companySettingsByTenant, glSyncJobListByTenant } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canTriggerGlSync } from "@/lib/permissions";
 import { requestGlSyncFormAction } from "@/app/actions/gl";
@@ -10,13 +10,9 @@ export default async function GlPage() {
     redirect("/dashboard");
   }
 
-  const settings = await prisma.companySettings.findUnique({ where: { tenantId } });
+  const settings = await companySettingsByTenant(tenantId);
   const year = settings?.activeYear ?? new Date().getFullYear();
-  const jobs = await prisma.glSyncJob.findMany({
-    where: { tenantId },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const jobs = await glSyncJobListByTenant(tenantId, 50);
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">

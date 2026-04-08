@@ -2,10 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/role";
 import { getSession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
+import {
+  companySettingsCreateForTenant,
+  tenantCreate,
+  tenantFindFirstActive,
+  tenantUpdateActive,
+  userFindByEmail,
+  userTenantUpsert,
+} from "@/lib/pb/repository";
 
 export async function createTenantFormAction(formData: FormData): Promise<void> {
   const session = await getSession();
@@ -16,12 +23,8 @@ export async function createTenantFormAction(formData: FormData): Promise<void> 
   if (!name || !code) return;
 
   try {
-    const tenant = await prisma.tenant.create({
-      data: { name, code, active: true },
-    });
-    await prisma.companySettings.create({
-      data: { tenantId: tenant.id },
-    });
+    const tenant = await tenantCreate({ name, code, active: true });
+    await companySettingsCreateForTenant(tenant.id);
     await writeAudit({
       userId: session.sub,
       tenantId: tenant.id,
@@ -54,25 +57,13 @@ export async function assignUserToTenantFormAction(formData: FormData): Promise<
   });
   if (!parsed.success) return;
 
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  const user = await userFindByEmail(parsed.data.email);
   if (!user) return;
 
-  const tenant = await prisma.tenant.findFirst({
-    where: { id: parsed.data.tenantId, active: true },
-  });
+  const tenant = await tenantFindFirstActive(parsed.data.tenantId);
   if (!tenant) return;
 
-  await prisma.userTenant.upsert({
-    where: {
-      userId_tenantId: { userId: user.id, tenantId: tenant.id },
-    },
-    create: {
-      userId: user.id,
-      tenantId: tenant.id,
-      role: parsed.data.role as Role,
-    },
-    update: { role: parsed.data.role as Role },
-  });
+  await userTenantUpsert(user.id, tenant.id, parsed.data.role as Role);
 
   await writeAudit({
     userId: session.sub,
@@ -94,7 +85,7 @@ export async function setTenantActiveFormAction(formData: FormData): Promise<voi
   const tenantId = String(formData.get("tenantId") ?? "");
   const active = formData.get("active") === "true";
   try {
-    await prisma.tenant.update({ where: { id: tenantId }, data: { active } });
+    await tenantUpdateActive(tenantId, active);
   } catch {
     return;
   }

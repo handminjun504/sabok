@@ -1,4 +1,8 @@
-import { prisma } from "@/lib/prisma";
+import {
+  companySettingsByTenant,
+  levelPaymentRuleList,
+  levelTargetList,
+} from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { PAYMENT_EVENT, PAYMENT_EVENT_LABELS, type PaymentEventKey } from "@/lib/business-rules";
 import { canEditLevelRules } from "@/lib/permissions";
@@ -6,21 +10,21 @@ import { saveLevelRulesFormAction, saveLevelTargetFormAction } from "@/app/actio
 
 export default async function LevelsPage() {
   const { tenantId, role } = await requireTenantContext();
-  const settings = await prisma.companySettings.findUnique({ where: { tenantId } });
+  const settings = await companySettingsByTenant(tenantId);
   const year = settings?.activeYear ?? new Date().getFullYear();
 
   const [rules, targets] = await Promise.all([
-    prisma.levelPaymentRule.findMany({ where: { tenantId, year } }),
-    prisma.levelTarget.findMany({ where: { tenantId, year } }),
+    levelPaymentRuleList(tenantId, year),
+    levelTargetList(tenantId, year),
   ]);
 
   const ruleMap = new Map<string, string>();
   for (const r of rules) {
-    ruleMap.set(`${r.level}_${r.eventKey}`, r.amount.toString());
+    ruleMap.set(`${r.level}_${r.eventKey}`, String(r.amount));
   }
   const targetMap = new Map<number, string>();
   for (const t of targets) {
-    targetMap.set(t.level, t.targetAmount.toString());
+    targetMap.set(t.level, String(t.targetAmount));
   }
 
   const events = Object.values(PAYMENT_EVENT) as PaymentEventKey[];

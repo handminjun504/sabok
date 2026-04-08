@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/role";
 import {
   canEditCompanySettings,
   canEditLevelRules,
@@ -42,7 +42,9 @@ export function AppNav({
           {canEditLevelRules(role) && <L href="/dashboard/levels">레벨·정기지급</L>}
           <L href="/dashboard/quarterly">분기 지원</L>
           <L href="/dashboard/schedule">월별 스케줄</L>
+          <L href="/dashboard/salary-inclusion-report">급여포함신고</L>
           {canEditCompanySettings(role) && <L href="/dashboard/settings">전사 설정</L>}
+          {canEditCompanySettings(role) && <L href="/dashboard/vendors">거래처</L>}
         </>
       )}
       {isPlatformAdmin && <L href="/dashboard/users">사용자</L>}

@@ -1,10 +1,20 @@
-import { prisma } from "@/lib/prisma";
+import type { Employee } from "@/types/models";
+import {
+  companySettingsByTenant,
+  employeeListByTenantCodeAsc,
+  level5OverrideListByEmployeeIdsYear,
+  levelPaymentRuleList,
+  levelTargetList,
+  monthlyNoteListByTenantYear,
+  quarterlyEmployeeConfigListByTenantYear,
+} from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees } from "@/lib/permissions";
 import {
   buildMonthlyBreakdown,
+  computeActualYearlyWelfareForEmployee,
+  computeWelfareCapVsActual,
   monthlySalaryPortion,
-  yearlyWelfareTotal,
 } from "@/lib/domain/schedule";
 import { saveMonthlyNoteFormAction } from "@/app/actions/quarterly";
 
@@ -14,61 +24,65 @@ function format(n: number) {
 
 export default async function SchedulePage() {
   const { tenantId, role } = await requireTenantContext();
-  const settings = await prisma.companySettings.findUnique({ where: { tenantId } });
+  const settings = await companySettingsByTenant(tenantId);
   const year = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
   const accrual = settings?.accrualCurrentMonthPayNext ?? false;
 
-  const [employees, rules, overrides, quarterly, notes, targets] = await Promise.all([
-    prisma.employee.findMany({ where: { tenantId }, orderBy: { employeeCode: "asc" } }),
-    prisma.levelPaymentRule.findMany({ where: { tenantId, year } }),
-    prisma.level5Override.findMany({
-      where: { year, employee: { tenantId } },
-    }),
-    prisma.quarterlyEmployeeConfig.findMany({
-      where: { year, employee: { tenantId } },
-    }),
-    prisma.monthlyEmployeeNote.findMany({
-      where: { year, employee: { tenantId } },
-    }),
-    prisma.levelTarget.findMany({ where: { tenantId, year } }),
+  const employees = await employeeListByTenantCodeAsc(tenantId);
+  const ids = employees.map((e) => e.id);
+
+  const [rules, overrides, quarterly, notes, targets] = await Promise.all([
+    levelPaymentRuleList(tenantId, year),
+    level5OverrideListByEmployeeIdsYear(ids, year),
+    quarterlyEmployeeConfigListByTenantYear(tenantId, year, ids),
+    monthlyNoteListByTenantYear(tenantId, year, ids),
+    levelTargetList(tenantId, year),
   ]);
 
-  const targetByLevel = new Map(targets.map((t) => [t.level, Number(t.targetAmount.toString())]));
+  const targetByLevel = new Map(targets.map((t) => [t.level, Number(t.targetAmount)]));
 
   type Row = {
-    emp: (typeof employees)[0];
+    emp: Employee;
     byPaidMonth: Map<number, number>;
     yearlyWelfare: number;
     salaryMonth: number;
+    capVs: ReturnType<typeof computeWelfareCapVsActual>;
   };
 
   const rows: Row[] = employees.map((emp) => {
     const ovr = overrides.filter((x) => x.employeeId === emp.id);
     const qcfg = quarterly.filter((x) => x.employeeId === emp.id);
+    const empNotes = notes.filter((n) => n.employeeId === emp.id);
     const br = buildMonthlyBreakdown(emp, year, foundingMonth, rules, ovr, qcfg, accrual);
     const byPaidMonth = new Map<number, number>();
     for (const r of br) {
       byPaidMonth.set(r.paidMonth, (byPaidMonth.get(r.paidMonth) ?? 0) + r.totalWelfareMonth);
     }
-    // note optional extra per month — merge into paid month bucket
-    for (const n of notes) {
-      if (n.employeeId !== emp.id) continue;
-      const extra = n.optionalExtraAmount ? Number(n.optionalExtraAmount.toString()) : 0;
+    for (const n of empNotes) {
+      const extra = n.optionalExtraAmount != null ? Number(n.optionalExtraAmount) : 0;
       if (extra === 0) continue;
       byPaidMonth.set(n.month, (byPaidMonth.get(n.month) ?? 0) + extra);
     }
 
-    const yearlyFromBreakdown = yearlyWelfareTotal(br);
-    const yearlyExtra = notes
-      .filter((n) => n.employeeId === emp.id)
-      .reduce((s, n) => s + (n.optionalExtraAmount ? Number(n.optionalExtraAmount.toString()) : 0), 0);
+    const yearlyWelfare = computeActualYearlyWelfareForEmployee(
+      emp,
+      year,
+      foundingMonth,
+      accrual,
+      rules,
+      ovr,
+      qcfg,
+      empNotes
+    );
+    const capVs = computeWelfareCapVsActual(emp.welfareAllocation, yearlyWelfare);
 
     return {
       emp,
       byPaidMonth,
-      yearlyWelfare: yearlyFromBreakdown + yearlyExtra,
+      yearlyWelfare,
       salaryMonth: monthlySalaryPortion(emp),
+      capVs,
     };
   });
 
@@ -88,7 +102,8 @@ export default async function SchedulePage() {
         <h1 className="text-2xl font-bold">월별 지급 스케줄</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           기준 연도 {year} — 지급월 기준 합계(정기+분기+선택적 복지 추가금). 급여는 조정 연봉(없으면 기존 연봉) ÷ 12
-          로 표시합니다. {accrual ? "정기분은 당월 귀속·차월 지급으로 표시했습니다." : "정기분은 귀속·지급이 같은 달입니다."}
+          로 표시합니다. {accrual ? "정기분은 당월 귀속·차월 지급으로 표시했습니다." : "정기분은 귀속·지급이 같은 달입니다."}{" "}
+          직원별 <strong>사복지급분</strong>(상한)보다 연간 합계가 크면 &quot;초과&quot;로 표시합니다.
         </p>
       </div>
 
@@ -125,6 +140,8 @@ export default async function SchedulePage() {
               <th className="px-2 py-2">급여(월)</th>
               <th className="px-2 py-2">급여+사복(월평균)</th>
               <th className="px-2 py-2">연간 사복 합계</th>
+              <th className="whitespace-nowrap px-2 py-2">상한(사복지급분)</th>
+              <th className="px-2 py-2">초과</th>
             </tr>
           </thead>
           <tbody>
@@ -144,6 +161,16 @@ export default async function SchedulePage() {
                   <td className="px-2 py-1 text-right">{format(r.salaryMonth)}</td>
                   <td className="px-2 py-1 text-right">{format(Math.round(avgTotal))}</td>
                   <td className="px-2 py-1 text-right">{format(r.yearlyWelfare)}</td>
+                  <td className="px-2 py-1 text-right text-[var(--muted)]">
+                    {r.capVs.hasCap ? format(r.capVs.cap) : "—"}
+                  </td>
+                  <td className="px-2 py-1 text-right">
+                    {r.capVs.hasCap && r.capVs.overage > 0 ? (
+                      <span className="font-medium text-[var(--danger)]">{format(r.capVs.overage)}</span>
+                    ) : (
+                      <span className="text-[var(--muted)]">—</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}

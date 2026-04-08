@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { auditLogListRecent } from "@/lib/pb/repository";
 import { requireSession } from "@/lib/auth-context";
 import { redirect } from "next/navigation";
 
@@ -8,11 +8,7 @@ export default async function AuditPage() {
     redirect("/dashboard");
   }
 
-  const logs = await prisma.auditLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 200,
-    include: { tenant: { select: { code: true, name: true } } },
-  });
+  const logs = await auditLogListRecent(200);
 
   return (
     <div className="space-y-4">

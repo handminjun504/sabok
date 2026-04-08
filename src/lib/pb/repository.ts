@@ -1,0 +1,742 @@
+import type {
+  AuditLogRow,
+  CompanySettings,
+  Employee,
+  GlSyncJobRow,
+  Level5Override,
+  LevelPaymentRule,
+  LevelTarget,
+  MonthlyEmployeeNote,
+  QuarterlyEmployeeConfig,
+  QuarterlyRate,
+  Tenant,
+  UserRow,
+  UserTenantLink,
+  UserWithTenants,
+  Vendor,
+  VendorContribution,
+} from "@/types/models";
+import type { VendorBusinessType } from "@/lib/domain/vendor-reserve";
+import type { Role } from "@/lib/role";
+import { parseRole } from "@/lib/role";
+import { getAdminPb } from "./admin-client";
+import { C } from "./collections";
+import { esc } from "./filter-esc";
+import {
+  mapCompanySettings,
+  mapEmployee,
+  mapLevel5Override,
+  mapLevelRule,
+  mapLevelTarget,
+  mapMonthlyNote,
+  mapQuarterlyCfg,
+  mapQuarterlyRate,
+} from "./mappers";
+
+function asRecord(r: unknown): Record<string, unknown> {
+  return r && typeof r === "object" ? (r as Record<string, unknown>) : {};
+}
+
+async function firstByFilter(collection: string, filter: string): Promise<Record<string, unknown> | null> {
+  const pb = await getAdminPb();
+  const { items } = await pb.collection(collection).getList(1, 1, { filter });
+  return items[0] ? asRecord(items[0]) : null;
+}
+
+function parseBusinessType(v: unknown): VendorBusinessType {
+  return String(v) === "CORPORATE" ? "CORPORATE" : "INDIVIDUAL";
+}
+
+function mapVendorRow(r: Record<string, unknown>): Vendor {
+  return {
+    id: String(r.id),
+    tenantId: String(r.tenantId),
+    code: String(r.code ?? ""),
+    name: String(r.name ?? ""),
+    businessType: parseBusinessType(r.businessType),
+    workplaceCapital: Number(r.workplaceCapital ?? 0) || 0,
+    accumulatedReserve: Number(r.accumulatedReserve ?? 0) || 0,
+    active: Boolean(r.active ?? true),
+    memo: r.memo == null || r.memo === "" ? null : String(r.memo),
+  };
+}
+
+function mapVendorContributionRow(r: Record<string, unknown>): VendorContribution {
+  return {
+    id: String(r.id),
+    tenantId: String(r.tenantId),
+    vendorId: String(r.vendorId),
+    contributionAmount: Number(r.contributionAmount ?? 0) || 0,
+    additionalReserved: Number(r.additionalReserved ?? 0) || 0,
+    reserveAfter: Number(r.reserveAfter ?? 0) || 0,
+    note: r.note == null || r.note === "" ? null : String(r.note),
+    occurredAt: r.occurredAt == null || r.occurredAt === "" ? null : String(r.occurredAt),
+    created: new Date(String(r.created ?? Date.now())),
+  };
+}
+
+/** --- Tenants --- */
+export async function tenantGetById(id: string): Promise<Tenant | null> {
+  const pb = await getAdminPb();
+  try {
+    const r = asRecord(await pb.collection(C.tenants).getOne(id));
+    return {
+      id: String(r.id),
+      code: String(r.code),
+      name: String(r.name),
+      active: Boolean(r.active),
+      memo: r.memo == null ? null : String(r.memo),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function tenantFindFirstActive(id: string): Promise<Tenant | null> {
+  const r = await firstByFilter(C.tenants, `id="${esc(id)}" && active=true`);
+  if (!r || !r.id) return null;
+  return {
+    id: String(r.id),
+    code: String(r.code),
+    name: String(r.name),
+    active: Boolean(r.active),
+    memo: r.memo == null ? null : String(r.memo),
+  };
+}
+
+export async function tenantListActiveByCodeAsc(): Promise<Tenant[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.tenants).getFullList({ filter: `active=true`, sort: "code" });
+  return rows.map((x) => {
+    const r = asRecord(x);
+    return {
+      id: String(r.id),
+      code: String(r.code),
+      name: String(r.name),
+      active: Boolean(r.active),
+      memo: r.memo == null ? null : String(r.memo),
+    };
+  });
+}
+
+export type TenantWithCounts = Tenant & { _count: { userTenants: number; employees: number } };
+
+export async function tenantListAllByCodeAscWithCounts(): Promise<TenantWithCounts[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.tenants).getFullList({ sort: "code" });
+  const out: TenantWithCounts[] = [];
+  for (const x of rows) {
+    const r = asRecord(x);
+    const tid = String(r.id);
+    const uc = await pb.collection(C.userTenants).getList(1, 1, { filter: `tenantId="${esc(tid)}"` });
+    const ec = await pb.collection(C.employees).getList(1, 1, { filter: `tenantId="${esc(tid)}"` });
+    out.push({
+      id: tid,
+      code: String(r.code),
+      name: String(r.name),
+      active: Boolean(r.active),
+      memo: r.memo == null ? null : String(r.memo),
+      _count: { userTenants: uc.totalItems, employees: ec.totalItems },
+    });
+  }
+  return out;
+}
+
+export async function tenantCreate(data: { code: string; name: string; active: boolean }): Promise<Tenant> {
+  const pb = await getAdminPb();
+  const created = asRecord(await pb.collection(C.tenants).create(data));
+  return {
+    id: String(created.id),
+    code: String(created.code),
+    name: String(created.name),
+    active: Boolean(created.active),
+    memo: created.memo == null ? null : String(created.memo),
+  };
+}
+
+export async function tenantUpdateActive(id: string, active: boolean): Promise<void> {
+  const pb = await getAdminPb();
+  await pb.collection(C.tenants).update(id, { active });
+}
+
+/** --- Users --- */
+export async function userFindByEmail(email: string): Promise<UserRow | null> {
+  const r = await firstByFilter(C.users, `email="${esc(email)}"`);
+  if (!r || !r.id) return null;
+  return {
+    id: String(r.id),
+    email: String(r.email),
+    passwordHash: String(r.passwordHash),
+    name: String(r.name),
+    role: String(r.role),
+    isPlatformAdmin: Boolean(r.isPlatformAdmin),
+  };
+}
+
+export async function userLoadWithTenantsByEmail(email: string): Promise<UserWithTenants | null> {
+  const u = await userFindByEmail(email);
+  if (!u) return null;
+  const pb = await getAdminPb();
+  const links = await pb.collection(C.userTenants).getFullList({
+    filter: `userId="${esc(u.id)}"`,
+    sort: "tenantId",
+  });
+  const userTenants: UserTenantLink[] = [];
+  for (const row of links) {
+    const lr = asRecord(row);
+    const tid = String(lr.tenantId);
+    const t = await tenantGetById(tid);
+    if (!t) continue;
+    if (!t.active) continue;
+    userTenants.push({
+      id: String(lr.id),
+      userId: String(lr.userId),
+      tenantId: tid,
+      role: String(lr.role),
+      tenant: t,
+    });
+  }
+  userTenants.sort((a, b) => a.tenant.code.localeCompare(b.tenant.code));
+  return { ...u, userTenants };
+}
+
+export async function userListAllByEmailAsc(): Promise<UserRow[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.users).getFullList({ sort: "email" });
+  return rows.map((x) => {
+    const r = asRecord(x);
+    return {
+      id: String(r.id),
+      email: String(r.email),
+      passwordHash: String(r.passwordHash),
+      name: String(r.name),
+      role: String(r.role),
+      isPlatformAdmin: Boolean(r.isPlatformAdmin),
+    };
+  });
+}
+
+export async function userCreate(data: {
+  email: string;
+  name: string;
+  passwordHash: string;
+  role: Role;
+  isPlatformAdmin: boolean;
+}): Promise<void> {
+  const pb = await getAdminPb();
+  await pb.collection(C.users).create({
+    email: data.email,
+    name: data.name,
+    passwordHash: data.passwordHash,
+    role: data.role,
+    isPlatformAdmin: data.isPlatformAdmin,
+  });
+}
+
+/** --- User tenants --- */
+export async function userTenantFind(userId: string, tenantId: string): Promise<{ id: string; role: Role } | null> {
+  const r = await firstByFilter(C.userTenants, `userId="${esc(userId)}" && tenantId="${esc(tenantId)}"`);
+  if (!r || !r.id) return null;
+  return { id: String(r.id), role: parseRole(String(r.role)) };
+}
+
+export async function userTenantUpsert(userId: string, tenantId: string, role: Role): Promise<void> {
+  const existing = await userTenantFind(userId, tenantId);
+  const pb = await getAdminPb();
+  if (existing) {
+    await pb.collection(C.userTenants).update(existing.id, { role });
+  } else {
+    await pb.collection(C.userTenants).create({ userId, tenantId, role });
+  }
+}
+
+export async function userTenantListWithTenantsForUser(userId: string): Promise<UserTenantLink[]> {
+  const pb = await getAdminPb();
+  const links = await pb.collection(C.userTenants).getFullList({
+    filter: `userId="${esc(userId)}"`,
+    sort: "tenantId",
+  });
+  const out: UserTenantLink[] = [];
+  for (const row of links) {
+    const lr = asRecord(row);
+    const t = await tenantGetById(String(lr.tenantId));
+    if (!t) continue;
+    if (!t.active) continue;
+    out.push({
+      id: String(lr.id),
+      userId: String(lr.userId),
+      tenantId: String(lr.tenantId),
+      role: String(lr.role),
+      tenant: t,
+    });
+  }
+  out.sort((a, b) => a.tenant.code.localeCompare(b.tenant.code));
+  return out;
+}
+
+/** --- Company settings --- */
+export async function companySettingsByTenant(tenantId: string): Promise<CompanySettings | null> {
+  const r = await firstByFilter(C.companySettings, `tenantId="${esc(tenantId)}"`);
+  return r ? mapCompanySettings(r) : null;
+}
+
+export async function companySettingsCreateForTenant(tenantId: string): Promise<void> {
+  const pb = await getAdminPb();
+  await pb.collection(C.companySettings).create({
+    tenantId,
+    foundingMonth: 1,
+    defaultPayDay: 25,
+    activeYear: 2026,
+    accrualCurrentMonthPayNext: false,
+  });
+}
+
+export async function companySettingsUpsert(
+  tenantId: string,
+  data: {
+    foundingMonth: number;
+    defaultPayDay: number;
+    activeYear: number;
+    accrualCurrentMonthPayNext: boolean;
+  }
+): Promise<void> {
+  const existing = await companySettingsByTenant(tenantId);
+  const pb = await getAdminPb();
+  if (existing) {
+    await pb.collection(C.companySettings).update(existing.id, data);
+  } else {
+    await pb.collection(C.companySettings).create({ tenantId, ...data });
+  }
+}
+
+/** --- Employees --- */
+export async function employeeCountByTenant(tenantId: string): Promise<number> {
+  const pb = await getAdminPb();
+  const r = await pb.collection(C.employees).getList(1, 1, { filter: `tenantId="${esc(tenantId)}"` });
+  return r.totalItems;
+}
+
+export async function employeeListByTenantCodeAsc(tenantId: string): Promise<Employee[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.employees).getFullList({
+    filter: `tenantId="${esc(tenantId)}"`,
+    sort: "employeeCode",
+  });
+  return rows.map((x) => mapEmployee(asRecord(x)));
+}
+
+export async function employeeFindFirst(id: string, tenantId: string): Promise<Employee | null> {
+  const r = await firstByFilter(C.employees, `id="${esc(id)}" && tenantId="${esc(tenantId)}"`);
+  return r ? mapEmployee(r) : null;
+}
+
+export async function employeeCreate(data: Record<string, unknown>): Promise<Employee> {
+  const pb = await getAdminPb();
+  const created = asRecord(await pb.collection(C.employees).create(data));
+  return mapEmployee(created);
+}
+
+export async function employeeUpdate(id: string, data: Record<string, unknown>): Promise<void> {
+  const pb = await getAdminPb();
+  await pb.collection(C.employees).update(id, data);
+}
+
+export async function employeeDelete(id: string): Promise<void> {
+  const pb = await getAdminPb();
+  await pb.collection(C.employees).delete(id);
+}
+
+export async function employeeUpsertByTenantCode(
+  tenantId: string,
+  employeeCode: string,
+  createPayload: Record<string, unknown>,
+  updatePayload: Record<string, unknown>
+): Promise<void> {
+  const r = await firstByFilter(C.employees, `tenantId="${esc(tenantId)}" && employeeCode="${esc(employeeCode)}"`);
+  const pb = await getAdminPb();
+  if (r?.id) {
+    await pb.collection(C.employees).update(String(r.id), updatePayload);
+  } else {
+    await pb.collection(C.employees).create({ ...createPayload, tenantId, employeeCode });
+  }
+}
+
+/** --- Level payment rules --- */
+export async function levelPaymentRuleList(tenantId: string, year: number): Promise<LevelPaymentRule[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.levelPaymentRules).getFullList({
+    filter: `tenantId="${esc(tenantId)}" && year=${year}`,
+  });
+  return rows.map((x) => mapLevelRule(asRecord(x)));
+}
+
+export async function levelPaymentRuleUpsert(data: {
+  tenantId: string;
+  year: number;
+  level: number;
+  eventKey: string;
+  amount: number;
+}): Promise<void> {
+  const f = `tenantId="${esc(data.tenantId)}" && year=${data.year} && level=${data.level} && eventKey="${esc(data.eventKey)}"`;
+  const existing = await firstByFilter(C.levelPaymentRules, f);
+  const pb = await getAdminPb();
+  if (existing?.id) {
+    await pb.collection(C.levelPaymentRules).update(String(existing.id), { amount: data.amount });
+  } else {
+    await pb.collection(C.levelPaymentRules).create(data);
+  }
+}
+
+/** --- Level targets --- */
+export async function levelTargetList(tenantId: string, year: number): Promise<LevelTarget[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.levelTargets).getFullList({
+    filter: `tenantId="${esc(tenantId)}" && year=${year}`,
+  });
+  return rows.map((x) => mapLevelTarget(asRecord(x)));
+}
+
+export async function levelTargetUpsert(data: {
+  tenantId: string;
+  year: number;
+  level: number;
+  targetAmount: number;
+}): Promise<void> {
+  const f = `tenantId="${esc(data.tenantId)}" && year=${data.year} && level=${data.level}`;
+  const existing = await firstByFilter(C.levelTargets, f);
+  const pb = await getAdminPb();
+  if (existing?.id) {
+    await pb.collection(C.levelTargets).update(String(existing.id), { targetAmount: data.targetAmount });
+  } else {
+    await pb.collection(C.levelTargets).create(data);
+  }
+}
+
+/** --- Level 5 overrides --- */
+export async function level5OverrideListByEmployeeYear(employeeId: string, year: number): Promise<Level5Override[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.level5Overrides).getFullList({
+    filter: `employeeId="${esc(employeeId)}" && year=${year}`,
+  });
+  return rows.map((x) => mapLevel5Override(asRecord(x)));
+}
+
+export async function level5OverrideListByEmployeeIdsYear(
+  employeeIds: string[],
+  year: number
+): Promise<Level5Override[]> {
+  if (employeeIds.length === 0) return [];
+  const pb = await getAdminPb();
+  const empFilter = employeeIds.map((id) => `employeeId="${esc(id)}"`).join(" || ");
+  const rows = await pb.collection(C.level5Overrides).getFullList({
+    filter: `year=${year} && (${empFilter})`,
+  });
+  return rows.map((x) => mapLevel5Override(asRecord(x)));
+}
+
+export async function level5OverrideUpsert(data: {
+  employeeId: string;
+  year: number;
+  eventKey: string;
+  amount: number;
+}): Promise<void> {
+  const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && eventKey="${esc(data.eventKey)}"`;
+  const existing = await firstByFilter(C.level5Overrides, f);
+  const pb = await getAdminPb();
+  if (existing?.id) {
+    await pb.collection(C.level5Overrides).update(String(existing.id), { amount: data.amount });
+  } else {
+    await pb.collection(C.level5Overrides).create(data);
+  }
+}
+
+export async function level5OverrideDelete(employeeId: string, year: number, eventKey: string): Promise<void> {
+  const r = await firstByFilter(
+    C.level5Overrides,
+    `employeeId="${esc(employeeId)}" && year=${year} && eventKey="${esc(eventKey)}"`
+  );
+  if (!r?.id) return;
+  const pb = await getAdminPb();
+  await pb.collection(C.level5Overrides).delete(String(r.id));
+}
+
+/** --- Quarterly rates --- */
+export async function quarterlyRateList(tenantId: string, year: number): Promise<QuarterlyRate[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.quarterlyRates).getFullList({
+    filter: `tenantId="${esc(tenantId)}" && year=${year}`,
+  });
+  return rows.map((x) => mapQuarterlyRate(asRecord(x)));
+}
+
+export async function quarterlyRateUpsert(
+  body: Record<string, unknown> & { tenantId: string; year: number; itemKey: string }
+): Promise<void> {
+  const f = `tenantId="${esc(body.tenantId)}" && year=${body.year} && itemKey="${esc(body.itemKey)}"`;
+  const existing = await firstByFilter(C.quarterlyRates, f);
+  const pb = await getAdminPb();
+  const { tenantId: _tid, year: _yr, itemKey: _ik, ...rest } = body;
+  void _tid;
+  void _yr;
+  void _ik;
+  if (existing?.id) {
+    await pb.collection(C.quarterlyRates).update(String(existing.id), rest);
+  } else {
+    await pb.collection(C.quarterlyRates).create(body);
+  }
+}
+
+/** --- Quarterly employee config --- */
+export async function quarterlyEmployeeConfigListByTenantYear(
+  tenantId: string,
+  year: number,
+  employeeIds: string[]
+): Promise<QuarterlyEmployeeConfig[]> {
+  if (employeeIds.length === 0) return [];
+  const pb = await getAdminPb();
+  const empFilter = employeeIds.map((id) => `employeeId="${esc(id)}"`).join(" || ");
+  const rows = await pb.collection(C.quarterlyEmployeeConfigs).getFullList({
+    filter: `year=${year} && (${empFilter})`,
+  });
+  return rows.map((x) => mapQuarterlyCfg(asRecord(x))).filter((c) => employeeIds.includes(c.employeeId));
+}
+
+export async function quarterlyEmployeeConfigUpsert(data: {
+  employeeId: string;
+  year: number;
+  itemKey: string;
+  paymentMonth: number;
+  amount: number;
+}): Promise<void> {
+  const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && itemKey="${esc(data.itemKey)}"`;
+  const existing = await firstByFilter(C.quarterlyEmployeeConfigs, f);
+  const pb = await getAdminPb();
+  if (existing?.id) {
+    await pb.collection(C.quarterlyEmployeeConfigs).update(String(existing.id), {
+      paymentMonth: data.paymentMonth,
+      amount: data.amount,
+    });
+  } else {
+    await pb.collection(C.quarterlyEmployeeConfigs).create(data);
+  }
+}
+
+/** --- Monthly employee notes --- */
+export async function monthlyNoteListByTenantYear(
+  tenantId: string,
+  year: number,
+  employeeIds: string[]
+): Promise<MonthlyEmployeeNote[]> {
+  if (employeeIds.length === 0) return [];
+  const pb = await getAdminPb();
+  const empFilter = employeeIds.map((id) => `employeeId="${esc(id)}"`).join(" || ");
+  const rows = await pb.collection(C.monthlyEmployeeNotes).getFullList({
+    filter: `year=${year} && (${empFilter})`,
+  });
+  const set = new Set(employeeIds);
+  return rows.map((x) => mapMonthlyNote(asRecord(x))).filter((n) => set.has(n.employeeId));
+}
+
+export async function monthlyNoteUpsert(data: {
+  employeeId: string;
+  year: number;
+  month: number;
+  optionalWelfareText: string | null;
+  optionalExtraAmount: number | null;
+}): Promise<void> {
+  const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && month=${data.month}`;
+  const existing = await firstByFilter(C.monthlyEmployeeNotes, f);
+  const pb = await getAdminPb();
+  if (existing?.id) {
+    await pb.collection(C.monthlyEmployeeNotes).update(String(existing.id), {
+      optionalWelfareText: data.optionalWelfareText,
+      optionalExtraAmount: data.optionalExtraAmount,
+    });
+  } else {
+    await pb.collection(C.monthlyEmployeeNotes).create(data);
+  }
+}
+
+/** --- Audit --- */
+export async function auditLogCreate(input: {
+  userId?: string | null;
+  tenantId?: string | null;
+  action: string;
+  entity: string;
+  entityId?: string | null;
+  payload?: unknown;
+}): Promise<void> {
+  const pb = await getAdminPb();
+  await pb.collection(C.auditLogs).create({
+    userId: input.userId ?? null,
+    tenantId: input.tenantId ?? null,
+    action: input.action,
+    entity: input.entity,
+    entityId: input.entityId ?? null,
+    payload: input.payload === undefined ? null : input.payload,
+  });
+}
+
+export async function auditLogListRecent(limit: number): Promise<AuditLogRow[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.auditLogs).getList(1, limit, { sort: "-created" });
+  const out: AuditLogRow[] = [];
+  for (const x of rows.items) {
+    const r = asRecord(x);
+    const tid = r.tenantId == null || r.tenantId === "" ? null : String(r.tenantId);
+    let tenant: { code: string; name: string } | null = null;
+    if (tid) {
+      const t = await tenantGetById(tid);
+      if (t) tenant = { code: t.code, name: t.name };
+    }
+    const created = r.created != null ? new Date(String(r.created)) : new Date();
+    out.push({
+      id: String(r.id),
+      tenantId: tid,
+      userId: r.userId == null || r.userId === "" ? null : String(r.userId),
+      action: String(r.action),
+      entity: String(r.entity),
+      entityId: r.entityId == null || r.entityId === "" ? null : String(r.entityId),
+      payload: r.payload,
+      createdAt: created,
+      tenant,
+    });
+  }
+  return out;
+}
+
+/** --- GL sync jobs --- */
+export async function glSyncJobCreate(data: { tenantId: string; status: string; payload: unknown }): Promise<{ id: string }> {
+  const pb = await getAdminPb();
+  const created = asRecord(await pb.collection(C.glSyncJobs).create(data));
+  return { id: String(created.id) };
+}
+
+export async function glSyncJobListByTenant(tenantId: string, limit: number): Promise<GlSyncJobRow[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.glSyncJobs).getList(1, limit, {
+    filter: `tenantId="${esc(tenantId)}"`,
+    sort: "-created",
+  });
+  return rows.items.map((x) => {
+    const r = asRecord(x);
+    return {
+      id: String(r.id),
+      tenantId: String(r.tenantId),
+      status: String(r.status),
+      payload: r.payload,
+      error: r.error == null ? null : String(r.error),
+      createdAt: new Date(String(r.created)),
+      updatedAt: new Date(String(r.updated)),
+    };
+  });
+}
+
+/** --- Vendors --- */
+export async function vendorListByTenant(tenantId: string): Promise<Vendor[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.vendors).getFullList({
+    filter: `tenantId="${esc(tenantId)}"`,
+    sort: "code",
+  });
+  return rows.map((x) => mapVendorRow(asRecord(x)));
+}
+
+export async function vendorFindFirst(id: string, tenantId: string): Promise<Vendor | null> {
+  const r = await firstByFilter(C.vendors, `id="${esc(id)}" && tenantId="${esc(tenantId)}"`);
+  return r ? mapVendorRow(r) : null;
+}
+
+export async function vendorFindByTenantCode(tenantId: string, code: string): Promise<Vendor | null> {
+  const r = await firstByFilter(C.vendors, `tenantId="${esc(tenantId)}" && code="${esc(code)}"`);
+  return r ? mapVendorRow(r) : null;
+}
+
+export async function vendorCreate(body: {
+  tenantId: string;
+  code: string;
+  name: string;
+  businessType: VendorBusinessType;
+  workplaceCapital: number;
+  memo?: string | null;
+}): Promise<Vendor> {
+  const pb = await getAdminPb();
+  const created = asRecord(
+    await pb.collection(C.vendors).create({
+      tenantId: body.tenantId,
+      code: body.code,
+      name: body.name,
+      businessType: body.businessType,
+      workplaceCapital: body.workplaceCapital,
+      accumulatedReserve: 0,
+      active: true,
+      memo: body.memo ?? null,
+    })
+  );
+  return mapVendorRow(created);
+}
+
+export async function vendorUpdate(
+  id: string,
+  body: Partial<Pick<Vendor, "name" | "businessType" | "workplaceCapital" | "active" | "memo">>
+): Promise<void> {
+  const pb = await getAdminPb();
+  const patch: Record<string, unknown> = {};
+  if (body.name !== undefined) patch.name = body.name;
+  if (body.businessType !== undefined) patch.businessType = body.businessType;
+  if (body.workplaceCapital !== undefined) patch.workplaceCapital = body.workplaceCapital;
+  if (body.active !== undefined) patch.active = body.active;
+  if (body.memo !== undefined) patch.memo = body.memo;
+  await pb.collection(C.vendors).update(id, patch);
+}
+
+export async function vendorContributionListByVendor(vendorId: string, limit: number): Promise<VendorContribution[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.vendorContributions).getList(1, limit, {
+    filter: `vendorId="${esc(vendorId)}"`,
+    sort: "-created",
+  });
+  return rows.items.map((x) => mapVendorContributionRow(asRecord(x)));
+}
+
+export async function vendorAppendContribution(input: {
+  tenantId: string;
+  vendorId: string;
+  contributionAmount: number;
+  note?: string | null;
+  occurredAt?: string | null;
+}): Promise<{ contribution: VendorContribution; vendor: Vendor }> {
+  const pb = await getAdminPb();
+  const vRow = await firstByFilter(C.vendors, `id="${esc(input.vendorId)}" && tenantId="${esc(input.tenantId)}"`);
+  if (!vRow?.id) {
+    throw new Error("거래처를 찾을 수 없습니다.");
+  }
+  const vendor = mapVendorRow(vRow);
+  const { computeAdditionalReserve } = await import("@/lib/domain/vendor-reserve");
+  const calc = computeAdditionalReserve({
+    businessType: vendor.businessType,
+    contributionAmount: input.contributionAmount,
+    workplaceCapital: vendor.workplaceCapital,
+    accumulatedReserve: vendor.accumulatedReserve,
+  });
+
+  const reserveAfter = calc.newAccumulatedReserve;
+  const created = asRecord(
+    await pb.collection(C.vendorContributions).create({
+      tenantId: input.tenantId,
+      vendorId: input.vendorId,
+      contributionAmount: input.contributionAmount,
+      additionalReserved: calc.effectiveAdditional,
+      reserveAfter,
+      note: input.note ?? null,
+      occurredAt: input.occurredAt ?? null,
+    })
+  );
+
+  await pb.collection(C.vendors).update(input.vendorId, { accumulatedReserve: reserveAfter });
+
+  return {
+    contribution: mapVendorContributionRow(created),
+    vendor: { ...vendor, accumulatedReserve: reserveAfter },
+  };
+}

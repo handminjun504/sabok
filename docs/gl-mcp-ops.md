@@ -1,47 +1,55 @@
 # GL MCP 운영 연계 (sabok)
 
-애플리케이션의 **테이블·제약·인덱스(비즈니스 단위)** 는 `prisma/schema.prisma`와 `migrate` / `db push`가 단일 진실 공급원입니다. GL MCP 도구는 **인프라/배포 환경** 과 직접 연관된 작업에 쓰입니다.
+애플리케이션 데이터는 **PocketBase** 컬렉션(`sabok_*` 접두사)에 저장된다. 스키마 체크리스트는 [pb-collections.md](./pb-collections.md)를 따른다. GL MCP 도구는 **인프라/배포 환경** 과 직접 연관된 작업에 쓰인다.
+
+## 아키텍처
+
+- 브라우저는 PocketBase에 직접 붙지 않는다. **Next.js 서버**가 Admin API(`POCKETBASE_ADMIN_*`)로만 PB에 읽기/쓰기한다.
+- 멀티테넌트·세션·bcrypt 로그인은 기존과 동일하며, 사용자 레코드는 `sabok_users`(일반 컬렉션, PB Auth 아님)에 둔다.
 
 ## 도구 요약 (user-gl-server)
 
 | 도구 | 용도 | 비고 |
 |------|------|------|
-| `update_env` | 배포 환경 변수 갱신 (`vars`: 키·값 문자열 맵) | `DATABASE_URL`, `SESSION_SECRET` 등 런타임 시크릿은 **GL·시크릿 저장소**에만 두고 채팅/저장소에 평문 커밋 금지 |
-| `create_blueprint` | 블루프린트 YAML 생성 (`name`, `yaml`) | Postgres 앱·DB 인스턴스 정의는 GL 콘솔 문서에 맞출 것 |
-| `create_db_index` | 컬렉션·필드명 기반 인덱스 | 설명이 **컬렉션** 중심 — Mongo 등과 혼동 가능. **PostgreSQL + Prisma** 이면 우선 `@@index` / 마이그레이션으로 반영하고, MCP 인덱스는 대상 DB 종류를 GL 문서로 검증한 뒤 필요 시만 보완 |
+| `update_env` | 배포 환경 변수 갱신 (`vars`: 키·값 문자열 맵) | `POCKETBASE_URL`, `POCKETBASE_ADMIN_EMAIL`, `POCKETBASE_ADMIN_PASSWORD`, `SESSION_SECRET` 등은 **GL·시크릿 저장소**에만 두고 채팅/저장소에 평문 커밋 금지 |
+| `create_blueprint` | 블루프린트 YAML 생성 | GL에서 PocketBase 인스턴스·역프록시를 띄울 때 플랫폼 문서에 맞출 것 |
+| `import_schema` | [pb-collections.md](./pb-collections.md)에 맞춘 컬렉션 **일괄 생성** | `projectId`와 `schema` 배열 전달 시 프로젝트에 자동 연결 |
+| `update_collection` | 필드·규칙·**인덱스(SQL 문자열)** 수정 | 유니크는 `indexes: ["CREATE UNIQUE INDEX … ON 컬렉션명 (필드들)"]` 형태. **채팅 MCP에서 끝내기에 적합** |
+| `create_db_index` | 복합 인덱스 생성 | 일부 환경에서는 대시보드에서 프로젝트를 먼저 선택해야 해서 MCP만으로는 실패할 수 있음 → 대신 `update_collection`의 `indexes` 사용 |
+
+## MCP만으로 sabok 스키마 만들기 (요약)
+
+1. `list_projects`로 프로젝트 ID를 확인한다 (예: 사복).
+2. `import_schema`에 `projectId`와 컬렉션 정의 배열을 넣어 `sabok_*` 전체를 만든다. 필드·필수 여부는 [pb-collections.md](./pb-collections.md)와 동일하게 맞춘다.
+3. 문서에 적힌 **Unique 조합**마다 `update_collection`으로 `nameOrId`만 지정하고 `indexes`에 SQLite용 `CREATE UNIQUE INDEX … ON sabok_테이블명 (col1, col2)` 한 줄씩 넣는다. (`sabok_audit_logs`, `sabok_gl_sync_jobs`, `sabok_vendor_contributions` 등 유니크 없는 테이블은 생략)
 
 ## 권장 플로우
 
-1. **Postgres·앱**: GL에서 블루프린트/앱으로 인스턴스를 준비한다.
-2. **연결 문자열**: `update_env`로 `DATABASE_URL`을 주입한 뒤 앱 재시작(플랫폼 안내 준수).
-3. **스키마**: 코드 저장소에서 `prisma migrate deploy` 또는 `db push`로 반영 — MCP로 RDB 스키마를 대체하지 않는다.
-4. **GL 동기화**: 앱은 `GlSyncJob` payload에 `tenantId`, 고객사 코드·이름을 넣어 업체별 요청을 분리한다.
+1. **PocketBase**: GL에서 PB 프로세스를 기동하고 공개 URL(내부망이면 그 주소)을 확정한다.
+2. **컬렉션·유니크**: Admin UI로 수동 생성하거나, 위 **MCP만으로 sabok 스키마** 절차를 따른다([pb-collections.md](./pb-collections.md)와 동일 규칙).
+3. **환경 변수**: `update_env`로 `POCKETBASE_URL`, `POCKETBASE_ADMIN_EMAIL`, `POCKETBASE_ADMIN_PASSWORD`, `SESSION_SECRET`(16자 이상) 주입 후 앱 재시작.
+4. **시드**: 배포 후 `npm run pb:seed` 또는 PM2 `run-prod.mjs`가 기동 시 자동 실행(`SABOK_SKIP_DB_SETUP=1`이면 생략).
+5. **GL 동기화**: 앱은 `GlSyncJob` payload에 `tenantId`, 고객사 코드·이름을 넣어 업체별 요청을 분리한다.
 
-## Vercel(GL에서 연동 배포할 때)
+## Vercel 등 서버리스 배포 시
 
-배포가 실패하거나 배포 후 500이 나올 때 아래를 순서대로 확인한다.
+빌드는 `next build`만 수행한다(PocketBase 클라이언트는 런타임에 PB로 HTTP).
 
-1. **환경 변수(프로젝트·Preview/Production)**  
-   - `DATABASE_URL`: 외부에서 접근 가능한 Postgres URL. 서버리스 연결 수 제한이 있으면 **PgBouncer/Neon `pooler` URL** 등 풀러 엔드포인트를 쓴다.  
-   - `SESSION_SECRET`: **16자 이상** 난수 문자열. 짧으면 `src/middleware.ts`가 `/dashboard` 접근을 막는다.
-2. **Prisma**  
-   - 저장소에는 `schema.prisma`의 `binaryTargets`에 `rhel-openssl-3.0.x`가 포함되어 Vercel 리눅스 런타임용 엔진이 생성된다.  
-   - `package.json`의 `build`는 `prisma generate && next build`로, install 단계에서 `postinstall`이 건너뛰여도 생성이 보장된다.
-3. **DB 스키마**  
-   - 배포 직후 DB가 비어 있으면 런타임 오류가 난다. CI/수동으로 `prisma migrate deploy` 또는 `db push`를 한 번 실행한다.
-4. **빌드 로그**  
-   - GL/Vercel 빌드 로그에서 `Can't reach database`、`Prisma Client could not locate the Query Engine`/`libquery_engine`、ESLint/Type 오류 문구를 확인한다.
+1. **환경 변수**: `POCKETBASE_URL`(외부에서 Next 실행 환경이 접근 가능해야 함), Admin 이메일/비밀번호, `SESSION_SECRET`(16자 이상).
+2. **PB 방화벽**: IP 화이트리스트나 사설망만 허용이면 서버리스에서 연결이 막힐 수 있다.
+3. **시드**: 배포 파이프라인 또는 수동으로 `npm run pb:seed`를 한 번 이상 실행해 데모 테넌트·계정을 넣는다.
 
-## GL 서버 · Windows PM2 (Vercel 없이 MCP만)
+## GL 서버 · Windows PM2
 
-1. **코드 동기화**: MCP `git_clone` / `PowerShell`에서 `git_pull`로 예: `C:\Services\apps\sabok-web` 에 최신 `main` 반영.
-2. **설치**: 서버에서 `npm install --include=dev` 권장. `NODE_ENV=production`만 두고 설치하면 `@tailwindcss/postcss` 등 devDependency 가 빠져 **`next build`가 실패**할 수 있음.
-3. **빌드**: `npm run build`를 **끝까지** 실행. 중간에 끊기면 `.next\prerender-manifest.json`이 **0바이트**로 남고, `next start` 시 `SyntaxError: Unexpected end of JSON input` 로 즉시 종료됨.
-4. **PM2 등록**: GL이 `npm.cmd`에 `interpreter: node`를 붙이면 배치가 깨짐. 저장소 루트 `run-prod.mjs` 를 스크립트로 두고 MCP `create_app` 시 `command` = 해당 파일 **절대 경로**, `interpreter` = `node`, `cwd` = 앱 루트, `env`에 `PORT`(예: 10001), `NODE_ENV=production`.
-5. **재배포**: `git_pull` → `npm install --include=dev`(필요 시) → `npm run build` → MCP `restart_app` (`name`: sabok).
+1. **코드 동기화**: MCP `git_pull` 등으로 앱 루트를 최신화.
+2. **설치**: `npm install --include=dev` 권장(`next build`용 devDependency).
+3. **빌드**: `npm run build`를 끝까지 실행.
+4. **PM2**: `run-prod.mjs`를 `command`(절대 경로), `interpreter`=`node`, `cwd`=앱 루트, `env`에 `PORT`, `NODE_ENV=production`, **`POCKETBASE_*`**, **`SESSION_SECRET`**.
+5. **시드**: `run-prod.mjs`는 기동 시 `npm run pb:seed` 실행(반복 upsert). 끄려면 `SABOK_SKIP_DB_SETUP=1`.
+6. **재배포**: `git pull` → `npm install` → `npm run build` → `restart_app`.
 
-`exec_command`의 `cwd` 옵션이 무시되는 경우가 있으므로, 명령 앞에 `Set-Location '...': npm ...` 형태로 경로를 박는 것이 안전함.
+`exec_command`의 `cwd`가 무시되면 `Set-Location '...'; npm ...` 형태로 경로를 고정한다.
 
 ## 보안
 
-메시지 등에 노출된 `Authorization: Bearer` 키는 즉시 폐기·재발급한다. CI/로컬은 환경변수만 사용한다.
+Admin 비밀번호·`SESSION_SECRET`은 저장소에 넣지 않는다. 메시지에 노출된 `Authorization: Bearer` 키는 즉시 폐기·재발급한다.

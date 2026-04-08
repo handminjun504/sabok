@@ -2,13 +2,13 @@ import { EmployeeForm } from "@/components/EmployeeForm";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { companySettingsByTenant } from "@/lib/pb/repository";
 
 export default async function NewEmployeePage() {
   const { tenantId, role } = await requireTenantContext();
   if (!canEditEmployees(role)) redirect("/dashboard/employees");
 
-  const settings = await prisma.companySettings.findUnique({ where: { tenantId } });
+  const settings = await companySettingsByTenant(tenantId);
   const activeYear = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
 

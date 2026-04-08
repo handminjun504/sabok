@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
-import type { Role } from "@prisma/client";
-import { prisma } from "./prisma";
+import type { Role } from "@/lib/role";
 import { getSession, type SessionPayload } from "./session";
+import {
+  tenantFindFirstActive,
+  userTenantFind,
+} from "@/lib/pb/repository";
 
 export type TenantContext = {
   session: SessionPayload;
@@ -21,7 +24,7 @@ export async function requireTenantContext(): Promise<TenantContext> {
   }
   const tenantId = session.activeTenantId;
 
-  const tenant = await prisma.tenant.findFirst({ where: { id: tenantId, active: true } });
+  const tenant = await tenantFindFirstActive(tenantId);
   if (!tenant) {
     redirect("/dashboard/select-tenant");
   }
@@ -30,9 +33,7 @@ export async function requireTenantContext(): Promise<TenantContext> {
     return { session, tenantId, role: session.role };
   }
 
-  const ut = await prisma.userTenant.findUnique({
-    where: { userId_tenantId: { userId: session.sub, tenantId } },
-  });
+  const ut = await userTenantFind(session.sub, tenantId);
   if (!ut) {
     redirect("/dashboard/select-tenant");
   }
@@ -55,16 +56,14 @@ export async function resolveActionTenant(): Promise<ActionTenant> {
   if (!session.activeTenantId) return { ok: false, message: "업체를 먼저 선택하세요." };
   const tenantId = session.activeTenantId;
 
-  const tenant = await prisma.tenant.findFirst({ where: { id: tenantId, active: true } });
+  const tenant = await tenantFindFirstActive(tenantId);
   if (!tenant) return { ok: false, message: "유효하지 않은 업체입니다." };
 
   if (session.isPlatformAdmin) {
     return { ok: true, tenantId, role: session.role, userId: session.sub };
   }
 
-  const ut = await prisma.userTenant.findUnique({
-    where: { userId_tenantId: { userId: session.sub, tenantId } },
-  });
+  const ut = await userTenantFind(session.sub, tenantId);
   if (!ut) return { ok: false, message: "이 업체에 대한 권한이 없습니다." };
 
   return { ok: true, tenantId, role: ut.role, userId: session.sub };

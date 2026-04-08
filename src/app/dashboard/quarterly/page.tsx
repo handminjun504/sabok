@@ -1,4 +1,9 @@
-import { prisma } from "@/lib/prisma";
+import {
+  companySettingsByTenant,
+  employeeListByTenantCodeAsc,
+  quarterlyEmployeeConfigListByTenantYear,
+  quarterlyRateList,
+} from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { QUARTERLY_ITEM, QUARTERLY_ITEM_LABELS, type QuarterlyItemKey } from "@/lib/business-rules";
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
@@ -10,14 +15,13 @@ import {
 
 export default async function QuarterlyPage() {
   const { tenantId, role } = await requireTenantContext();
-  const settings = await prisma.companySettings.findUnique({ where: { tenantId } });
+  const settings = await companySettingsByTenant(tenantId);
   const year = settings?.activeYear ?? new Date().getFullYear();
-  const [rates, employees, configs] = await Promise.all([
-    prisma.quarterlyRate.findMany({ where: { tenantId, year } }),
-    prisma.employee.findMany({ where: { tenantId }, orderBy: { employeeCode: "asc" } }),
-    prisma.quarterlyEmployeeConfig.findMany({
-      where: { year, employee: { tenantId } },
-    }),
+  const employees = await employeeListByTenantCodeAsc(tenantId);
+  const ids = employees.map((e) => e.id);
+  const [rates, configs] = await Promise.all([
+    quarterlyRateList(tenantId, year),
+    quarterlyEmployeeConfigListByTenantYear(tenantId, year, ids),
   ]);
 
   const rateMap = new Map(rates.map((r) => [r.itemKey, r]));
@@ -63,56 +67,56 @@ export default async function QuarterlyPage() {
                       <td>
                         <input
                           name={`${itemKey}_infant`}
-                          defaultValue={r?.amountPerInfant?.toString() ?? ""}
+                          defaultValue={r?.amountPerInfant != null ? String(r.amountPerInfant) : ""}
                           className="w-20 rounded border border-[var(--border)] bg-[var(--bg)] px-1"
                         />
                       </td>
                       <td>
                         <input
                           name={`${itemKey}_pre`}
-                          defaultValue={r?.amountPerPreschool?.toString() ?? ""}
+                          defaultValue={r?.amountPerPreschool != null ? String(r.amountPerPreschool) : ""}
                           className="w-20 rounded border border-[var(--border)] bg-[var(--bg)] px-1"
                         />
                       </td>
                       <td>
                         <input
                           name={`${itemKey}_teen`}
-                          defaultValue={r?.amountPerTeen?.toString() ?? ""}
+                          defaultValue={r?.amountPerTeen != null ? String(r.amountPerTeen) : ""}
                           className="w-20 rounded border border-[var(--border)] bg-[var(--bg)] px-1"
                         />
                       </td>
                       <td>
                         <input
                           name={`${itemKey}_par`}
-                          defaultValue={r?.amountPerParent?.toString() ?? ""}
+                          defaultValue={r?.amountPerParent != null ? String(r.amountPerParent) : ""}
                           className="w-20 rounded border border-[var(--border)] bg-[var(--bg)] px-1"
                         />
                       </td>
                       <td>
                         <input
                           name={`${itemKey}_inlaw`}
-                          defaultValue={r?.amountPerInLaw?.toString() ?? ""}
+                          defaultValue={r?.amountPerInLaw != null ? String(r.amountPerInLaw) : ""}
                           className="w-20 rounded border border-[var(--border)] bg-[var(--bg)] px-1"
                         />
                       </td>
                       <td>
                         <input
                           name={`${itemKey}_flat`}
-                          defaultValue={r?.flatAmount?.toString() ?? ""}
+                          defaultValue={r?.flatAmount != null ? String(r.flatAmount) : ""}
                           className="w-20 rounded border border-[var(--border)] bg-[var(--bg)] px-1"
                         />
                       </td>
                       <td>
                         <input
                           name={`${itemKey}_pins`}
-                          defaultValue={r?.percentInsurance?.toString() ?? ""}
+                          defaultValue={r?.percentInsurance != null ? String(r.percentInsurance) : ""}
                           className="w-16 rounded border border-[var(--border)] bg-[var(--bg)] px-1"
                         />
                       </td>
                       <td>
                         <input
                           name={`${itemKey}_ploan`}
-                          defaultValue={r?.percentLoanInterest?.toString() ?? ""}
+                          defaultValue={r?.percentLoanInterest != null ? String(r.percentLoanInterest) : ""}
                           className="w-16 rounded border border-[var(--border)] bg-[var(--bg)] px-1"
                         />
                       </td>
@@ -217,7 +221,7 @@ export default async function QuarterlyPage() {
                       <td className="py-2">{e ? `${e.employeeCode} ${e.name}` : c.employeeId}</td>
                       <td>{QUARTERLY_ITEM_LABELS[c.itemKey as QuarterlyItemKey] ?? c.itemKey}</td>
                       <td>{c.paymentMonth}</td>
-                      <td>{c.amount.toString()}</td>
+                      <td>{String(c.amount)}</td>
                     </tr>
                   );
                 })}

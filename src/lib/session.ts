@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/role";
 
 const COOKIE = "sabok_session";
 

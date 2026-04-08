@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { userListAllByEmailAsc } from "@/lib/pb/repository";
 import { requireSession } from "@/lib/auth-context";
 import { createUserFormAction } from "@/app/actions/user";
 import { redirect } from "next/navigation";
@@ -9,7 +9,7 @@ export default async function UsersPage() {
     redirect("/dashboard");
   }
 
-  const users = await prisma.user.findMany({ orderBy: { email: "asc" } });
+  const users = await userListAllByEmailAsc();
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">

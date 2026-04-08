@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { companySettingsByTenant, employeeListByTenantCodeAsc } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees } from "@/lib/permissions";
 import { CsvImportClient } from "@/components/CsvImportClient";
@@ -8,11 +8,8 @@ import { formatWon, yn } from "@/lib/spreadsheet-format";
 export default async function EmployeesPage() {
   const { tenantId, role } = await requireTenantContext();
   const [settings, list] = await Promise.all([
-    prisma.companySettings.findUnique({ where: { tenantId } }),
-    prisma.employee.findMany({
-      where: { tenantId },
-      orderBy: { employeeCode: "asc" },
-    }),
+    companySettingsByTenant(tenantId),
+    employeeListByTenantCodeAsc(tenantId),
   ]);
   const activeYear = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;

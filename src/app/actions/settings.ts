@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { companySettingsUpsert } from "@/lib/pb/repository";
 import { canEditCompanySettings } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
@@ -35,11 +35,7 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };
   }
 
-  await prisma.companySettings.upsert({
-    where: { tenantId: ctx.tenantId },
-    create: { tenantId: ctx.tenantId, ...parsed.data },
-    update: parsed.data,
-  });
+  await companySettingsUpsert(ctx.tenantId, parsed.data);
   await writeAudit({
     userId: ctx.userId,
     tenantId: ctx.tenantId,

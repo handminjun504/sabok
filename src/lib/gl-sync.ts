@@ -3,6 +3,8 @@
  * 실제 MCP 호출·전표 생성은 인터페이스 계약 확정 후 여기에 연결합니다.
  */
 
+import { glSyncJobCreate } from "@/lib/pb/repository";
+
 export type GlSyncRequest = {
   tenantId: string;
   고객사코드: string;
@@ -19,13 +21,10 @@ export type GlSyncResult = {
 };
 
 export async function enqueueGlSyncJob(request: GlSyncRequest): Promise<GlSyncResult> {
-  const { prisma } = await import("./prisma");
-  const job = await prisma.glSyncJob.create({
-    data: {
-      tenantId: request.tenantId,
-      status: "pending",
-      payload: JSON.parse(JSON.stringify(request)) as object,
-    },
+  const job = await glSyncJobCreate({
+    tenantId: request.tenantId,
+    status: "pending",
+    payload: JSON.parse(JSON.stringify(request)),
   });
   return {
     성공: true,

@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { tenantListActiveByCodeAsc, userTenantListWithTenantsForUser } from "@/lib/pb/repository";
 import { requireSession } from "@/lib/auth-context";
 import { switchTenantFormAction } from "@/app/actions/tenant-switch";
 
@@ -7,17 +7,9 @@ export default async function SelectTenantPage() {
 
   let tenants: { id: string; code: string; name: string; active: boolean }[];
   if (session.isPlatformAdmin) {
-    tenants = await prisma.tenant.findMany({
-      where: { active: true },
-      orderBy: { code: "asc" },
-      select: { id: true, code: true, name: true, active: true },
-    });
+    tenants = await tenantListActiveByCodeAsc();
   } else {
-    const links = await prisma.userTenant.findMany({
-      where: { userId: session.sub, tenant: { active: true } },
-      include: { tenant: true },
-      orderBy: { tenant: { code: "asc" } },
-    });
+    const links = await userTenantListWithTenantsForUser(session.sub);
     tenants = links.map((l) => ({
       id: l.tenant.id,
       code: l.tenant.code,

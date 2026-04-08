@@ -1,4 +1,4 @@
-import { prisma } from "./prisma";
+import { auditLogCreate } from "@/lib/pb/repository";
 
 export async function writeAudit(input: {
   userId?: string | null;
@@ -9,15 +9,13 @@ export async function writeAudit(input: {
   payload?: unknown;
 }) {
   try {
-    await prisma.auditLog.create({
-      data: {
-        userId: input.userId ?? undefined,
-        tenantId: input.tenantId ?? undefined,
-        action: input.action,
-        entity: input.entity,
-        entityId: input.entityId ?? undefined,
-        payload: input.payload === undefined ? undefined : (input.payload as object),
-      },
+    await auditLogCreate({
+      userId: input.userId ?? undefined,
+      tenantId: input.tenantId ?? undefined,
+      action: input.action,
+      entity: input.entity,
+      entityId: input.entityId ?? undefined,
+      payload: input.payload,
     });
   } catch (e) {
     console.error("[감사로그] 기록 실패", e);

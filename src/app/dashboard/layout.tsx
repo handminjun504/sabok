@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppNav } from "@/components/AppNav";
 import { requireSession } from "@/lib/auth-context";
-import { prisma } from "@/lib/prisma";
+import { tenantGetById } from "@/lib/pb/repository";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const s = await requireSession();
@@ -15,10 +15,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/dashboard/select-tenant");
   }
 
-  const tenant =
-    s.activeTenantId != null
-      ? await prisma.tenant.findUnique({ where: { id: s.activeTenantId } })
-      : null;
+  const tenant = s.activeTenantId != null ? await tenantGetById(s.activeTenantId) : null;
   const hasActiveTenant = Boolean(s.activeTenantId && tenant);
 
   return (

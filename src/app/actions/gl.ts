@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { canTriggerGlSync } from "@/lib/permissions";
 import { enqueueGlSyncJob } from "@/lib/gl-sync";
-import { prisma } from "@/lib/prisma";
+import { employeeListByTenantCodeAsc, tenantGetById } from "@/lib/pb/repository";
 import { resolveActionTenant } from "@/lib/tenant-context";
 
 export type GlState = { 오류?: string; 메시지?: string; 작업Id?: string } | null;
@@ -27,11 +27,8 @@ export async function requestGlSyncAction(_: GlState, formData: FormData): Promi
   if (!Number.isFinite(year)) return { 오류: "연도가 올바르지 않습니다." };
 
   const [employees, tenant] = await Promise.all([
-    prisma.employee.findMany({
-      where: { tenantId: ctx.tenantId },
-      select: { employeeCode: true },
-    }),
-    prisma.tenant.findUnique({ where: { id: ctx.tenantId } }),
+    employeeListByTenantCodeAsc(ctx.tenantId),
+    tenantGetById(ctx.tenantId),
   ]);
 
   if (!tenant) return { 오류: "업체 정보를 찾을 수 없습니다." };
