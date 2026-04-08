@@ -1,6 +1,7 @@
 /**
  * GL 서버 PM2용: PocketBase 시드 후 next start
  * SABOK_SKIP_DB_SETUP=1 이면 시드 생략
+ * 시드 실패 시 기본은 Next 계속 기동(SABOK_STRICT_SEED=1 이면 종료)
  * PM2는 .env를 자동 주입하지 않으므로, 여기서 프로젝트 루트 .env / .env.local 을 읽는다.
  */
 import { spawn, spawnSync } from "node:child_process";
@@ -74,7 +75,12 @@ function runPbSeed() {
 
 const dbCode = runPbSeed();
 if (dbCode !== 0) {
-  process.exit(dbCode);
+  if (process.env.SABOK_STRICT_SEED === "1" || process.env.SABOK_STRICT_SEED === "true") {
+    process.exit(dbCode);
+  }
+  console.error(
+    "[sabok] pb:seed failed — Next는 그대로 기동합니다. PB·스키마 수정 후 수동: npm run pb:seed (시드 실패 시 전체 중단하려면 SABOK_STRICT_SEED=1)"
+  );
 }
 
 const child = spawn(process.execPath, [nextBin, "start", "-H", "0.0.0.0", "-p", String(port)], {
