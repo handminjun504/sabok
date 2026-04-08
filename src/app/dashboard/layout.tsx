@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { AppNav } from "@/components/AppNav";
+import { DashboardShell } from "@/components/DashboardShell";
 import { requireSession } from "@/lib/auth-context";
+import { getDashboardNav } from "@/lib/dashboard-nav";
 import { tenantGetById } from "@/lib/pb/repository";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -18,16 +19,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const tenant = s.activeTenantId != null ? await tenantGetById(s.activeTenantId) : null;
   const hasActiveTenant = Boolean(s.activeTenantId && tenant);
 
+  const groups = getDashboardNav({
+    role: s.role,
+    isPlatformAdmin: s.isPlatformAdmin,
+    hasActiveTenant,
+  });
+
+  let tenantLine: string | null = null;
+  if (tenant?.name || tenant?.code) {
+    const name = tenant?.name ?? "";
+    const code = tenant?.code;
+    tenantLine = `현재 업체: ${name}${code ? ` (${code})` : ""}`;
+  }
+
   return (
-    <div className="min-h-screen">
-      <AppNav
-        role={s.role}
-        isPlatformAdmin={s.isPlatformAdmin}
-        hasActiveTenant={hasActiveTenant}
-        tenantName={tenant?.name ?? null}
-        tenantCode={tenant?.code ?? null}
-      />
-      <div className="mx-auto max-w-7xl px-4 py-6">{children}</div>
-    </div>
+    <DashboardShell groups={groups} tenantLine={tenantLine}>
+      {children}
+    </DashboardShell>
   );
 }

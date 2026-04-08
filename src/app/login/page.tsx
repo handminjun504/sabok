@@ -34,15 +34,18 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
-      <div className="surface p-8">
-        <h1 className="text-xl font-bold text-[var(--text)]">사내근로복지기금 관리</h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">로그인 후 대시보드로 이동합니다.</p>
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
+      <div className="uiverse-glow-card">
+        <div className="uiverse-glow-card__bg uiverse-glow-card__bg--blur" aria-hidden />
+        <div className="uiverse-glow-card__bg" aria-hidden />
+        <div className="uiverse-glow-card__inner">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--text)]">사내근로복지기금 관리</h1>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">로그인 후 대시보드로 이동합니다.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="block text-sm text-[var(--muted)]">이메일</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--text)]">이메일</label>
             <input
-              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[var(--text)]"
+              className="input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="username"
@@ -51,9 +54,9 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm text-[var(--muted)]">비밀번호</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--text)]">비밀번호</label>
             <input
-              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[var(--text)]"
+              className="input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -62,11 +65,7 @@ export default function LoginPage() {
             />
           </div>
           {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-[var(--accent)] py-2 font-medium text-white hover:bg-[var(--accent-dim)] disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading} className="btn-uiverse-submit">
             {loading ? "확인 중…" : "로그인"}
           </button>
         </form>
@@ -79,6 +78,7 @@ export default function LoginPage() {
           3000)로 접속하세요. 배포 서버에서는 <code className="rounded bg-[var(--border)] px-1">npm run start:web</code>{" "}
           또는 호스팅 환경의 공개 URL을 사용합니다.
         </p>
+        </div>
       </div>
     </main>
   );
