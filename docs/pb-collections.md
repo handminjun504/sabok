@@ -28,8 +28,18 @@ Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사
 | name             | text | yes  |             |
 | role             | text | yes  | ADMIN/SENIOR/JUNIOR |
 | isPlatformAdmin  | bool | yes  | default false |
+| accessAllTenants | bool | yes  | default false — true면 활성 업체 전환·업무 데이터 접근(고객사별 직원 등). 플랫폼 메뉴(업체/감사)는 `isPlatformAdmin`만 |
 
-시드(`pb:seed`) 실패 시 400 + `isPlatformAdmin` 오류면, Admin에서 위 필드가 **bool·필수**로 존재하는지 확인한다(없으면 추가).
+**권한 요약**
+
+- `isPlatformAdmin`: 전 업체 목록·업무 접근 + **업체 관리·감사 로그** 등 플랫폼 메뉴. `sabok_users` 계정 생성은 앱이 아니라 **PocketBase Admin·시드(`pb:seed`)·`pb-create-user` 스크립트**로 한다.
+- `accessAllTenants` (아웃소싱 대리): `user_tenants` 없이도 **활성 업체 전환 + 업무 메뉴만** (역할은 `role` 필드 기준).
+- 일반 사용자가 **특정 업체만** 접근해야 할 때는 `sabok_user_tenants`에 행을 두면 된다(앱 UI에서는 배정 폼을 제공하지 않음 · 시드/스크립트/PB Admin 등).
+- 둘 다 false면 기존처럼 `sabok_user_tenants`로 허용 업체만.
+
+시드(`pb:seed`) 실패 시 400 + `isPlatformAdmin` / `accessAllTenants` 오류면, Admin에서 해당 필드가 **bool·필수**로 존재하는지 확인한다(없으면 추가).
+
+데모: `outsourcer@sabok.local` — `accessAllTenants`만 true, `sabok_user_tenants` 없이 로그인 후 업체 선택 가능.
 
 ## `sabok_user_tenants`
 

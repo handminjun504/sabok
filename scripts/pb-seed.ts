@@ -47,18 +47,28 @@ async function main() {
     name: "시스템 관리자",
     role: Role.ADMIN,
     isPlatformAdmin: true,
+    accessAllTenants: false,
   });
   const seniorId = await upsertUser("senior@sabok.local", {
     passwordHash,
     name: "김선임",
     role: Role.SENIOR,
     isPlatformAdmin: false,
+    accessAllTenants: false,
   });
   const juniorId = await upsertUser("junior@sabok.local", {
     passwordHash,
     name: "이후임",
     role: Role.JUNIOR,
     isPlatformAdmin: false,
+    accessAllTenants: false,
+  });
+  await upsertUser("outsourcer@sabok.local", {
+    passwordHash,
+    name: "아웃소싱 대리(데모)",
+    role: Role.SENIOR,
+    isPlatformAdmin: false,
+    accessAllTenants: true,
   });
 
   const pb = await pbReady();

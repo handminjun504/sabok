@@ -63,6 +63,7 @@ async function runCreateUser(input: Input) {
       name: displayName,
       role,
       isPlatformAdmin: false,
+      accessAllTenants: false,
     });
     userId = String(existing.id);
     console.log("기존 사용자 갱신:", email);
@@ -73,6 +74,7 @@ async function runCreateUser(input: Input) {
       name: displayName,
       role,
       isPlatformAdmin: false,
+      accessAllTenants: false,
     });
     userId = String((created as Record<string, unknown>).id);
     console.log("사용자 생성:", email);

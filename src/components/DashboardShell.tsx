@@ -44,10 +44,10 @@ function NavBody({
                     href={item.href}
                     onClick={onNavigate}
                     className={
-                      "block rounded-md px-3 py-2 text-sm transition-colors " +
+                      "neu-nav-link " +
                       (active
-                        ? "bg-[var(--accent-soft)] font-medium text-[var(--accent)]"
-                        : "font-normal text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]")
+                        ? "neu-nav-link-active"
+                        : "font-normal text-[var(--muted)]")
                     }
                   >
                     {item.label}
@@ -71,20 +71,20 @@ export function DashboardShell({ groups, tenantLine, children }: Props) {
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen bg-[var(--bg)]">
+    <div className="flex min-h-screen bg-transparent">
       {/* 데스크톱 사이드바 */}
-      <aside className="sticky top-0 hidden h-screen w-[var(--sidebar-w)] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] md:flex">
-        <div className="px-4 py-4 border-b border-[var(--border)]">
-          <p className="text-sm font-bold text-[var(--text)] tracking-tight">사내근로복지기금</p>
+      <aside className="neu-sidebar sticky top-3 z-20 mx-3 hidden h-[calc(100vh-1.5rem)] w-[var(--sidebar-w)] shrink-0 flex-col md:flex">
+        <div className="px-4 py-4">
+          <p className="neu-title-gradient text-sm font-bold tracking-tight">사내근로복지기금</p>
           {tenantLine ? (
             <p className="mt-1 line-clamp-2 text-xs text-[var(--muted)] leading-relaxed">{tenantLine}</p>
           ) : null}
         </div>
         <NavBody groups={groups} pathname={pathname} />
-        <form action={logoutAction} className="border-t border-[var(--border)] p-3">
+        <form action={logoutAction} className="mt-auto p-3">
           <button
             type="submit"
-            className="w-full rounded-md px-3 py-2 text-sm text-[var(--muted)] transition-colors hover:bg-red-50 hover:text-[var(--danger)]"
+            className="neu-field w-full rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition-colors hover:text-[var(--danger)]"
           >
             로그아웃
           </button>
@@ -93,10 +93,10 @@ export function DashboardShell({ groups, tenantLine, children }: Props) {
 
       {/* 모바일 상단 바 */}
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 md:hidden">
+        <header className="neu-topbar sticky top-3 z-30 mx-3 mt-3 flex items-center gap-3 px-3 py-2.5 md:hidden">
           <button
             type="button"
-            className="rounded-md px-2.5 py-1.5 text-sm text-[var(--muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
+            className="neu-field rounded-xl px-2.5 py-1.5 text-sm text-[var(--muted)] hover:text-[var(--text)]"
             aria-expanded={mobileOpen}
             aria-label="메뉴 열기"
             onClick={() => setMobileOpen(true)}
@@ -104,7 +104,7 @@ export function DashboardShell({ groups, tenantLine, children }: Props) {
             ☰ 메뉴
           </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-[var(--text)]">사내근로복지기금</p>
+            <p className="neu-title-gradient truncate text-sm font-semibold">사내근로복지기금</p>
             {tenantLine ? <p className="truncate text-xs text-[var(--muted)]">{tenantLine}</p> : null}
           </div>
         </header>
@@ -117,22 +117,22 @@ export function DashboardShell({ groups, tenantLine, children }: Props) {
               aria-label="메뉴 닫기"
               onClick={() => setMobileOpen(false)}
             />
-            <div className="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,88vw)] flex-col border-r border-[var(--border)] bg-[var(--surface)] shadow-xl md:hidden">
-              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-                <span className="text-sm font-semibold text-[var(--text)]">메뉴</span>
+            <div className="neu-drawer fixed inset-y-3 left-0 z-50 flex w-[min(18rem,88vw)] flex-col md:hidden">
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="neu-title-gradient text-sm font-semibold">메뉴</span>
                 <button
                   type="button"
-                  className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--surface-hover)]"
+                  className="neu-field rounded-lg px-2 py-1 text-sm text-[var(--muted)]"
                   onClick={() => setMobileOpen(false)}
                 >
                   닫기
                 </button>
               </div>
               <NavBody groups={groups} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
-              <form action={logoutAction} className="border-t border-[var(--border)] p-3">
+              <form action={logoutAction} className="mt-auto p-3">
                 <button
                   type="submit"
-                  className="w-full rounded-md px-3 py-2 text-sm text-[var(--muted)] transition-colors hover:bg-red-50 hover:text-[var(--danger)]"
+                  className="neu-field w-full rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--danger)]"
                 >
                   로그아웃
                 </button>

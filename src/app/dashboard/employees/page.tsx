@@ -19,17 +19,14 @@ export default async function EmployeesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">직원 정보</h1>
+          <h1 className="neu-title-gradient text-2xl font-bold">직원 정보</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
             구글 시트「{yy}년 사복 진행 조사표」와 같은 열 순서로 표시합니다. 가로 스크롤로 전체 열을 확인하세요.
           </p>
         </div>
         {canEditEmployees(role) && (
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/dashboard/employees/new"
-              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white"
-            >
+            <Link href="/dashboard/employees/new" className="btn btn-primary px-4 py-2 text-sm">
               직원 추가
             </Link>
             <CsvImportClient />
@@ -44,10 +41,10 @@ export default async function EmployeesPage() {
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+      <div className="surface overflow-x-auto p-0">
         <table className="w-max min-w-full border-collapse text-left text-xs">
           <thead>
-            <tr className="border-b-2 border-[var(--border)] bg-[var(--bg)] text-[10px] font-semibold uppercase text-[var(--muted)]">
+            <tr className="border-b-2 border-[var(--border)] text-[10px] font-semibold uppercase text-[var(--muted)] [box-shadow:var(--neu-inset-sm)]">
               <th className="sticky left-0 z-10 border-r border-[var(--border)] bg-[var(--bg)] px-2 py-2">CODE</th>
               <th className="sticky left-[3.25rem] z-10 border-r border-[var(--border)] bg-[var(--bg)] px-2 py-2">
                 이름

@@ -53,10 +53,7 @@ export function getDashboardNav(opts: {
   if (isPlatformAdmin) {
     groups.push({
       title: "운영",
-      items: [
-        { href: "/dashboard/users", label: "사용자" },
-        { href: "/dashboard/audit", label: "감사 로그" },
-      ],
+      items: [{ href: "/dashboard/audit", label: "감사 로그" }],
     });
   }
 

@@ -32,37 +32,33 @@ export function CsvImportClient() {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm"
-      >
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-outline px-4 py-2 text-sm">
         CSV 붙여넣기 가져오기
       </button>
     );
   }
 
   return (
-    <div className="surface fixed inset-0 z-50 m-auto h-fit max-h-[90vh] w-full max-w-2xl overflow-auto p-4 shadow-xl">
+    <div className="surface fixed inset-0 z-50 m-auto h-fit max-h-[90vh] w-full max-w-2xl overflow-auto p-6">
       <h2 className="text-lg font-semibold">CSV 가져오기</h2>
       <p className="mt-1 text-xs text-[var(--muted)]">
         첫 행은 헤더(CODE, 이름, …)여야 합니다. 구글 시트에서 복사해 붙여넣을 수 있습니다.
       </p>
       <textarea
-        className="mt-3 h-52 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 text-xs font-mono text-[var(--text)]"
+        className="neu-field mt-3 h-52 w-full rounded-xl p-3 text-xs font-mono text-[var(--text)]"
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
       {msg && <p className="mt-2 text-sm text-[var(--success)]">{msg}</p>}
       <div className="mt-3 flex justify-end gap-2">
-        <button type="button" className="rounded-lg px-3 py-2 text-sm" onClick={() => setOpen(false)}>
+        <button type="button" className="btn btn-ghost px-3 py-2 text-sm" onClick={() => setOpen(false)}>
           닫기
         </button>
         <button
           type="button"
           disabled={busy || !text.trim()}
           onClick={run}
-          className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm text-white disabled:opacity-50"
+          className="btn btn-primary px-4 py-2 text-sm disabled:opacity-50"
         >
           {busy ? "처리 중…" : "가져오기"}
         </button>

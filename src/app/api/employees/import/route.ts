@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import { canAccessAnyTenant, getSession } from "@/lib/session";
 import { canEditEmployees } from "@/lib/permissions";
 import { parseEmployeeCsv } from "@/lib/csv-import";
 import { writeAudit } from "@/lib/audit";
@@ -10,7 +10,7 @@ async function resolveTenantIdForApi(session: NonNullable<Awaited<ReturnType<typ
     return { ok: false as const, 응답: NextResponse.json({ 오류: "업체를 먼저 선택하세요." }, { status: 400 }) };
   }
   const tenantId = session.activeTenantId;
-  if (session.isPlatformAdmin) return { ok: true as const, tenantId };
+  if (canAccessAnyTenant(session)) return { ok: true as const, tenantId };
   const ut = await userTenantFind(session.sub, tenantId);
   if (!ut) return { ok: false as const, 응답: NextResponse.json({ 오류: "권한 없음" }, { status: 403 }) };
   return { ok: true as const, tenantId };

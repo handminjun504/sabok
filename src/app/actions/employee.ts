@@ -6,6 +6,7 @@ import {
   employeeCreate,
   employeeDelete,
   employeeFindFirst,
+  employeeNextAutoCodeForTenant,
   employeeUpdate,
 } from "@/lib/pb/repository";
 import { canEditEmployees } from "@/lib/permissions";
@@ -40,11 +41,16 @@ function int0(v: FormDataEntryValue | null): number {
 }
 
 const baseSchema = z.object({
-  employeeCode: z.string().min(1, "직원 코드 필수"),
   name: z.string().min(1, "이름 필수"),
   position: z.string().min(1, "직급 필수"),
   level: z.coerce.number().min(1).max(5),
 });
+
+const CEO_POSITION = "대표이사";
+
+function resolvePosition(position: string): string {
+  return position.trim();
+}
 
 export type EmployeeActionState = { 오류?: string; 성공?: boolean } | null;
 
@@ -53,9 +59,8 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
   if (!ctx.ok) return { 오류: ctx.message };
   if (!canEditEmployees(ctx.role)) return { 오류: "직원 정보를 수정할 권한이 없습니다." };
 
-  const id = String(formData.get("id") ?? "");
+  const id = String(formData.get("id") ?? "").trim();
   const parsed = baseSchema.safeParse({
-    employeeCode: formData.get("employeeCode"),
     name: formData.get("name"),
     position: formData.get("position"),
     level: formData.get("level"),
@@ -63,10 +68,10 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
   if (!parsed.success) {
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };
   }
-  const { employeeCode, name, position, level } = parsed.data;
+  const { name, position: positionRaw, level } = parsed.data;
+  const position = resolvePosition(positionRaw);
 
   const data = {
-    employeeCode,
     name,
     position,
     level,
@@ -99,17 +104,19 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     if (id) {
       const emp = await employeeFindFirst(id, ctx.tenantId);
       if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
-      await employeeUpdate(emp.id, data);
+      await employeeUpdate(emp.id, { ...data, employeeCode: emp.employeeCode });
       await writeAudit({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
         action: "UPDATE",
         entity: "Employee",
         entityId: id,
-        payload: { employeeCode },
+        payload: { employeeCode: emp.employeeCode },
       });
     } else {
-      const created = await employeeCreate({ ...data, tenantId: ctx.tenantId });
+      const employeeCode =
+        position === CEO_POSITION ? "0" : await employeeNextAutoCodeForTenant(ctx.tenantId);
+      const created = await employeeCreate({ ...data, tenantId: ctx.tenantId, employeeCode });
       await writeAudit({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
@@ -121,7 +128,12 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     }
   } catch (e) {
     console.error(e);
-    return { 오류: "저장에 실패했습니다. 직원 코드 중복 여부를 확인하세요." };
+    return {
+      오류:
+        position === CEO_POSITION
+          ? "저장에 실패했습니다. 이미 코드 0번(대표이사) 직원이 있을 수 있습니다."
+          : "저장에 실패했습니다. 직원 코드 중복 여부를 확인하세요.",
+    };
   }
 
   revalidatePath("/dashboard/employees");

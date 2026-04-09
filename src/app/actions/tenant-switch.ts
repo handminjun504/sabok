@@ -16,6 +16,8 @@ export async function switchTenantFormAction(formData: FormData) {
   let role: Role;
   if (session.isPlatformAdmin) {
     role = Role.ADMIN;
+  } else if (session.accessAllTenants) {
+    role = session.role;
   } else {
     const ut = await userTenantFind(session.sub, tenantId);
     if (!ut) redirect("/dashboard/select-tenant");
@@ -30,6 +32,7 @@ export async function switchTenantFormAction(formData: FormData) {
       name: session.name,
       role,
       isPlatformAdmin: session.isPlatformAdmin,
+      accessAllTenants: session.accessAllTenants,
       activeTenantId: tenantId,
     },
     maxAge

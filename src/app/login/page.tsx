@@ -34,11 +34,11 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4">
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">사내근로복지기금</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">관리 시스템</p>
+          <h1 className="neu-title-gradient text-3xl font-bold tracking-tight">사내근로복지기금</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">관리 시스템</p>
         </div>
         <div className="login-card">
           <form onSubmit={onSubmit} className="space-y-4">
@@ -65,7 +65,7 @@ export default function LoginPage() {
               />
             </div>
             {error && (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-[var(--danger)]">
+              <p className="neu-field rounded-xl px-3 py-2.5 text-sm text-[var(--danger)] ring-2 ring-red-200/60">
                 {error}
               </p>
             )}

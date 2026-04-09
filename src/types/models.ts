@@ -116,6 +116,8 @@ export type UserRow = {
   name: string;
   role: string;
   isPlatformAdmin: boolean;
+  /** PB에 필드가 없으면 false */
+  accessAllTenants: boolean;
 };
 
 export type UserTenantLink = {

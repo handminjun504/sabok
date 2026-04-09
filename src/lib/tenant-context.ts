@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import type { Role } from "@/lib/role";
-import { getSession, type SessionPayload } from "./session";
+import { canAccessAnyTenant, getSession, type SessionPayload } from "./session";
 import {
   tenantFindFirstActive,
   userTenantFind,
@@ -14,7 +14,7 @@ export type TenantContext = {
 };
 
 /**
- * 데이터 영역 접근: 활성 테넌트 필수, 멤버십 또는 플랫폼 관리자.
+ * 데이터 영역 접근: 활성 테넌트 필수, 멤버십 또는 전 업체 접근 권한.
  */
 export async function requireTenantContext(): Promise<TenantContext> {
   const session = await getSession();
@@ -29,7 +29,7 @@ export async function requireTenantContext(): Promise<TenantContext> {
     redirect("/dashboard/select-tenant");
   }
 
-  if (session.isPlatformAdmin) {
+  if (canAccessAnyTenant(session)) {
     return { session, tenantId, role: session.role };
   }
 
@@ -59,7 +59,7 @@ export async function resolveActionTenant(): Promise<ActionTenant> {
   const tenant = await tenantFindFirstActive(tenantId);
   if (!tenant) return { ok: false, message: "유효하지 않은 업체입니다." };
 
-  if (session.isPlatformAdmin) {
+  if (canAccessAnyTenant(session)) {
     return { ok: true, tenantId, role: session.role, userId: session.sub };
   }
 

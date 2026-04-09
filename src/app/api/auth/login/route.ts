@@ -46,9 +46,13 @@ export async function POST(req: Request) {
     let activeTenantId: string | null = null;
     let effectiveRole: Role = parseRole(user.role);
     const isPlatformAdmin = user.isPlatformAdmin;
+    const accessAllTenants = user.accessAllTenants;
 
     if (isPlatformAdmin) {
       effectiveRole = Role.ADMIN;
+      activeTenantId = null;
+    } else if (accessAllTenants) {
+      effectiveRole = parseRole(user.role);
       activeTenantId = null;
     } else if (user.userTenants.length === 1) {
       activeTenantId = user.userTenants[0].tenantId;
@@ -58,7 +62,10 @@ export async function POST(req: Request) {
       effectiveRole = parseRole(user.userTenants[0].role);
     } else {
       return NextResponse.json(
-        { 오류: "소속된 업체가 없습니다. 운영 관리자에게 업체 배정을 요청하세요." },
+        {
+          오류:
+            "접근 가능한 업체가 없습니다. 전 업체 접근 권한(accessAllTenants) 또는 플랫폼 관리자에게 문의하세요.",
+        },
         { status: 403 }
       );
     }
@@ -71,6 +78,7 @@ export async function POST(req: Request) {
         name: user.name,
         role: effectiveRole,
         isPlatformAdmin,
+        accessAllTenants,
         activeTenantId,
       },
       maxAge

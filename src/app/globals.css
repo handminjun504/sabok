@@ -1,16 +1,34 @@
 @import "tailwindcss";
 
+/* Neuromorphic tokens — inspired by https://codepen.io/oathanrex/pen/azNQpPj */
 :root {
-  --bg: #f8fafc;
-  --surface: #ffffff;
-  --surface-hover: #f1f5f9;
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --text: #0f172a;
+  --neu-bg-primary: #e6e9ef;
+  --neu-bg-secondary: #d1d5db;
+  --neu-shadow-dark: #b8bcc2;
+  --neu-shadow-light: #ffffff;
+  --neu-primary: #7c3aed;
+  --neu-primary-dark: #6d28d9;
+  --neu-primary-mid: #a855f7;
+
+  --transition-fast: 150ms;
+  --transition-normal: 300ms;
+
+  --neu-raised: 10px 10px 22px var(--neu-shadow-dark), -10px -10px 22px var(--neu-shadow-light);
+  --neu-raised-sm: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
+  --neu-inset: inset 5px 5px 10px var(--neu-shadow-dark), inset -5px -5px 10px var(--neu-shadow-light);
+  --neu-inset-sm: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light);
+
+  /* Semantic (mapped for existing components) */
+  --bg: var(--neu-bg-primary);
+  --surface: var(--neu-bg-primary);
+  --surface-hover: #dde1e8;
+  --border: rgba(184, 188, 194, 0.45);
+  --border-strong: #b8bcc2;
+  --text: #1a1625;
   --muted: #64748b;
-  --accent: #2563eb;
-  --accent-dim: #1d4ed8;
-  --accent-soft: rgba(37, 99, 235, 0.08);
+  --accent: var(--neu-primary);
+  --accent-dim: var(--neu-primary-dark);
+  --accent-soft: rgba(124, 58, 237, 0.14);
   --success: #059669;
   --warn: #d97706;
   --danger: #dc2626;
@@ -19,28 +37,94 @@
 }
 
 body {
-  background: var(--bg);
+  min-height: 100vh;
+  background: linear-gradient(155deg, #e8ebf2 0%, var(--neu-bg-primary) 45%, #dfe3ea 100%);
   color: var(--text);
+}
+
+/* Login panel */
+.login-card {
+  background: var(--neu-bg-primary);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  box-shadow: var(--neu-raised);
+  border: none;
+}
+
+/* Form controls matching neu inset inputs */
+.neu-field {
+  width: 100%;
+  border: none;
+  border-radius: 0.75rem;
+  background: var(--neu-bg-primary);
+  color: var(--text);
+  box-shadow: var(--neu-inset-sm);
+  outline: none;
+  transition: box-shadow var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+
+.neu-field::placeholder {
+  color: var(--muted);
+}
+
+.neu-field:focus {
+  box-shadow: var(--neu-inset-sm), 0 0 0 2px var(--accent-soft);
+}
+
+.neu-title-gradient {
+  background: linear-gradient(90deg, var(--neu-primary), var(--neu-primary-mid));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.neu-sidebar {
+  border-radius: 1.25rem;
+  background: var(--neu-bg-primary);
+  box-shadow: var(--neu-raised);
+}
+
+.neu-topbar {
+  border-radius: 1rem;
+  background: var(--neu-bg-primary);
+  box-shadow: var(--neu-raised-sm);
+}
+
+.neu-drawer {
+  border-radius: 0 1.25rem 1.25rem 0;
+  background: var(--neu-bg-primary);
+  box-shadow: var(--neu-raised);
 }
 
 @layer utilities {
   .surface {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 0.75rem;
+    background: var(--neu-bg-primary);
+    border: none;
+    border-radius: 1rem;
+    box-shadow: var(--neu-raised-sm);
+  }
+
+  .surface-hoverable {
+    transition: box-shadow var(--transition-normal) ease, transform var(--transition-fast) ease;
+  }
+
+  .surface-hoverable:hover {
+    box-shadow: var(--neu-raised);
+    transform: translateY(-2px);
   }
 
   .input {
     width: 100%;
-    border-radius: 0.5rem;
-    border: 1px solid var(--border);
-    background: var(--surface);
+    border-radius: 0.75rem;
+    border: none;
+    background: var(--neu-bg-primary);
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
     line-height: 1.4;
     color: var(--text);
     outline: none;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: var(--neu-inset-sm);
+    transition: box-shadow var(--transition-fast) ease;
   }
 
   .input::placeholder {
@@ -48,8 +132,7 @@ body {
   }
 
   .input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
+    box-shadow: var(--neu-inset-sm), 0 0 0 2px var(--accent-soft);
   }
 
   .btn {
@@ -57,14 +140,15 @@ body {
     align-items: center;
     justify-content: center;
     gap: 0.375rem;
-    border-radius: 0.5rem;
+    border-radius: 0.75rem;
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 600;
     line-height: 1.25;
-    border: 1px solid transparent;
+    border: none;
     cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition: filter var(--transition-fast) ease, box-shadow var(--transition-fast) ease,
+      transform var(--transition-fast) ease;
   }
 
   .btn:disabled {
@@ -73,31 +157,58 @@ body {
   }
 
   .btn-primary {
-    background: var(--accent);
+    background: linear-gradient(135deg, var(--neu-primary) 0%, var(--neu-primary-mid) 100%);
     color: #fff;
+    box-shadow: var(--neu-raised-sm);
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: var(--accent-dim);
+    filter: brightness(1.06);
+    box-shadow: 5px 5px 14px rgba(124, 58, 237, 0.35), -3px -3px 10px var(--neu-shadow-light);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.98);
+    box-shadow: var(--neu-inset-sm);
   }
 
   .btn-ghost {
     background: transparent;
     color: var(--text);
-    border-color: transparent;
+    box-shadow: none;
   }
 
   .btn-ghost:hover:not(:disabled) {
-    background: var(--surface-hover);
+    box-shadow: var(--neu-raised-sm);
   }
 
   .btn-outline {
-    background: transparent;
+    background: var(--neu-bg-primary);
     color: var(--text);
-    border-color: var(--border);
+    box-shadow: var(--neu-inset-sm);
   }
 
   .btn-outline:hover:not(:disabled) {
-    background: var(--surface-hover);
+    box-shadow: var(--neu-raised-sm);
+  }
+
+  .neu-nav-link {
+    display: block;
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    transition: box-shadow var(--transition-normal) ease, color var(--transition-fast) ease,
+      background-color var(--transition-fast) ease;
+  }
+
+  .neu-nav-link:hover {
+    box-shadow: var(--neu-raised-sm);
+    color: var(--text);
+  }
+
+  .neu-nav-link-active {
+    box-shadow: var(--neu-inset-sm);
+    color: var(--accent);
+    font-weight: 600;
   }
 }

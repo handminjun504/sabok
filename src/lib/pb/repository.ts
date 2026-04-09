@@ -119,7 +119,7 @@ export async function tenantListActiveByCodeAsc(): Promise<Tenant[]> {
   });
 }
 
-export type TenantWithCounts = Tenant & { _count: { userTenants: number; employees: number } };
+export type TenantWithCounts = Tenant & { _count: { employees: number } };
 
 export async function tenantListAllByCodeAscWithCounts(): Promise<TenantWithCounts[]> {
   const pb = await getAdminPb();
@@ -128,7 +128,6 @@ export async function tenantListAllByCodeAscWithCounts(): Promise<TenantWithCoun
   for (const x of rows) {
     const r = asRecord(x);
     const tid = String(r.id);
-    const uc = await pb.collection(C.userTenants).getList(1, 1, { filter: `tenantId="${esc(tid)}"` });
     const ec = await pb.collection(C.employees).getList(1, 1, { filter: `tenantId="${esc(tid)}"` });
     out.push({
       id: tid,
@@ -136,7 +135,7 @@ export async function tenantListAllByCodeAscWithCounts(): Promise<TenantWithCoun
       name: String(r.name),
       active: Boolean(r.active),
       memo: r.memo == null ? null : String(r.memo),
-      _count: { userTenants: uc.totalItems, employees: ec.totalItems },
+      _count: { employees: ec.totalItems },
     });
   }
   return out;
@@ -170,6 +169,7 @@ export async function userFindByEmail(email: string): Promise<UserRow | null> {
     name: String(r.name),
     role: String(r.role),
     isPlatformAdmin: Boolean(r.isPlatformAdmin),
+    accessAllTenants: Boolean(r.accessAllTenants),
   };
 }
 
@@ -200,54 +200,11 @@ export async function userLoadWithTenantsByEmail(email: string): Promise<UserWit
   return { ...u, userTenants };
 }
 
-export async function userListAllByEmailAsc(): Promise<UserRow[]> {
-  const pb = await getAdminPb();
-  const rows = await pb.collection(C.users).getFullList({ sort: "email" });
-  return rows.map((x) => {
-    const r = asRecord(x);
-    return {
-      id: String(r.id),
-      email: String(r.email),
-      passwordHash: String(r.passwordHash),
-      name: String(r.name),
-      role: String(r.role),
-      isPlatformAdmin: Boolean(r.isPlatformAdmin),
-    };
-  });
-}
-
-export async function userCreate(data: {
-  email: string;
-  name: string;
-  passwordHash: string;
-  role: Role;
-  isPlatformAdmin: boolean;
-}): Promise<void> {
-  const pb = await getAdminPb();
-  await pb.collection(C.users).create({
-    email: data.email,
-    name: data.name,
-    passwordHash: data.passwordHash,
-    role: data.role,
-    isPlatformAdmin: data.isPlatformAdmin,
-  });
-}
-
 /** --- User tenants --- */
 export async function userTenantFind(userId: string, tenantId: string): Promise<{ id: string; role: Role } | null> {
   const r = await firstByFilter(C.userTenants, `userId="${esc(userId)}" && tenantId="${esc(tenantId)}"`);
   if (!r || !r.id) return null;
   return { id: String(r.id), role: parseRole(String(r.role)) };
-}
-
-export async function userTenantUpsert(userId: string, tenantId: string, role: Role): Promise<void> {
-  const existing = await userTenantFind(userId, tenantId);
-  const pb = await getAdminPb();
-  if (existing) {
-    await pb.collection(C.userTenants).update(existing.id, { role });
-  } else {
-    await pb.collection(C.userTenants).create({ userId, tenantId, role });
-  }
 }
 
 export async function userTenantListWithTenantsForUser(userId: string): Promise<UserTenantLink[]> {
@@ -323,6 +280,23 @@ export async function employeeListByTenantCodeAsc(tenantId: string): Promise<Emp
     sort: "employeeCode",
   });
   return rows.map((x) => mapEmployee(asRecord(x)));
+}
+
+/**
+ * 신규 직원용 숫자 코드: 기존 코드 중 순수 숫자만 보고 max+1 (0 포함해 max 계산, 다음 번호 부여).
+ * 대표이사 전용 0번은 호출 전에 별도 처리.
+ */
+export async function employeeNextAutoCodeForTenant(tenantId: string): Promise<string> {
+  const list = await employeeListByTenantCodeAsc(tenantId);
+  let max = 0;
+  for (const e of list) {
+    const c = e.employeeCode.trim();
+    if (/^\d+$/.test(c)) {
+      const n = parseInt(c, 10);
+      if (Number.isFinite(n) && n > max) max = n;
+    }
+  }
+  return String(max + 1);
 }
 
 export async function employeeFindFirst(id: string, tenantId: string): Promise<Employee | null> {

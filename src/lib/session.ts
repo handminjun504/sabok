@@ -18,9 +18,16 @@ export type SessionPayload = {
   name: string;
   role: Role;
   isPlatformAdmin: boolean;
+  /** true면 활성 테넌트 전환·업무 데이터 접근 가능. 플랫폼 메뉴(업체/사용자 CRUD 등)는 isPlatformAdmin 전용. */
+  accessAllTenants: boolean;
   activeTenantId: string | null;
   exp: number;
 };
+
+/** 플랫폼 관리자 또는 아웃소싱 대리 운영(전 업체 업무 접근). */
+export function canAccessAnyTenant(s: SessionPayload): boolean {
+  return s.isPlatformAdmin || s.accessAllTenants;
+}
 
 async function secretKey() {
   const secret = process.env.SESSION_SECRET;
@@ -42,6 +49,7 @@ export async function createSessionToken(
     name: payload.name,
     role: payload.role,
     isPlatformAdmin: payload.isPlatformAdmin,
+    accessAllTenants: payload.accessAllTenants,
     activeTenantId: payload.activeTenantId,
     exp,
   })
@@ -62,13 +70,14 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
     const role = payload.role as Role;
     const exp = Number(payload.exp ?? 0);
     const isPlatformAdmin = Boolean(payload.isPlatformAdmin);
+    const accessAllTenants = Boolean(payload.accessAllTenants);
     const activeTenantIdRaw = payload.activeTenantId;
     const activeTenantId =
       activeTenantIdRaw === null || activeTenantIdRaw === undefined
         ? null
         : String(activeTenantIdRaw);
     if (!sub || !email || !role) return null;
-    return { sub, email, name, role, isPlatformAdmin, activeTenantId, exp };
+    return { sub, email, name, role, isPlatformAdmin, accessAllTenants, activeTenantId, exp };
   } catch {
     return null;
   }

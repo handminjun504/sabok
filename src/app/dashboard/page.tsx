@@ -23,7 +23,7 @@ export default async function DashboardHomePage() {
     <div className="space-y-8">
       {/* 헤더 */}
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">대시보드</h1>
+        <h1 className="neu-title-gradient text-2xl font-bold">대시보드</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           기준 연도 <strong>{year}</strong>
         </p>
@@ -68,7 +68,7 @@ export default async function DashboardHomePage() {
             <Link
               key={link.href}
               href={link.href}
-              className="surface flex flex-col gap-1 p-4 transition-colors hover:bg-[var(--surface-hover)]"
+              className="surface surface-hoverable flex flex-col gap-1 p-4"
             >
               <span className="text-sm font-semibold text-[var(--text)]">{link.label}</span>
               <span className="text-xs text-[var(--muted)]">{link.desc}</span>
