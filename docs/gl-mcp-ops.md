@@ -41,14 +41,16 @@
 
 ## GL 서버 · Windows PM2
 
-1. **코드 동기화**: MCP `git_pull` 등으로 앱 루트를 최신화.
+**경로 분리(필수)**: sabok은 **`https://github.com/handminjun504/sabok`** 전용 클론 디렉터리에만 둔다. **GL 대시보드·gl-server(`handminjun504/gl-server`)와 같은 폴더를 쓰거나, GL이 쓰는 경로에 MCP/스크립트로 `git remote`·`reset`을 걸지 않는다.** 한 디렉터리에 두 제품을 섞으면 대시보드(예: 4000)와 사복(예: 10001)이 함께 망가질 수 있다.
+
+1. **코드 동기화**: **사복 전용 루트**에서만 `git pull`(또는 수동 배포). 원격이 `handminjun504/sabok` 인지 `git remote -v`로 확인한 뒤 진행한다. MCP `git_pull`/`exec_command`는 **그 경로가 sabok 전용임이 확실할 때만** 사용한다.
 2. **설치**: `npm install --include=dev` 권장(`next build`용 devDependency).
 3. **빌드**: `npm run build`를 끝까지 실행.
-4. **PM2**: `run-prod.mjs`를 `command`(절대 경로), `interpreter`=`node`, `cwd`=앱 루트, `env`에 `PORT`, `NODE_ENV=production`, **`POCKETBASE_*`**, **`SESSION_SECRET`**.
+4. **PM2**: `run-prod.mjs`를 `command`(절대 경로), `interpreter`=`node`, `cwd`=**그 사복 전용 루트**, `env`에 `PORT`, `NODE_ENV=production`, **`POCKETBASE_*`**, **`SESSION_SECRET`**.
 5. **시드**: `run-prod.mjs`는 기본적으로 시드 생략. 기동 시 시드 필요 시 `SABOK_RUN_SEED_ON_START=1`. 레거시: `SABOK_SKIP_DB_SETUP=1`도 생략.
-6. **재배포**: `git pull` → `npm install` → `npm run build` → `restart_app`.
+6. **재배포**: `git pull` → `npm install` → `npm run build` → PM2에서 해당 앱만 재시작.
 
-`exec_command`의 `cwd`가 무시되면 `Set-Location '...'; npm ...` 형태로 경로를 고정한다.
+`exec_command`의 `cwd`가 무시되면 `npm --prefix "C:\...\sabok-전용경로" run build` 또는 `Set-Location '...'; npm ...` 형태로 경로를 고정한다.
 
 ## 보안
 
