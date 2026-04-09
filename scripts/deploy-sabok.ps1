@@ -26,4 +26,19 @@ npm install --include=dev
 Write-Host "[sabok] npm run build …" -ForegroundColor Cyan
 npm run build
 
-Write-Host "[sabok] 빌드 완료. 이 폴더를 가리키는 PM2 앱만 재시작하세요 (예: pm2 restart sabok)." -ForegroundColor Green
+Write-Host "[sabok] 빌드 완료." -ForegroundColor Green
+
+$pm2 = Get-Command pm2 -ErrorAction SilentlyContinue
+if (-not $pm2) {
+  Write-Warning "pm2 가 PATH 에 없습니다. 수동: pm2 start ecosystem.config.cjs (저장소 루트)"
+  exit 0
+}
+
+Write-Host "[sabok] PM2 ecosystem.config.cjs …" -ForegroundColor Cyan
+Set-Location $repoRoot
+pm2 reload ecosystem.config.cjs --update-env
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "[sabok] reload 실패 시 최초 기동 시도 …" -ForegroundColor Yellow
+  pm2 start ecosystem.config.cjs --update-env
+}
+Write-Host "[sabok] PM2 반영됨. 확인: pm2 list / pm2 logs sabok" -ForegroundColor Green

@@ -52,6 +52,12 @@
 
 `exec_command`의 `cwd`가 무시되면 `npm --prefix "C:\...\sabok-전용경로" run build` 또는 `Set-Location '...'; npm ...` 형태로 경로를 고정한다.
 
+### MCP `fetch failed` / 대시보드 `start` 가 `ERR_CONNECTION_RESET` 일 때
+
+- Cursor·브라우저가 **`http://<GL호스트>:4000` 에 라우팅되지 않으면** MCP도 UI도 실패한다. **서버와 같은 LAN/VPN**에서 쓰거나, GL을 외부에서 열 수 있는 URL로 MCP `url` 을 맞춘다.
+- 우회: 서버(RDP)에서 사복 클론 루트로 이동 후 **`pm2 start ecosystem.config.cjs`** (최초) 또는 **`pm2 reload ecosystem.config.cjs --update-env`**. `run-prod.mjs` 만 단독으로 여러 번 띄우지 말고 **ecosystem 한 벌**로 관리하면 포트·이중 기동이 줄어든다.
+- 로컬 사용자 CMD의 `pm2` 와 GL 서비스 계정 PM2 가 **다르면** `pm2 list` 가 비어 보인다. **GL이 쓰는 계정**으로 실행하거나, 위 명령을 **서버 콘솔**에서 실행한다.
+
 ## 보안
 
 Admin 비밀번호·`SESSION_SECRET`은 저장소에 넣지 않는다. 메시지에 노출된 `Authorization: Bearer` 키는 즉시 폐기·재발급한다.
