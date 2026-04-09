@@ -45,7 +45,8 @@ loadEnvFile(".env");
 loadEnvFile(".env.local");
 
 const nextBin = path.join(__dirname, "node_modules", "next", "dist", "bin", "next");
-const port = process.env.PORT || "10001";
+/** 기본 포트. PM2/`.env`의 `PORT`가 있으면 그 값이 우선합니다. */
+const port = process.env.PORT || "10002";
 
 const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
 
