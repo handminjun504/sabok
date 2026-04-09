@@ -48,7 +48,7 @@
 3. **빌드**: `npm run build`를 끝까지 실행.
 4. **PM2**: `run-prod.mjs`를 `command`(절대 경로), `interpreter`=`node`, `cwd`=**그 사복 전용 루트**, `env`에 `PORT`, `NODE_ENV=production`, **`POCKETBASE_*`**, **`SESSION_SECRET`**.
 5. **시드**: `run-prod.mjs`는 기본적으로 시드 생략. 기동 시 시드 필요 시 `SABOK_RUN_SEED_ON_START=1`. 레거시: `SABOK_SKIP_DB_SETUP=1`도 생략.
-6. **재배포**: `git pull` → `npm install` → `npm run build` → PM2에서 해당 앱만 재시작.
+6. **재배포**: Windows에서는 저장소 루트에서 `.\scripts\deploy-sabok.ps1` 실행(원격이 `handminjun504/sabok` 인지 검사) 후 PM2에서 해당 앱만 재시작. 수동이면 `git pull` → `npm install --include=dev` → `npm run build` → 재시작.
 
 `exec_command`의 `cwd`가 무시되면 `npm --prefix "C:\...\sabok-전용경로" run build` 또는 `Set-Location '...'; npm ...` 형태로 경로를 고정한다.
 
