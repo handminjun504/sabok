@@ -38,9 +38,14 @@ function asRecord(r: unknown): Record<string, unknown> {
 }
 
 async function firstByFilter(collection: string, filter: string): Promise<Record<string, unknown> | null> {
-  const pb = await getAdminPb();
-  const { items } = await pb.collection(collection).getList(1, 1, { filter });
-  return items[0] ? asRecord(items[0]) : null;
+  try {
+    const pb = await getAdminPb();
+    const { items } = await pb.collection(collection).getList(1, 1, { filter });
+    return items[0] ? asRecord(items[0]) : null;
+  } catch (e) {
+    console.error("[pb] firstByFilter", collection, e);
+    return null;
+  }
 }
 
 function parseBusinessType(v: unknown): VendorBusinessType {
@@ -77,8 +82,8 @@ function mapVendorContributionRow(r: Record<string, unknown>): VendorContributio
 
 /** --- Tenants --- */
 export async function tenantGetById(id: string): Promise<Tenant | null> {
-  const pb = await getAdminPb();
   try {
+    const pb = await getAdminPb();
     const r = asRecord(await pb.collection(C.tenants).getOne(id));
     return {
       id: String(r.id),
@@ -87,7 +92,8 @@ export async function tenantGetById(id: string): Promise<Tenant | null> {
       active: Boolean(r.active),
       memo: r.memo == null ? null : String(r.memo),
     };
-  } catch {
+  } catch (e) {
+    console.error("[pb] tenantGetById", id, e);
     return null;
   }
 }
@@ -268,9 +274,14 @@ export async function companySettingsUpsert(
 
 /** --- Employees --- */
 export async function employeeCountByTenant(tenantId: string): Promise<number> {
-  const pb = await getAdminPb();
-  const r = await pb.collection(C.employees).getList(1, 1, { filter: `tenantId="${esc(tenantId)}"` });
-  return r.totalItems;
+  try {
+    const pb = await getAdminPb();
+    const r = await pb.collection(C.employees).getList(1, 1, { filter: `tenantId="${esc(tenantId)}"` });
+    return r.totalItems;
+  } catch (e) {
+    console.error("[pb] employeeCountByTenant", tenantId, e);
+    return 0;
+  }
 }
 
 export async function employeeListByTenantCodeAsc(tenantId: string): Promise<Employee[]> {
