@@ -111,40 +111,50 @@ export async function tenantFindFirstActive(id: string): Promise<Tenant | null> 
 }
 
 export async function tenantListActiveByCodeAsc(): Promise<Tenant[]> {
-  const pb = await getAdminPb();
-  const rows = await pb.collection(C.tenants).getFullList({ filter: `active=true`, sort: "code" });
-  return rows.map((x) => {
-    const r = asRecord(x);
-    return {
-      id: String(r.id),
-      code: String(r.code),
-      name: String(r.name),
-      active: Boolean(r.active),
-      memo: r.memo == null ? null : String(r.memo),
-    };
-  });
+  try {
+    const pb = await getAdminPb();
+    const rows = await pb.collection(C.tenants).getFullList({ filter: `active=true`, sort: "code" });
+    return rows.map((x) => {
+      const r = asRecord(x);
+      return {
+        id: String(r.id),
+        code: String(r.code),
+        name: String(r.name),
+        active: Boolean(r.active),
+        memo: r.memo == null ? null : String(r.memo),
+      };
+    });
+  } catch (e) {
+    console.error("[pb] tenantListActiveByCodeAsc", e);
+    return [];
+  }
 }
 
 export type TenantWithCounts = Tenant & { _count: { employees: number } };
 
 export async function tenantListAllByCodeAscWithCounts(): Promise<TenantWithCounts[]> {
-  const pb = await getAdminPb();
-  const rows = await pb.collection(C.tenants).getFullList({ sort: "code" });
-  const out: TenantWithCounts[] = [];
-  for (const x of rows) {
-    const r = asRecord(x);
-    const tid = String(r.id);
-    const ec = await pb.collection(C.employees).getList(1, 1, { filter: `tenantId="${esc(tid)}"` });
-    out.push({
-      id: tid,
-      code: String(r.code),
-      name: String(r.name),
-      active: Boolean(r.active),
-      memo: r.memo == null ? null : String(r.memo),
-      _count: { employees: ec.totalItems },
-    });
+  try {
+    const pb = await getAdminPb();
+    const rows = await pb.collection(C.tenants).getFullList({ sort: "code" });
+    const out: TenantWithCounts[] = [];
+    for (const x of rows) {
+      const r = asRecord(x);
+      const tid = String(r.id);
+      const ec = await pb.collection(C.employees).getList(1, 1, { filter: `tenantId="${esc(tid)}"` });
+      out.push({
+        id: tid,
+        code: String(r.code),
+        name: String(r.name),
+        active: Boolean(r.active),
+        memo: r.memo == null ? null : String(r.memo),
+        _count: { employees: ec.totalItems },
+      });
+    }
+    return out;
+  } catch (e) {
+    console.error("[pb] tenantListAllByCodeAscWithCounts", e);
+    return [];
   }
-  return out;
 }
 
 export async function tenantCreate(data: { code: string; name: string; active: boolean }): Promise<Tenant> {
@@ -182,27 +192,31 @@ export async function userFindByEmail(email: string): Promise<UserRow | null> {
 export async function userLoadWithTenantsByEmail(email: string): Promise<UserWithTenants | null> {
   const u = await userFindByEmail(email);
   if (!u) return null;
-  const pb = await getAdminPb();
-  const links = await pb.collection(C.userTenants).getFullList({
-    filter: `userId="${esc(u.id)}"`,
-    sort: "tenantId",
-  });
   const userTenants: UserTenantLink[] = [];
-  for (const row of links) {
-    const lr = asRecord(row);
-    const tid = String(lr.tenantId);
-    const t = await tenantGetById(tid);
-    if (!t) continue;
-    if (!t.active) continue;
-    userTenants.push({
-      id: String(lr.id),
-      userId: String(lr.userId),
-      tenantId: tid,
-      role: String(lr.role),
-      tenant: t,
+  try {
+    const pb = await getAdminPb();
+    const links = await pb.collection(C.userTenants).getFullList({
+      filter: `userId="${esc(u.id)}"`,
+      sort: "tenantId",
     });
+    for (const row of links) {
+      const lr = asRecord(row);
+      const tid = String(lr.tenantId);
+      const t = await tenantGetById(tid);
+      if (!t) continue;
+      if (!t.active) continue;
+      userTenants.push({
+        id: String(lr.id),
+        userId: String(lr.userId),
+        tenantId: tid,
+        role: String(lr.role),
+        tenant: t,
+      });
+    }
+    userTenants.sort((a, b) => a.tenant.code.localeCompare(b.tenant.code));
+  } catch (e) {
+    console.error("[pb] userLoadWithTenantsByEmail links", e);
   }
-  userTenants.sort((a, b) => a.tenant.code.localeCompare(b.tenant.code));
   return { ...u, userTenants };
 }
 
@@ -214,27 +228,32 @@ export async function userTenantFind(userId: string, tenantId: string): Promise<
 }
 
 export async function userTenantListWithTenantsForUser(userId: string): Promise<UserTenantLink[]> {
-  const pb = await getAdminPb();
-  const links = await pb.collection(C.userTenants).getFullList({
-    filter: `userId="${esc(userId)}"`,
-    sort: "tenantId",
-  });
-  const out: UserTenantLink[] = [];
-  for (const row of links) {
-    const lr = asRecord(row);
-    const t = await tenantGetById(String(lr.tenantId));
-    if (!t) continue;
-    if (!t.active) continue;
-    out.push({
-      id: String(lr.id),
-      userId: String(lr.userId),
-      tenantId: String(lr.tenantId),
-      role: String(lr.role),
-      tenant: t,
+  try {
+    const pb = await getAdminPb();
+    const links = await pb.collection(C.userTenants).getFullList({
+      filter: `userId="${esc(userId)}"`,
+      sort: "tenantId",
     });
+    const out: UserTenantLink[] = [];
+    for (const row of links) {
+      const lr = asRecord(row);
+      const t = await tenantGetById(String(lr.tenantId));
+      if (!t) continue;
+      if (!t.active) continue;
+      out.push({
+        id: String(lr.id),
+        userId: String(lr.userId),
+        tenantId: String(lr.tenantId),
+        role: String(lr.role),
+        tenant: t,
+      });
+    }
+    out.sort((a, b) => a.tenant.code.localeCompare(b.tenant.code));
+    return out;
+  } catch (e) {
+    console.error("[pb] userTenantListWithTenantsForUser", userId, e);
+    return [];
   }
-  out.sort((a, b) => a.tenant.code.localeCompare(b.tenant.code));
-  return out;
 }
 
 /** --- Company settings --- */
@@ -563,31 +582,36 @@ export async function auditLogCreate(input: {
 }
 
 export async function auditLogListRecent(limit: number): Promise<AuditLogRow[]> {
-  const pb = await getAdminPb();
-  const rows = await pb.collection(C.auditLogs).getList(1, limit, { sort: "-created" });
-  const out: AuditLogRow[] = [];
-  for (const x of rows.items) {
-    const r = asRecord(x);
-    const tid = r.tenantId == null || r.tenantId === "" ? null : String(r.tenantId);
-    let tenant: { code: string; name: string } | null = null;
-    if (tid) {
-      const t = await tenantGetById(tid);
-      if (t) tenant = { code: t.code, name: t.name };
+  try {
+    const pb = await getAdminPb();
+    const rows = await pb.collection(C.auditLogs).getList(1, limit, { sort: "-created" });
+    const out: AuditLogRow[] = [];
+    for (const x of rows.items) {
+      const r = asRecord(x);
+      const tid = r.tenantId == null || r.tenantId === "" ? null : String(r.tenantId);
+      let tenant: { code: string; name: string } | null = null;
+      if (tid) {
+        const t = await tenantGetById(tid);
+        if (t) tenant = { code: t.code, name: t.name };
+      }
+      const created = r.created != null ? new Date(String(r.created)) : new Date();
+      out.push({
+        id: String(r.id),
+        tenantId: tid,
+        userId: r.userId == null || r.userId === "" ? null : String(r.userId),
+        action: String(r.action),
+        entity: String(r.entity),
+        entityId: r.entityId == null || r.entityId === "" ? null : String(r.entityId),
+        payload: r.payload,
+        createdAt: created,
+        tenant,
+      });
     }
-    const created = r.created != null ? new Date(String(r.created)) : new Date();
-    out.push({
-      id: String(r.id),
-      tenantId: tid,
-      userId: r.userId == null || r.userId === "" ? null : String(r.userId),
-      action: String(r.action),
-      entity: String(r.entity),
-      entityId: r.entityId == null || r.entityId === "" ? null : String(r.entityId),
-      payload: r.payload,
-      createdAt: created,
-      tenant,
-    });
+    return out;
+  } catch (e) {
+    console.error("[pb] auditLogListRecent", e);
+    return [];
   }
-  return out;
 }
 
 /** --- GL sync jobs --- */
