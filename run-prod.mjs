@@ -4,6 +4,10 @@
  * 시드 실패: SABOK_STRICT_SEED=1 이면 프로세스 종료, 아니면 Next 계속 기동
  * 레거시: SABOK_SKIP_DB_SETUP=1 → 시드 생략(SABOK_RUN_SEED_ON_START 없을 때와 동일)
  * PM2는 .env를 자동 주입하지 않으므로, 여기서 .env / .env.local 을 읽는다.
+ *
+ * git pull 직후에는 반드시 `npm run build` 후 재시작하세요. pull만 하고 빌드 없이 재시작하면
+ * 브라우저에 "Server Components render" / digest 오류만 보일 수 있습니다.
+ * 기동 시 자동 빌드: .env 에 SABOK_BUILD_BEFORE_START=1
  */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -95,6 +99,51 @@ if (dbCode !== 0) {
     "[sabok] pb:seed failed — Next는 그대로 기동합니다. PB·스키마 수정 후 수동: npm run pb:seed (시드 실패 시 전체 중단하려면 SABOK_STRICT_SEED=1)"
   );
 }
+
+const buildIdPath = path.join(__dirname, ".next", "BUILD_ID");
+
+if (
+  process.env.SABOK_BUILD_BEFORE_START === "1" ||
+  process.env.SABOK_BUILD_BEFORE_START === "true"
+) {
+  console.log("[sabok] SABOK_BUILD_BEFORE_START — npm run build …");
+  const br = spawnSync(npmCmd, ["run", "build"], {
+    cwd: __dirname,
+    stdio: "inherit",
+    shell: true,
+    env: { ...process.env, NODE_ENV: "production" },
+  });
+  if ((br.status ?? 1) !== 0) {
+    console.error("[sabok] npm run build failed — exit");
+    process.exit(br.status ?? 1);
+  }
+}
+
+if (!fs.existsSync(buildIdPath)) {
+  console.error(
+    "[sabok] .next 빌드가 없습니다. 프로젝트 루트에서 실행 후 다시 기동하세요:\n" +
+      "  npm run build\n" +
+      "또는 .env 에 SABOK_BUILD_BEFORE_START=1 을 넣으면 기동 시 자동 빌드합니다."
+  );
+  process.exit(1);
+}
+
+function warnIfBuildOlderThanGitTip() {
+  const mainRef = path.join(__dirname, ".git", "refs", "heads", "main");
+  if (!fs.existsSync(mainRef) || !fs.existsSync(buildIdPath)) return;
+  try {
+    const refM = fs.statSync(mainRef).mtimeMs;
+    const bM = fs.statSync(buildIdPath).mtimeMs;
+    if (refM > bM) {
+      console.warn(
+        "[sabok] 경고: Git main 이 .next 빌드보다 최근입니다. `npm run build` 없이 재시작하면 RSC digest 오류가 날 수 있습니다."
+      );
+    }
+  } catch {
+    /* ignore */
+  }
+}
+warnIfBuildOlderThanGitTip();
 
 const child = spawn(process.execPath, [nextBin, "start", "-H", "0.0.0.0", "-p", String(port)], {
   cwd: __dirname,
