@@ -32,9 +32,7 @@ async function OverrideForm({
   return (
     <div className="surface p-4">
       <h2 className="text-sm font-semibold">레벨 5 전용: 이벤트별 금액 오버라이드</h2>
-      <p className="mt-1 text-xs text-[var(--muted)]">
-        입력 시 해당 이벤트는 아래 금액이 우선합니다. 삭제 시 레벨 공통 금액으로 돌아갑니다.
-      </p>
+      <p className="mt-1 text-xs text-[var(--muted)]">여기 금액이 레벨 공통보다 우선. 삭제 시 공통.</p>
       <form action={saveLevel5OverrideFormAction} className="mt-4 grid gap-3 sm:grid-cols-2">
         <input type="hidden" name="employeeId" value={employeeId} />
         <input type="hidden" name="year" value={year} />

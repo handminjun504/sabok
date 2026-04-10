@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { FUND_SITE_MODEL_SUMMARY } from "@/lib/domain/fund-site-model";
 import { tenantListAllByCodeAscWithCounts } from "@/lib/pb/repository";
 import { requireSession } from "@/lib/auth-context";
 import { setTenantActiveFormAction } from "@/app/actions/tenant-admin";
@@ -19,13 +18,7 @@ export default async function TenantsAdminPage() {
     <div className="space-y-10">
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">거래처 관리</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          거래처(업체) 목록과 활성·비활성 전환입니다. 신규 거래처는{" "}
-          <strong>거래처 선택</strong> 화면 우측 <strong>+</strong> 로 추가하세요.
-        </p>
-        <p className="mt-3 max-w-3xl rounded-lg border border-[var(--border)] bg-[var(--surface-hover)]/80 px-3 py-2 text-xs leading-relaxed text-[var(--muted)]">
-          {FUND_SITE_MODEL_SUMMARY}
-        </p>
+        <p className="mt-1 text-sm text-[var(--muted)]">목록·활성 전환. 신규는 거래처 선택 화면 <strong>+</strong>.</p>
       </div>
 
       <div className="surface overflow-x-auto p-4">

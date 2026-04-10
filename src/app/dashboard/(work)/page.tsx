@@ -3,12 +3,12 @@ import { requireTenantContext } from "@/lib/tenant-context";
 import Link from "next/link";
 
 const QUICK_LINKS = [
-  { href: "/dashboard/employees", label: "직원 정보", desc: "직원 등록·조회·수정" },
-  { href: "/dashboard/levels", label: "레벨·정기지급", desc: "레벨별 행사 금액 설정" },
-  { href: "/dashboard/quarterly", label: "분기 지원금", desc: "분기별 항목 및 직원 설정" },
-  { href: "/dashboard/schedule", label: "월별 스케줄", desc: "지급월 기준 전체 스케줄 확인" },
-  { href: "/dashboard/salary-inclusion-report", label: "급여포함신고", desc: "초과·미달 현황 보고" },
-  { href: "/dashboard/settings", label: "전사 설정", desc: "창립월·기준 연도·지급 정책" },
+  { href: "/dashboard/employees", label: "직원 정보", desc: "등록·수정" },
+  { href: "/dashboard/levels", label: "레벨·정기지급", desc: "행사 금액" },
+  { href: "/dashboard/quarterly", label: "분기 지원금", desc: "요율·직원" },
+  { href: "/dashboard/schedule", label: "월별 스케줄", desc: "지급 월 합계" },
+  { href: "/dashboard/salary-inclusion-report", label: "급여포함신고", desc: "초과·미달" },
+  { href: "/dashboard/settings", label: "전사 설정", desc: "창립월·연도" },
 ];
 
 export default async function DashboardHomePage() {

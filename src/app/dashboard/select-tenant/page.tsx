@@ -7,7 +7,6 @@ import { canAccessAnyTenant } from "@/lib/session";
 import { isSingleTenantMode } from "@/lib/single-tenant";
 import { reissueSessionForSingleTenantMode } from "@/lib/reissue-session-tenant";
 import { TenantCreateForm } from "@/components/TenantCreateForm";
-import { FUND_SITE_MODEL_SUMMARY } from "@/lib/domain/fund-site-model";
 import { tenantClientEntityLabel, tenantOperationModeLabel } from "@/lib/domain/tenant-profile";
 
 const addBtnClass =
@@ -44,13 +43,7 @@ export default async function SelectTenantPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <h1 className="neu-title-gradient text-2xl font-bold">거래처 선택</h1>
-              <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-                등록된 거래처(업체)가 없습니다. 아래 양식으로 추가하거나 우측 <strong>+</strong> 로 아래로
-                이동할 수 있습니다.
-              </p>
-              <p className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-hover)]/80 px-3 py-2 text-xs leading-relaxed text-[var(--muted)]">
-                {FUND_SITE_MODEL_SUMMARY}
-              </p>
+              <p className="mt-1 text-sm text-[var(--muted)]">거래처 없음. 아래에서 추가하거나 <strong>+</strong> 로 이동.</p>
             </div>
             <NewVendorAnchor />
           </div>
@@ -73,13 +66,7 @@ export default async function SelectTenantPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="neu-title-gradient text-2xl font-bold">거래처 선택</h1>
-          <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-            작업할 <strong>거래처(업체)</strong>를 고릅니다. 선택 후 직원·업무 메뉴가 해당 거래처 기준으로
-            열립니다. 플랫폼 관리자는 <strong>+</strong> 로 새 거래처를 등록할 수 있습니다.
-          </p>
-          <p className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-hover)]/80 px-3 py-2 text-xs leading-relaxed text-[var(--muted)]">
-            {FUND_SITE_MODEL_SUMMARY}
-          </p>
+          <p className="mt-1 text-sm text-[var(--muted)]">들어갈 거래처를 고르세요. 관리자는 <strong>+</strong> 로 추가.</p>
         </div>
         {session.isPlatformAdmin ? <NewVendorAnchor /> : null}
       </div>

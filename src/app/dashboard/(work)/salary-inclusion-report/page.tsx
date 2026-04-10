@@ -60,8 +60,7 @@ export default async function SalaryInclusionReportPage() {
       <div>
         <h1 className="text-2xl font-bold">급여포함신고</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          연도 <strong>{year}</strong>. 직원별 <strong>사복지급분(상한)</strong>과 연간 실지급 합계를 비교합니다. 넘치면{" "}
-          <strong>초과</strong>, 모자라면 <strong>미달(급여포함신고)</strong>에 차액. 신고는 담당자 확인.
+          연도 <strong>{year}</strong>. 사복지급분(상한) vs 연간 실지급. 초과 / 미달(급여포함신고).
         </p>
       </div>
 

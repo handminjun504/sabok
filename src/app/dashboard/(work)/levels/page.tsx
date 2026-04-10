@@ -10,7 +10,6 @@ import {
   customPaymentDefsForYear,
   paymentEventLabel,
 } from "@/lib/domain/payment-events";
-import { WELFARE_ANNUAL_HINT, WELFARE_INTRO } from "@/lib/domain/welfare-payment-principles";
 import { companySettingsByTenant, levelPaymentRuleList, levelTargetList } from "@/lib/pb/repository";
 import { canEditLevelRules } from "@/lib/permissions";
 import { requireTenantContext } from "@/lib/tenant-context";
@@ -50,8 +49,7 @@ export default async function LevelsPage() {
       <form action={saveLevelTargetFormAction} className="space-y-4">
         {!canEdit && <p className="text-sm text-[var(--muted)]">조회만 가능합니다.</p>}
         <p className="text-sm text-[var(--muted)]">
-          연간 목표를 행사 수만큼 <strong>만원 단위</strong>로 나눠 정기 지급 탭에 넣습니다. 만원 미만은 빠집니다.{" "}
-          {WELFARE_ANNUAL_HINT}
+          연간 목표를 행사 수만큼 <strong>만원 단위</strong>로 나눠 정기 탭에 넣습니다. 만원 미만 제외.
         </p>
         <input type="hidden" name="year" value={year} />
         <div className="grid gap-4 sm:grid-cols-5">
@@ -219,9 +217,7 @@ export default async function LevelsPage() {
             <button type="submit" className="btn btn-secondary">
               항목 추가
             </button>
-            <p className="w-full text-xs text-[var(--muted)]">
-              추가된 행사는 스케줄에서 해당 귀속 월에만 집계됩니다. 키는 자동 부여됩니다.
-            </p>
+            <p className="w-full text-xs text-[var(--muted)]">귀속 월 기준으로 스케줄에 잡힘. 키 자동.</p>
           </form>
         )}
       </div>
@@ -232,9 +228,8 @@ export default async function LevelsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[var(--text)]">레벨별 정기 지급 금액</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">{WELFARE_INTRO}</p>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          기준 연도 <strong>{year}</strong>. 레벨별 행사 금액 적용, 레벨 5는 직원 상세에서만 따로 조정합니다.
+          연도 <strong>{year}</strong>. 레벨별 행사 금액. 레벨 5는 직원에서만 조정.
         </p>
       </div>
       <Tabs

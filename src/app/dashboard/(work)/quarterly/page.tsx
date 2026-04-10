@@ -234,7 +234,7 @@ export default async function QuarterlyPage() {
       <div>
         <h1 className="text-2xl font-bold text-[var(--text)]">분기 지원금</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          기준 연도 <strong>{year}</strong> — 6개 항목은 3개월 주기 원칙이며, 직원별 지급 월을 선택할 수 있습니다.
+          연도 <strong>{year}</strong>. 3개월 주기, 직원별 지급 월 지정.
         </p>
       </div>
       <Tabs

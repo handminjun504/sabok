@@ -24,9 +24,7 @@ export default async function VendorsPage() {
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">출연처</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          {FUND_VENDOR_ROLE_NOTE} 법인 출연처는 사업장 자본금의 50%까지 추가 적립(출연의 20%)이 반영되고, 개인은 매번
-          20%가 누적됩니다. 새 <strong>사업장(거래처)</strong> 단위는 상단 메뉴에서 거래처 전환 →{" "}
-          <span className="font-medium text-[var(--text)]">+</span> 로 등록하세요.
+          {FUND_VENDOR_ROLE_NOTE} 새 사업장은 거래처 전환 → <strong>+</strong>.
         </p>
       </div>
 

@@ -1,6 +1,4 @@
-/**
- * 사내근로복지기금 운영 규칙 상수 (Phase 0). 사업장·기금: fund-site-model, 안내 문구: welfare-payment-principles.
- */
+/** 사내근로복지기금 규칙 상수 (Phase 0). */
 
 export const RBAC_MATRIX = {
   /** 후임: 직원 입력·조회, 스케줄 조회 */

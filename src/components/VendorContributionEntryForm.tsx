@@ -2,7 +2,6 @@
 
 import { useActionState } from "react";
 import { recordVendorContributionAction, type VendorActionState } from "@/app/actions/vendors";
-import { FUND_CONTRIBUTION_UI_NOTE } from "@/lib/domain/fund-site-model";
 import type { Vendor } from "@/types/models";
 
 export function VendorContributionEntryForm({ vendors }: { vendors: Vendor[] }) {
@@ -14,13 +13,7 @@ export function VendorContributionEntryForm({ vendors }: { vendors: Vendor[] }) 
   return (
     <form action={formAction} className="surface max-w-2xl space-y-5 p-5 sm:p-6">
       <h2 className="text-base font-semibold tracking-tight text-[var(--text)]">출연금 입력</h2>
-      <p className="text-sm leading-relaxed text-[var(--muted)]">
-        출연처를 선택한 뒤 출연금(원)을 입력하면 추가 적립이 규칙에 따라 반영됩니다. 개인은 출연금의 20% 전액, 법인은
-        자본금의 50% 한도까지 매번 min(20%×출연금, 남은 한도)입니다.
-      </p>
-      <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-hover)]/80 px-3 py-2 text-xs leading-relaxed text-[var(--muted)]">
-        {FUND_CONTRIBUTION_UI_NOTE}
-      </p>
+      <p className="text-sm text-[var(--muted)]">출연처·금액 입력 후 반영.</p>
       {state?.오류 && <p className="text-[0.9375rem] leading-relaxed text-[var(--danger)]">{state.오류}</p>}
       {state?.성공 && <p className="text-[0.9375rem] text-[var(--success)]">반영되었습니다.</p>}
 

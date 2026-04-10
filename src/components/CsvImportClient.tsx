@@ -41,9 +41,7 @@ export function CsvImportClient() {
   return (
     <div className="surface fixed inset-0 z-50 m-auto h-fit max-h-[90vh] w-full max-w-2xl overflow-auto p-6">
       <h2 className="text-lg font-semibold">CSV 가져오기</h2>
-      <p className="mt-1 text-xs text-[var(--muted)]">
-        첫 행은 헤더(CODE, 이름, …)여야 합니다. 구글 시트에서 복사해 붙여넣을 수 있습니다.
-      </p>
+      <p className="mt-1 text-xs text-[var(--muted)]">1행 헤더. 시트에서 복사해 붙여넣기.</p>
       <textarea
         className="neu-field mt-3 h-52 w-full rounded-xl p-3 text-xs font-mono text-[var(--text)]"
         value={text}

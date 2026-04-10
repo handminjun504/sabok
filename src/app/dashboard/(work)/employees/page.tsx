@@ -20,9 +20,7 @@ export default async function EmployeesPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="neu-title-gradient text-2xl font-bold">직원 정보</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            구글 시트「{yy}년 사복 진행 조사표」와 같은 열 순서로 표시합니다. 가로 스크롤로 전체 열을 확인하세요.
-          </p>
+          <p className="mt-1 text-sm text-[var(--muted)]">시트와 같은 열 순서. 가로 스크롤.</p>
         </div>
         {canEditEmployees(role) && (
           <div className="flex flex-wrap gap-3">
@@ -37,7 +35,7 @@ export default async function EmployeesPage() {
       <div className="surface p-3 text-sm">
         <p className="font-semibold tracking-tight">&lt;{yy}년 사복 진행 조사표&gt;</p>
         <p className="mt-1 text-xs text-[var(--muted)]">
-          회사창립월 <span className="font-mono text-[var(--text)]">{foundingMonth}</span>월 · 직원 행은 아래 표 (CODE 오름차순)
+          창립월 {foundingMonth}월 · CODE 순
         </p>
       </div>
 

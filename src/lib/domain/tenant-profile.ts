@@ -47,7 +47,7 @@ export const TENANT_OPERATION_MODES: { value: TenantOperationMode; label: string
   {
     value: "GENERAL",
     label: "일반·기타",
-    hint: "급여낮추기·인센이 아니거나 아직 정하지 않은 경우. 자세한 건 메모에 적으면 됩니다.",
+    hint: "위 둘이 아니면. 메모에 적기.",
   },
   {
     value: "SALARY_WELFARE",
@@ -62,6 +62,6 @@ export const TENANT_OPERATION_MODES: { value: TenantOperationMode; label: string
   {
     value: "COMBINED",
     label: "복합",
-    hint: "급여낮추기와 인센 등을 같이 쓸 때.",
+    hint: "둘 다 쓸 때.",
   },
 ];

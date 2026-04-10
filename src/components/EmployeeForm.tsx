@@ -66,13 +66,11 @@ function CommaNumberInput({
 function SalaryPairFields({
   defaultBase,
   defaultAdjusted,
-  activeYear,
   minimumAnnualSalaryWon,
   onSalaryRangeValid,
 }: {
   defaultBase?: number | null;
   defaultAdjusted?: number | null;
-  activeYear: number;
   minimumAnnualSalaryWon: number;
   onSalaryRangeValid?: (ok: boolean) => void;
 }) {
@@ -110,14 +108,14 @@ function SalaryPairFields({
   const adjRangeHint = useMemo(() => {
     if (baseNum <= 0) return null;
     const minA = Math.floor(baseNum * 0.8);
-    return `조정급여 입력 시: ${minA.toLocaleString("ko-KR")}원 ~ ${baseNum.toLocaleString("ko-KR")}원 (기존연봉의 80~100%, 최대 20% 감액). 비우거나 0이면 기존연봉만 적용됩니다.`;
+    return `조정급여: ${minA.toLocaleString("ko-KR")}~${baseNum.toLocaleString("ko-KR")}원 (기존의 80~100%). 비우면 기존연봉.`;
   }, [baseNum]);
 
   const adjRangeError = useMemo(() => {
     if (baseNum <= 0 || adjNum <= 0) return null;
     const minA = Math.floor(baseNum * 0.8);
     if (adjNum < minA || adjNum > baseNum) {
-      return `조정급여는 기존연봉의 80%~100%여야 합니다. (${minA.toLocaleString("ko-KR")}원 ~ ${baseNum.toLocaleString("ko-KR")}원)`;
+      return `조정급여는 기존의 80~100% (${minA.toLocaleString("ko-KR")}~${baseNum.toLocaleString("ko-KR")}원)`;
     }
     return null;
   }, [baseNum, adjNum]);
@@ -130,17 +128,16 @@ function SalaryPairFields({
   const minWageWarning = useMemo(() => {
     if (effectiveAnnual <= 0) return null;
     if (effectiveAnnual < minimumAnnualSalaryWon) {
-      return `${activeYear}년 최저임금(월 209시간 기준 연간 환산 약 ${minimumAnnualSalaryWon.toLocaleString("ko-KR")}원) 미만입니다. 저장은 가능하나 계약 검토를 권장합니다.`;
+      return `최저임금(연 환산 약 ${minimumAnnualSalaryWon.toLocaleString("ko-KR")}원) 미만. 확인하세요.`;
     }
     return null;
-  }, [effectiveAnnual, minimumAnnualSalaryWon, activeYear]);
+  }, [effectiveAnnual, minimumAnnualSalaryWon]);
 
   return (
     <div className="w-full min-w-0 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/60 p-4">
       <p className="text-xs font-semibold text-[var(--text)]">기존연봉 · 조정급여</p>
-      <p className="text-xs leading-relaxed text-[var(--muted)]">
-        연봉은 직접 입력합니다. 조정급여는 기존연봉 대비 <strong className="text-[var(--text)]">최대 20% 감액</strong>
-        (즉 조정액은 기존의 80~100%)만 허용됩니다.
+      <p className="text-xs text-[var(--muted)]">
+        조정급여는 기존의 <strong className="text-[var(--text)]">80~100%</strong>만 가능.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="min-w-0">
@@ -252,7 +249,7 @@ export function EmployeeForm({
       )}
       {state?.경고 && (
         <div className="rounded-lg border border-amber-200/90 bg-amber-50 p-3 text-sm leading-relaxed text-amber-950">
-          <strong className="font-semibold">저장됨 · 확인 권장</strong>
+          <strong className="font-semibold">저장됨 · 확인</strong>
           <p className="mt-1">{state.경고}</p>
         </div>
       )}
@@ -266,10 +263,7 @@ export function EmployeeForm({
         <p className="border-b border-[var(--border)] pb-2 text-base font-semibold tracking-tight text-[var(--text)]">
           &lt;{yy}년 사복 진행 조사표&gt;
         </p>
-        <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-          회사창립월 <span className="font-mono font-medium text-[var(--text)]">{foundingMonth}</span>월 · 인적사항·급여는
-          아래에 입력합니다. (전사 설정은 &quot;전사 설정&quot; 메뉴)
-        </p>
+        <p className="mt-2 text-sm text-[var(--muted)]">창립월 {foundingMonth}월.</p>
 
         <div className="mt-5 space-y-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
@@ -280,10 +274,7 @@ export function EmployeeForm({
             <div className="w-full min-w-0 max-w-xl rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
               <p className="text-xs font-semibold text-[var(--text)]">CODE</p>
               {isNew ? (
-                <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-                  저장 시 자동 부여됩니다. 직급이 <span className="whitespace-nowrap font-medium text-[var(--text)]">「대표이사」</span>
-                  이면 코드 <span className="font-mono text-[var(--text)]">0</span>번입니다.
-                </p>
+                <p className="mt-2 text-xs text-[var(--muted)]">저장 시 자동. 대표이사는 코드 0.</p>
               ) : (
                 <p className="mt-2 font-mono text-sm text-[var(--text)]">{employee!.employeeCode}</p>
               )}
@@ -329,7 +320,6 @@ export function EmployeeForm({
           <SalaryPairFields
             defaultBase={employee?.baseSalary}
             defaultAdjusted={employee?.adjustedSalary}
-            activeYear={activeYear}
             minimumAnnualSalaryWon={minimumAnnualSalaryWon}
             onSalaryRangeValid={setSalaryRangeOk}
           />

@@ -18,9 +18,7 @@ export default async function GlPage() {
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
         <h1 className="text-2xl font-bold">GL 동기화 (MCP 연동 준비)</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          요청을 큐에 적재합니다. 실제 GL 서버 MCP·전표 연동은 Phase 7에서 계약 후 연결합니다.
-        </p>
+        <p className="mt-1 text-sm text-[var(--muted)]">요청만 큐에 넣습니다. GL 연동은 추후.</p>
       </div>
 
       <form action={requestGlSyncFormAction} className="surface space-y-4 p-6">

@@ -14,7 +14,7 @@ import {
 import { canEditEmployees } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
-import { koreaMinimumAnnualSalaryWon, koreaMinimumHourlyWon } from "@/lib/domain/korea-minimum-wage";
+import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
 
 function d(v: FormDataEntryValue | null): number {
   const s = v == null || v === "" ? "0" : String(v).replace(/,/g, "");
@@ -92,8 +92,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
   const effectiveAnnual = adjustedSalary > 0 ? adjustedSalary : baseSalary;
   let 경고: string | undefined;
   if (effectiveAnnual > 0 && effectiveAnnual < minAnnual) {
-    const hourly = koreaMinimumHourlyWon(payYear);
-    경고 = `${payYear}년 최저시급 ${hourly.toLocaleString("ko-KR")}원·월 209시간 기준 연간 환산 약 ${minAnnual.toLocaleString("ko-KR")}원보다, 적용 연봉(${effectiveAnnual.toLocaleString("ko-KR")}원)이 낮게 잡혀 있습니다. 계약·임금 구조는 노무 전문가 확인을 권장합니다.`;
+    경고 = `${payYear}년 최저임금(연 환산 약 ${minAnnual.toLocaleString("ko-KR")}원)보다 적용 연봉(${effectiveAnnual.toLocaleString("ko-KR")}원)이 낮습니다. 확인하세요.`;
   }
 
   const data = {

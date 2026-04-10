@@ -25,11 +25,11 @@ export function VendorCreateForm() {
           <div className="flex flex-wrap gap-x-6 gap-y-3 text-[0.9375rem] leading-snug text-[var(--text)]">
             <label className="flex cursor-pointer items-start gap-2.5">
               <input type="radio" name="businessType" value="INDIVIDUAL" defaultChecked className="mt-1" />
-              <span>개인사업자 (출연금의 20% 항상 추가 적립)</span>
+              <span>개인 (출연 20% 적립)</span>
             </label>
             <label className="flex cursor-pointer items-start gap-2.5">
               <input type="radio" name="businessType" value="CORPORATE" className="mt-1" />
-              <span>법인 (자본금 50%까지, 출연금의 20% 추가)</span>
+              <span>법인 (자본·출연 규칙)</span>
             </label>
           </div>
         </div>

@@ -28,6 +28,7 @@ import {
 import type { Role } from "@/lib/role";
 import { parseRole } from "@/lib/role";
 import { getAdminPb } from "./admin-client";
+import { logPbClientError } from "./client-error-log";
 import { C } from "./collections";
 import { esc } from "./filter-esc";
 import {
@@ -698,7 +699,7 @@ export async function auditLogListRecent(limit: number): Promise<AuditLogRow[]> 
     }
     return out;
   } catch (e) {
-    console.error("[pb] auditLogListRecent", e);
+    logPbClientError("auditLogListRecent", e);
     return [];
   }
 }
@@ -711,23 +712,28 @@ export async function glSyncJobCreate(data: { tenantId: string; status: string; 
 }
 
 export async function glSyncJobListByTenant(tenantId: string, limit: number): Promise<GlSyncJobRow[]> {
-  const pb = await getAdminPb();
-  const rows = await pb.collection(C.glSyncJobs).getList(1, limit, {
-    filter: `tenantId="${esc(tenantId)}"`,
-    sort: "-created",
-  });
-  return rows.items.map((x) => {
-    const r = asRecord(x);
-    return {
-      id: String(r.id),
-      tenantId: String(r.tenantId),
-      status: String(r.status),
-      payload: r.payload,
-      error: r.error == null ? null : String(r.error),
-      createdAt: new Date(String(r.created)),
-      updatedAt: new Date(String(r.updated)),
-    };
-  });
+  try {
+    const pb = await getAdminPb();
+    const rows = await pb.collection(C.glSyncJobs).getList(1, limit, {
+      filter: `tenantId="${esc(tenantId)}"`,
+      sort: "-created",
+    });
+    return rows.items.map((x) => {
+      const r = asRecord(x);
+      return {
+        id: String(r.id),
+        tenantId: String(r.tenantId),
+        status: String(r.status),
+        payload: r.payload,
+        error: r.error == null ? null : String(r.error),
+        createdAt: new Date(String(r.created)),
+        updatedAt: new Date(String(r.updated)),
+      };
+    });
+  } catch (e) {
+    logPbClientError("glSyncJobListByTenant", e);
+    return [];
+  }
 }
 
 /** --- Vendors --- */

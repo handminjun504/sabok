@@ -80,7 +80,7 @@ export async function createTenantAction(
     console.error("[createTenantAction]", e);
     return {
       오류:
-        "업체를 생성하지 못했습니다. 코드 중복·PB 연결을 확인하고, PocketBase `sabok_tenants`에 clientEntityType·operationMode(text) 필드가 있는지 docs/pb-collections.md 를 참고하세요.",
+        "생성 실패. 코드 중복·PB 연결·sabok_tenants 필드(clientEntityType, operationMode) 확인.",
     };
   }
 
