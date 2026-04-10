@@ -26,7 +26,14 @@ export async function getAdminPb(): Promise<PocketBase> {
 
   const pb = instance;
   if (!pb.authStore.isValid) {
-    await pb.admins.authWithPassword(email, password);
+    try {
+      await pb.admins.authWithPassword(email, password);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[sabok][pb] PocketBase admin 로그인 실패 — baseUrl:", pb.baseUrl, "| 오류:", msg);
+      if (e instanceof Error && e.cause) console.error("[sabok][pb] cause:", e.cause);
+      throw e;
+    }
   }
   return pb;
 }

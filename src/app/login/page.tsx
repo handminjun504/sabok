@@ -38,7 +38,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="neu-title-gradient text-3xl font-bold tracking-tight">사내근로복지기금</h1>
-          <p className="mt-2 text-sm text-[var(--muted)]">관리 시스템</p>
+          <p className="mt-2 text-base text-[var(--muted)]">관리 시스템</p>
         </div>
         <div className="login-card">
           <form onSubmit={onSubmit} className="space-y-4">
@@ -65,7 +65,7 @@ export default function LoginPage() {
               />
             </div>
             {error && (
-              <p className="neu-field rounded-xl px-3 py-2.5 text-sm text-[var(--danger)] ring-2 ring-red-200/60">
+              <p className="neu-field rounded-xl px-3 py-2.5 text-[0.9375rem] leading-relaxed text-[var(--danger)] ring-2 ring-red-200/40">
                 {error}
               </p>
             )}
@@ -74,7 +74,7 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
-        <p className="mt-5 text-center text-xs text-[var(--muted)]">
+        <p className="mt-5 text-center text-sm leading-relaxed text-[var(--muted)]">
           초기 계정: admin@sabok.local / senior@sabok.local / junior@sabok.local
         </p>
       </div>

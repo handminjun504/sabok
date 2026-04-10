@@ -6,7 +6,7 @@ import { VendorsSubNav } from "@/components/VendorsSubNav";
 import { VendorContributionEntryForm } from "@/components/VendorContributionEntryForm";
 
 export default async function VendorContributionsPage() {
-  const { tenantId, role } = await requireTenantContext();
+  const { tenantId, role, session } = await requireTenantContext();
   if (!canEditCompanySettings(role)) {
     redirect("/dashboard");
   }
@@ -23,7 +23,7 @@ export default async function VendorContributionsPage() {
         </p>
       </div>
 
-      <VendorsSubNav active="contribute" />
+      <VendorsSubNav active="contribute" showClientTenantOnboard={session.isPlatformAdmin} />
 
       <VendorContributionEntryForm vendors={sorted} />
     </div>

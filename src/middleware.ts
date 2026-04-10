@@ -10,9 +10,7 @@ export async function middleware(req: NextRequest) {
   }
   try {
     await jwtVerify(token, new TextEncoder().encode(secret));
-    const requestHeaders = new Headers(req.headers);
-    requestHeaders.set("x-sabok-pathname", req.nextUrl.pathname);
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    return NextResponse.next();
   } catch {
     return NextResponse.redirect(new URL("/login", req.url));
   }

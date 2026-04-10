@@ -1,50 +1,67 @@
 @import "tailwindcss";
 
-/* Flat outline UI — 배경·그라데이션 타이틀은 유지, 그림자 없음 */
+/* 가독성 중심 — 틸 액센트, 슬레이트 텍스트, 충분한 본문·폼 크기 */
 :root {
-  --neu-bg-primary: #e6e9ef;
-  --neu-bg-secondary: #d1d5db;
-  --neu-primary: #7c3aed;
-  --neu-primary-dark: #6d28d9;
-  --neu-primary-mid: #a855f7;
+  --neu-bg-primary: #f1f4f8;
+  --neu-bg-secondary: #e2e8f0;
+  --neu-primary: #0f766e;
+  --neu-primary-dark: #0d5c56;
+  --neu-primary-mid: #14b8a6;
 
   --transition-fast: 150ms;
   --transition-normal: 300ms;
 
-  /* 외곽선 */
-  --line: 1px solid rgba(100, 110, 125, 0.32);
-  --line-strong: 1px solid rgba(90, 98, 110, 0.5);
-  /* Semantic (mapped for existing components) */
+  --line: 1px solid rgba(71, 85, 105, 0.22);
+  --line-strong: 1px solid rgba(51, 65, 85, 0.38);
+
   --bg: var(--neu-bg-primary);
-  --surface: var(--neu-bg-primary);
-  --surface-hover: #dde1e8;
-  --border: rgba(184, 188, 194, 0.45);
-  --border-strong: #9ca3af;
-  --text: #1a1625;
-  --muted: #64748b;
+  --surface: #ffffff;
+  --surface-hover: #f8fafc;
+  --border: rgba(148, 163, 184, 0.45);
+  --border-strong: #94a3b8;
+  --text: #0f172a;
+  --muted: #475569;
   --accent: var(--neu-primary);
   --accent-dim: var(--neu-primary-dark);
-  --accent-soft: rgba(124, 58, 237, 0.22);
-  --success: #059669;
-  --warn: #d97706;
-  --danger: #dc2626;
-  --sidebar-w: 15rem;
+  --accent-soft: rgba(15, 118, 110, 0.18);
+  --success: #047857;
+  --warn: #b45309;
+  --danger: #b91c1c;
+  --sidebar-w: 16.5rem;
   --content-max: 80rem;
 }
 
 body {
   min-height: 100vh;
-  background: linear-gradient(155deg, #e8ebf2 0%, var(--neu-bg-primary) 45%, #dfe3ea 100%);
+  font-size: 1rem;
+  line-height: 1.65;
+  letter-spacing: -0.01em;
+  background: linear-gradient(165deg, #e8f0f4 0%, var(--neu-bg-primary) 42%, #e2e8f0 100%);
   color: var(--text);
+}
+
+/* 본문 영역 기본 타이포 */
+main p,
+main li {
+  line-height: 1.7;
+}
+
+main table {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+main h1 {
+  letter-spacing: -0.02em;
 }
 
 /* Login panel */
 .login-card {
-  background: var(--neu-bg-primary);
+  background: var(--surface);
   border-radius: 1.25rem;
   padding: 2rem;
   border: var(--line-strong);
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
 /* Form controls */
@@ -52,8 +69,10 @@ body {
   width: 100%;
   border: var(--line);
   border-radius: 0.75rem;
-  background: var(--neu-bg-primary);
+  background: var(--surface);
   color: var(--text);
+  font-size: 1rem;
+  line-height: 1.5;
   box-shadow: none;
   outline: none;
   transition: border-color var(--transition-fast) ease, color var(--transition-fast) ease,
@@ -71,7 +90,7 @@ body {
 }
 
 .neu-title-gradient {
-  background: linear-gradient(90deg, var(--neu-primary), var(--neu-primary-mid));
+  background: linear-gradient(100deg, var(--neu-primary-dark) 0%, var(--neu-primary) 45%, var(--neu-primary-mid) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -79,32 +98,32 @@ body {
 
 .neu-sidebar {
   border-radius: 1.25rem;
-  background: var(--neu-bg-primary);
+  background: var(--surface);
   border: var(--line-strong);
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
 }
 
 .neu-topbar {
   border-radius: 1rem;
-  background: var(--neu-bg-primary);
+  background: var(--surface);
   border: var(--line);
-  box-shadow: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .neu-drawer {
   border-radius: 0 1.25rem 1.25rem 0;
-  background: var(--neu-bg-primary);
+  background: var(--surface);
   border: var(--line-strong);
   border-left: none;
-  box-shadow: none;
+  box-shadow: 2px 0 12px rgba(15, 23, 42, 0.06);
 }
 
 @layer utilities {
   .surface {
-    background: var(--neu-bg-primary);
+    background: var(--surface);
     border: var(--line);
     border-radius: 1rem;
-    box-shadow: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   }
 
   .surface-hoverable {
@@ -113,7 +132,7 @@ body {
   }
 
   .surface-hoverable:hover {
-    border-color: rgba(90, 98, 110, 0.55);
+    border-color: rgba(71, 85, 105, 0.35);
     transform: translateY(-1px);
     box-shadow: none;
   }
@@ -122,10 +141,10 @@ body {
     width: 100%;
     border-radius: 0.75rem;
     border: var(--line);
-    background: var(--neu-bg-primary);
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    line-height: 1.4;
+    background: var(--surface);
+    padding: 0.625rem 0.875rem;
+    font-size: 1rem;
+    line-height: 1.5;
     color: var(--text);
     outline: none;
     box-shadow: none;
@@ -148,10 +167,10 @@ body {
     justify-content: center;
     gap: 0.375rem;
     border-radius: 0.75rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
+    padding: 0.625rem 1.125rem;
+    font-size: 0.9375rem;
     font-weight: 600;
-    line-height: 1.25;
+    line-height: 1.35;
     border: var(--line);
     cursor: pointer;
     box-shadow: none;
@@ -168,20 +187,18 @@ body {
   .btn-primary {
     background: linear-gradient(135deg, var(--neu-primary) 0%, var(--neu-primary-mid) 100%);
     color: #fff;
-    border: 1px solid rgba(91, 33, 182, 0.65);
-    box-shadow: none;
+    border: 1px solid rgba(13, 92, 86, 0.55);
+    box-shadow: 0 1px 2px rgba(15, 118, 110, 0.2);
   }
 
   .btn-primary:hover:not(:disabled) {
-    filter: brightness(1.06);
-    border-color: rgba(76, 29, 149, 0.85);
-    box-shadow: none;
+    filter: brightness(1.05);
+    border-color: rgba(13, 92, 86, 0.75);
   }
 
   .btn-primary:active:not(:disabled) {
     transform: scale(0.98);
-    filter: brightness(0.96);
-    box-shadow: none;
+    filter: brightness(0.97);
   }
 
   .btn-ghost {
@@ -193,19 +210,19 @@ body {
 
   .btn-ghost:hover:not(:disabled) {
     border: var(--line);
-    background: rgba(255, 255, 255, 0.35);
+    background: var(--surface-hover);
     box-shadow: none;
   }
 
   .btn-outline {
-    background: var(--neu-bg-primary);
+    background: var(--surface);
     color: var(--text);
     border: var(--line-strong);
     box-shadow: none;
   }
 
   .btn-outline:hover:not(:disabled) {
-    border-color: rgba(90, 98, 110, 0.65);
+    border-color: rgba(71, 85, 105, 0.45);
     background: var(--surface-hover);
     box-shadow: none;
   }
@@ -213,8 +230,9 @@ body {
   .neu-nav-link {
     display: block;
     border-radius: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.5625rem 0.875rem;
+    font-size: 0.9375rem;
+    line-height: 1.45;
     border: 1px solid transparent;
     transition: border-color var(--transition-normal) ease, color var(--transition-fast) ease,
       background-color var(--transition-fast) ease;
@@ -223,13 +241,13 @@ body {
   .neu-nav-link:hover {
     border: var(--line);
     color: var(--text);
-    background: rgba(255, 255, 255, 0.25);
+    background: var(--surface-hover);
     box-shadow: none;
   }
 
   .neu-nav-link-active {
     border: var(--line-strong);
-    background: rgba(255, 255, 255, 0.45);
+    background: rgba(15, 118, 110, 0.08);
     color: var(--accent);
     font-weight: 600;
     box-shadow: none;

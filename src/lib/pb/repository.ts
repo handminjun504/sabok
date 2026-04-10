@@ -110,6 +110,20 @@ export async function tenantFindFirstActive(id: string): Promise<Tenant | null> 
   };
 }
 
+export async function tenantFindByCode(code: string): Promise<Tenant | null> {
+  const trimmed = code.trim();
+  if (!trimmed) return null;
+  const r = await firstByFilter(C.tenants, `code="${esc(trimmed)}"`);
+  if (!r || !r.id) return null;
+  return {
+    id: String(r.id),
+    code: String(r.code),
+    name: String(r.name),
+    active: Boolean(r.active),
+    memo: r.memo == null ? null : String(r.memo),
+  };
+}
+
 export async function tenantListActiveByCodeAsc(): Promise<Tenant[]> {
   try {
     const pb = await getAdminPb();

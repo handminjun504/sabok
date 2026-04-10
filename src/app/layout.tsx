@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 
-const noto = Noto_Sans_KR({ subsets: ["latin"], weight: ["400", "500", "700"] });
+const noto = Noto_Sans_KR({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
   title: "사내근로복지기금 관리",

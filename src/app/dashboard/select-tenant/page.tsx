@@ -42,7 +42,9 @@ export default async function SelectTenantPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">업체 선택</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">작업할 고객사(위탁 업체)를 선택하세요.</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          작업할 고객사(위탁 업체)를 고릅니다. 선택 후에만 직원 수·업무 메뉴가 해당 업체 기준으로 열립니다.
+        </p>
       </div>
       <ul className="space-y-3">
         {tenants.map((t) => (

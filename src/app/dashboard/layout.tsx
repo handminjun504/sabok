@@ -1,20 +1,11 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/DashboardShell";
 import { requireSession } from "@/lib/auth-context";
 import { getDashboardNav } from "@/lib/dashboard-nav";
 import { tenantGetById } from "@/lib/pb/repository";
+import { isSingleTenantMode } from "@/lib/single-tenant";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const s = await requireSession();
-  const h = await headers();
-  const path = h.get("x-sabok-pathname") ?? "";
-  const tenantOptional =
-    path.startsWith("/dashboard/select-tenant") || path.startsWith("/dashboard/tenants");
-
-  if (!tenantOptional && !s.activeTenantId) {
-    redirect("/dashboard/select-tenant");
-  }
 
   const tenant = s.activeTenantId != null ? await tenantGetById(s.activeTenantId) : null;
   const hasActiveTenant = Boolean(s.activeTenantId && tenant);
@@ -33,7 +24,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <DashboardShell groups={groups} tenantLine={tenantLine}>
+    <DashboardShell
+      groups={groups}
+      tenantLine={tenantLine}
+      hasActiveTenant={hasActiveTenant}
+      isPlatformAdmin={s.isPlatformAdmin}
+      showTenantSwitch={hasActiveTenant && !isSingleTenantMode()}
+    >
       {children}
     </DashboardShell>
   );

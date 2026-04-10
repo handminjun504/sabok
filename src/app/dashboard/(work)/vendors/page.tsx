@@ -11,7 +11,7 @@ function fmt(n: number) {
 }
 
 export default async function VendorsPage() {
-  const { tenantId, role } = await requireTenantContext();
+  const { tenantId, role, session } = await requireTenantContext();
   if (!canEditCompanySettings(role)) {
     redirect("/dashboard");
   }
@@ -27,7 +27,7 @@ export default async function VendorsPage() {
         </p>
       </div>
 
-      <VendorsSubNav active="list" />
+      <VendorsSubNav active="list" showClientTenantOnboard={session.isPlatformAdmin} />
 
       <VendorCreateForm />
 
