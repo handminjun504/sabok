@@ -15,6 +15,7 @@ import { canEditEmployees } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
 import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
+import { pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
 
 function d(v: FormDataEntryValue | null): number {
   const s = v == null || v === "" ? "0" : String(v).replace(/,/g, "");
@@ -95,7 +96,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     경고 = `${payYear}년 최저임금(연 환산 약 ${minAnnual.toLocaleString("ko-KR")}원)보다 적용 연봉(${effectiveAnnual.toLocaleString("ko-KR")}원)이 낮습니다. 확인하세요.`;
   }
 
-  const data = {
+  const data: Record<string, unknown> = {
     name,
     position,
     level,
@@ -121,7 +122,27 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     flagRepReturn: chk(formData, "flagRepReturn"),
     flagSpouseReceipt: chk(formData, "flagSpouseReceipt"),
     flagWorkerNet: chk(formData, "flagWorkerNet"),
+    optionalWelfareAmount: null,
   };
+
+  /** 신규 생성 시 선택 필드가 null이면 키 자체를 빼서 PB 검증 오류를 줄임 */
+  function bodyForCreate(): Record<string, unknown> {
+    const o = { ...data };
+    const dropIfNull = [
+      "incentiveAmount",
+      "discretionaryAmount",
+      "monthlyPayAmount",
+      "quarterlyPayAmount",
+      "birthMonth",
+      "hireMonth",
+      "weddingMonth",
+      "payDay",
+    ] as const;
+    for (const k of dropIfNull) {
+      if (o[k] === null) delete o[k];
+    }
+    return o;
+  }
 
   try {
     if (id) {
@@ -139,7 +160,11 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     } else {
       const employeeCode =
         position === CEO_POSITION ? "0" : await employeeNextAutoCodeForTenant(ctx.tenantId);
-      const created = await employeeCreate({ ...data, tenantId: ctx.tenantId, employeeCode });
+      const created = await employeeCreate({
+        ...bodyForCreate(),
+        tenantId: ctx.tenantId,
+        employeeCode,
+      });
       await writeAudit({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
@@ -151,14 +176,16 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     }
   } catch (e) {
     console.error(e);
-    const pbMsg = e instanceof ClientResponseError ? e.message : null;
-    const suffix = pbMsg && pbMsg !== "Something went wrong." ? ` ${pbMsg}` : "";
-    return {
-      오류:
-        position === CEO_POSITION
-          ? `저장에 실패했습니다. 이미 코드 0번(대표이사) 직원이 있을 수 있습니다.${suffix}`
-          : `저장에 실패했습니다. 직원 코드 중복·필수 필드·PocketBase 스키마를 확인하세요.${suffix}`,
-    };
+    if (e instanceof ClientResponseError) {
+      const detail = pocketBaseRecordErrorMessage(e);
+      return {
+        오류:
+          position === CEO_POSITION
+            ? `저장 실패. 이미 코드 0번(대표이사) 직원이 있을 수 있습니다. ${detail}`
+            : `저장 실패. ${detail}`,
+      };
+    }
+    return { 오류: "저장에 실패했습니다. 서버 로그를 확인하세요." };
   }
 
   revalidatePath("/dashboard/employees");
