@@ -4,8 +4,11 @@ import { redirect } from "next/navigation";
 import { Role, parseRole } from "@/lib/role";
 import { tenantFindFirstActive, userTenantFind } from "@/lib/pb/repository";
 import { getSession, createSessionToken, setSessionCookie } from "@/lib/session";
+import { isSingleTenantMode } from "@/lib/single-tenant";
 
 export async function switchTenantFormAction(formData: FormData) {
+  if (isSingleTenantMode()) redirect("/dashboard");
+
   const tenantId = String(formData.get("tenantId") ?? "");
   const session = await getSession();
   if (!session) redirect("/login");

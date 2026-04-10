@@ -10,6 +10,8 @@ Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사
 
 - **Unique 인덱스**: 각 테이블 아래에 표기한 필드(조합)에 Admin에서 Unique 인덱스 추가.
 
+**내부 단일 업체**: 배포 `.env`에 `SABOK_SINGLE_TENANT_ID=<sabok_tenants 레코드 id>` 를 넣으면 업체 선택·업체 관리 UI가 숨겨지고, 로그인 시 항상 그 테넌트로 고정된다. 거래처(`sabok_vendors`)는 그 업체 안의 **거래처 마스터**로 계속 쓰면 된다.
+
 ## `sabok_tenants`
 
 | 필드     | 타입 | 필수 | 비고        |

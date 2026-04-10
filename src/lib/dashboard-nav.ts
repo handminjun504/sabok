@@ -4,6 +4,7 @@ import {
   canEditLevelRules,
   canTriggerGlSync,
 } from "@/lib/permissions";
+import { isSingleTenantMode } from "@/lib/single-tenant";
 
 export type NavItem = { href: string; label: string };
 export type NavGroup = { title: string; items: NavItem[] };
@@ -14,17 +15,16 @@ export function getDashboardNav(opts: {
   hasActiveTenant: boolean;
 }): NavGroup[] {
   const { role, isPlatformAdmin, hasActiveTenant } = opts;
+  const single = isSingleTenantMode();
   const groups: NavGroup[] = [];
 
-  groups.push({
-    title: "시작",
-    items: [
-      { href: "/dashboard", label: "대시보드" },
-      { href: "/dashboard/select-tenant", label: "업체 선택" },
-    ],
-  });
+  const startItems: { href: string; label: string }[] = [{ href: "/dashboard", label: "대시보드" }];
+  if (!single) {
+    startItems.push({ href: "/dashboard/select-tenant", label: "업체 선택" });
+  }
+  groups.push({ title: "시작", items: startItems });
 
-  if (isPlatformAdmin) {
+  if (isPlatformAdmin && !single) {
     groups.push({
       title: "플랫폼",
       items: [{ href: "/dashboard/tenants", label: "업체 관리" }],
@@ -45,6 +45,7 @@ export function getDashboardNav(opts: {
       work.push(
         { href: "/dashboard/settings", label: "전사 설정" },
         { href: "/dashboard/vendors", label: "거래처" },
+        { href: "/dashboard/vendor-contributions", label: "적립금 작성" },
       );
     }
     groups.push({ title: "업무", items: work });

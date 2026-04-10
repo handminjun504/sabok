@@ -44,7 +44,7 @@ export default async function EmployeesPage() {
       <div className="surface overflow-x-auto p-0">
         <table className="w-max min-w-full border-collapse text-left text-xs">
           <thead>
-            <tr className="border-b-2 border-[var(--border)] text-[10px] font-semibold uppercase text-[var(--muted)] [box-shadow:var(--neu-inset-sm)]">
+            <tr className="border-b-2 border-[var(--border-strong)] bg-[var(--surface-hover)]/40 text-[10px] font-semibold uppercase text-[var(--muted)]">
               <th className="sticky left-0 z-10 border-r border-[var(--border)] bg-[var(--bg)] px-2 py-2">CODE</th>
               <th className="sticky left-[3.25rem] z-10 border-r border-[var(--border)] bg-[var(--bg)] px-2 py-2">
                 이름

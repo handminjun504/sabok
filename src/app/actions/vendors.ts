@@ -204,6 +204,7 @@ export async function recordVendorContributionAction(
   }
 
   revalidatePath("/dashboard/vendors");
+  revalidatePath("/dashboard/vendor-contributions");
   revalidatePath(`/dashboard/vendors/${parsed.data.vendorId}`);
   return { 성공: true };
 }

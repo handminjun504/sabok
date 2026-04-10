@@ -1,11 +1,9 @@
 @import "tailwindcss";
 
-/* Neuromorphic tokens — inspired by https://codepen.io/oathanrex/pen/azNQpPj */
+/* Flat outline UI — 배경·그라데이션 타이틀은 유지, 그림자 없음 */
 :root {
   --neu-bg-primary: #e6e9ef;
   --neu-bg-secondary: #d1d5db;
-  --neu-shadow-dark: #b8bcc2;
-  --neu-shadow-light: #ffffff;
   --neu-primary: #7c3aed;
   --neu-primary-dark: #6d28d9;
   --neu-primary-mid: #a855f7;
@@ -13,22 +11,20 @@
   --transition-fast: 150ms;
   --transition-normal: 300ms;
 
-  --neu-raised: 10px 10px 22px var(--neu-shadow-dark), -10px -10px 22px var(--neu-shadow-light);
-  --neu-raised-sm: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
-  --neu-inset: inset 5px 5px 10px var(--neu-shadow-dark), inset -5px -5px 10px var(--neu-shadow-light);
-  --neu-inset-sm: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light);
-
+  /* 외곽선 */
+  --line: 1px solid rgba(100, 110, 125, 0.32);
+  --line-strong: 1px solid rgba(90, 98, 110, 0.5);
   /* Semantic (mapped for existing components) */
   --bg: var(--neu-bg-primary);
   --surface: var(--neu-bg-primary);
   --surface-hover: #dde1e8;
   --border: rgba(184, 188, 194, 0.45);
-  --border-strong: #b8bcc2;
+  --border-strong: #9ca3af;
   --text: #1a1625;
   --muted: #64748b;
   --accent: var(--neu-primary);
   --accent-dim: var(--neu-primary-dark);
-  --accent-soft: rgba(124, 58, 237, 0.14);
+  --accent-soft: rgba(124, 58, 237, 0.22);
   --success: #059669;
   --warn: #d97706;
   --danger: #dc2626;
@@ -47,20 +43,21 @@ body {
   background: var(--neu-bg-primary);
   border-radius: 1.25rem;
   padding: 2rem;
-  box-shadow: var(--neu-raised);
-  border: none;
+  border: var(--line-strong);
+  box-shadow: none;
 }
 
-/* Form controls matching neu inset inputs */
+/* Form controls */
 .neu-field {
   width: 100%;
-  border: none;
+  border: var(--line);
   border-radius: 0.75rem;
   background: var(--neu-bg-primary);
   color: var(--text);
-  box-shadow: var(--neu-inset-sm);
+  box-shadow: none;
   outline: none;
-  transition: box-shadow var(--transition-fast) ease, color var(--transition-fast) ease;
+  transition: border-color var(--transition-fast) ease, color var(--transition-fast) ease,
+    outline var(--transition-fast) ease;
 }
 
 .neu-field::placeholder {
@@ -68,7 +65,9 @@ body {
 }
 
 .neu-field:focus {
-  box-shadow: var(--neu-inset-sm), 0 0 0 2px var(--accent-soft);
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
 }
 
 .neu-title-gradient {
@@ -81,50 +80,56 @@ body {
 .neu-sidebar {
   border-radius: 1.25rem;
   background: var(--neu-bg-primary);
-  box-shadow: var(--neu-raised);
+  border: var(--line-strong);
+  box-shadow: none;
 }
 
 .neu-topbar {
   border-radius: 1rem;
   background: var(--neu-bg-primary);
-  box-shadow: var(--neu-raised-sm);
+  border: var(--line);
+  box-shadow: none;
 }
 
 .neu-drawer {
   border-radius: 0 1.25rem 1.25rem 0;
   background: var(--neu-bg-primary);
-  box-shadow: var(--neu-raised);
+  border: var(--line-strong);
+  border-left: none;
+  box-shadow: none;
 }
 
 @layer utilities {
   .surface {
     background: var(--neu-bg-primary);
-    border: none;
+    border: var(--line);
     border-radius: 1rem;
-    box-shadow: var(--neu-raised-sm);
+    box-shadow: none;
   }
 
   .surface-hoverable {
-    transition: box-shadow var(--transition-normal) ease, transform var(--transition-fast) ease;
+    transition: border-color var(--transition-normal) ease, transform var(--transition-fast) ease,
+      background-color var(--transition-fast) ease;
   }
 
   .surface-hoverable:hover {
-    box-shadow: var(--neu-raised);
-    transform: translateY(-2px);
+    border-color: rgba(90, 98, 110, 0.55);
+    transform: translateY(-1px);
+    box-shadow: none;
   }
 
   .input {
     width: 100%;
     border-radius: 0.75rem;
-    border: none;
+    border: var(--line);
     background: var(--neu-bg-primary);
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
     line-height: 1.4;
     color: var(--text);
     outline: none;
-    box-shadow: var(--neu-inset-sm);
-    transition: box-shadow var(--transition-fast) ease;
+    box-shadow: none;
+    transition: border-color var(--transition-fast) ease, outline var(--transition-fast) ease;
   }
 
   .input::placeholder {
@@ -132,7 +137,9 @@ body {
   }
 
   .input:focus {
-    box-shadow: var(--neu-inset-sm), 0 0 0 2px var(--accent-soft);
+    border-color: var(--accent);
+    outline: 2px solid var(--accent-soft);
+    outline-offset: 1px;
   }
 
   .btn {
@@ -145,10 +152,12 @@ body {
     font-size: 0.875rem;
     font-weight: 600;
     line-height: 1.25;
-    border: none;
+    border: var(--line);
     cursor: pointer;
-    transition: filter var(--transition-fast) ease, box-shadow var(--transition-fast) ease,
-      transform var(--transition-fast) ease;
+    box-shadow: none;
+    transition: filter var(--transition-fast) ease, border-color var(--transition-fast) ease,
+      transform var(--transition-fast) ease, background-color var(--transition-fast) ease,
+      outline var(--transition-fast) ease;
   }
 
   .btn:disabled {
@@ -159,37 +168,46 @@ body {
   .btn-primary {
     background: linear-gradient(135deg, var(--neu-primary) 0%, var(--neu-primary-mid) 100%);
     color: #fff;
-    box-shadow: var(--neu-raised-sm);
+    border: 1px solid rgba(91, 33, 182, 0.65);
+    box-shadow: none;
   }
 
   .btn-primary:hover:not(:disabled) {
     filter: brightness(1.06);
-    box-shadow: 5px 5px 14px rgba(124, 58, 237, 0.35), -3px -3px 10px var(--neu-shadow-light);
+    border-color: rgba(76, 29, 149, 0.85);
+    box-shadow: none;
   }
 
   .btn-primary:active:not(:disabled) {
     transform: scale(0.98);
-    box-shadow: var(--neu-inset-sm);
+    filter: brightness(0.96);
+    box-shadow: none;
   }
 
   .btn-ghost {
     background: transparent;
     color: var(--text);
+    border-color: transparent;
     box-shadow: none;
   }
 
   .btn-ghost:hover:not(:disabled) {
-    box-shadow: var(--neu-raised-sm);
+    border: var(--line);
+    background: rgba(255, 255, 255, 0.35);
+    box-shadow: none;
   }
 
   .btn-outline {
     background: var(--neu-bg-primary);
     color: var(--text);
-    box-shadow: var(--neu-inset-sm);
+    border: var(--line-strong);
+    box-shadow: none;
   }
 
   .btn-outline:hover:not(:disabled) {
-    box-shadow: var(--neu-raised-sm);
+    border-color: rgba(90, 98, 110, 0.65);
+    background: var(--surface-hover);
+    box-shadow: none;
   }
 
   .neu-nav-link {
@@ -197,18 +215,23 @@ body {
     border-radius: 0.75rem;
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
-    transition: box-shadow var(--transition-normal) ease, color var(--transition-fast) ease,
+    border: 1px solid transparent;
+    transition: border-color var(--transition-normal) ease, color var(--transition-fast) ease,
       background-color var(--transition-fast) ease;
   }
 
   .neu-nav-link:hover {
-    box-shadow: var(--neu-raised-sm);
+    border: var(--line);
     color: var(--text);
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: none;
   }
 
   .neu-nav-link-active {
-    box-shadow: var(--neu-inset-sm);
+    border: var(--line-strong);
+    background: rgba(255, 255, 255, 0.45);
     color: var(--accent);
     font-weight: 600;
+    box-shadow: none;
   }
 }

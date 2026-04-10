@@ -8,8 +8,10 @@ import {
   tenantCreate,
   tenantUpdateActive,
 } from "@/lib/pb/repository";
+import { isSingleTenantMode } from "@/lib/single-tenant";
 
 export async function createTenantFormAction(formData: FormData): Promise<void> {
+  if (isSingleTenantMode()) return;
   const session = await getSession();
   if (!session?.isPlatformAdmin) return;
 
@@ -36,6 +38,7 @@ export async function createTenantFormAction(formData: FormData): Promise<void> 
 }
 
 export async function setTenantActiveFormAction(formData: FormData): Promise<void> {
+  if (isSingleTenantMode()) return;
   const session = await getSession();
   if (!session?.isPlatformAdmin) return;
 

@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 import { tenantListAllByCodeAscWithCounts } from "@/lib/pb/repository";
 import { requireSession } from "@/lib/auth-context";
 import { createTenantFormAction, setTenantActiveFormAction } from "@/app/actions/tenant-admin";
+import { isSingleTenantMode } from "@/lib/single-tenant";
 
 export default async function TenantsAdminPage() {
+  if (isSingleTenantMode()) redirect("/dashboard");
   const session = await requireSession();
   if (!session.isPlatformAdmin) {
     redirect("/dashboard");

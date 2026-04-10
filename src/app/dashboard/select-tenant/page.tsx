@@ -1,10 +1,18 @@
+import { redirect } from "next/navigation";
 import { tenantListActiveByCodeAsc, userTenantListWithTenantsForUser } from "@/lib/pb/repository";
 import { requireSession } from "@/lib/auth-context";
 import { switchTenantFormAction } from "@/app/actions/tenant-switch";
 import { canAccessAnyTenant } from "@/lib/session";
+import { isSingleTenantMode } from "@/lib/single-tenant";
+import { reissueSessionForSingleTenantMode } from "@/lib/reissue-session-tenant";
 
 export default async function SelectTenantPage() {
   const session = await requireSession();
+  if (isSingleTenantMode()) {
+    if (session.activeTenantId) redirect("/dashboard");
+    const ok = await reissueSessionForSingleTenantMode();
+    redirect(ok ? "/dashboard" : "/login");
+  }
 
   let tenants: { id: string; code: string; name: string; active: boolean }[];
   if (canAccessAnyTenant(session)) {

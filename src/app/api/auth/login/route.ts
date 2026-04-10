@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { Role, parseRole } from "@/lib/role";
-import { userLoadWithTenantsByEmail } from "@/lib/pb/repository";
+import { userLoadWithTenantsByEmail, tenantFindFirstActive } from "@/lib/pb/repository";
+import { resolveLoginTenantState } from "@/lib/resolve-login-tenant";
+import { singleTenantIdFromEnv } from "@/lib/single-tenant";
 import { createSessionToken, setSessionCookie } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
 
@@ -43,32 +44,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ 오류: "이메일 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });
     }
 
-    let activeTenantId: string | null = null;
-    let effectiveRole: Role = parseRole(user.role);
+    const sid = singleTenantIdFromEnv();
+    const singleT = sid ? await tenantFindFirstActive(sid) : null;
+    const resolved = resolveLoginTenantState(user, singleT);
+    if (!resolved.ok) {
+      return NextResponse.json({ 오류: resolved.message }, { status: resolved.status });
+    }
+    const { activeTenantId, effectiveRole } = resolved;
     const isPlatformAdmin = user.isPlatformAdmin;
     const accessAllTenants = user.accessAllTenants;
-
-    if (isPlatformAdmin) {
-      effectiveRole = Role.ADMIN;
-      activeTenantId = null;
-    } else if (accessAllTenants) {
-      effectiveRole = parseRole(user.role);
-      activeTenantId = null;
-    } else if (user.userTenants.length === 1) {
-      activeTenantId = user.userTenants[0].tenantId;
-      effectiveRole = parseRole(user.userTenants[0].role);
-    } else if (user.userTenants.length > 1) {
-      activeTenantId = null;
-      effectiveRole = parseRole(user.userTenants[0].role);
-    } else {
-      return NextResponse.json(
-        {
-          오류:
-            "접근 가능한 업체가 없습니다. 전 업체 접근 권한(accessAllTenants) 또는 플랫폼 관리자에게 문의하세요.",
-        },
-        { status: 403 }
-      );
-    }
 
     const maxAge = 60 * 60 * 24 * 7;
     const { token, exp } = await createSessionToken(

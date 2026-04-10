@@ -3,6 +3,7 @@ import { vendorListByTenant } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings } from "@/lib/permissions";
 import { VendorCreateForm } from "@/components/VendorCreateForm";
+import { VendorsSubNav } from "@/components/VendorsSubNav";
 import { redirect } from "next/navigation";
 
 function fmt(n: number) {
@@ -20,11 +21,13 @@ export default async function VendorsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">거래처 등록</h1>
+        <h1 className="neu-title-gradient text-2xl font-bold">거래처 등록</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           사복 관련 거래처별로 개인/법인을 구분합니다. 출연금 등록 시 법인은 사업장 자본금의 50%까지 추가 적립(출연금의 20%)이 반영되고, 개인은 매번 20%가 누적됩니다.
         </p>
       </div>
+
+      <VendorsSubNav active="list" />
 
       <VendorCreateForm />
 
