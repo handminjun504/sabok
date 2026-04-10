@@ -227,6 +227,29 @@ main h1 {
     box-shadow: none;
   }
 
+  .btn-secondary {
+    background: var(--surface-hover);
+    color: var(--accent);
+    border: 1px solid var(--accent-soft);
+    box-shadow: none;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: rgba(15, 118, 110, 0.08);
+    border-color: rgba(15, 118, 110, 0.35);
+  }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid rgba(185, 28, 28, 0.3);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: rgba(185, 28, 28, 0.06);
+    border-color: rgba(185, 28, 28, 0.5);
+  }
+
   .neu-nav-link {
     display: block;
     border-radius: 0.75rem;

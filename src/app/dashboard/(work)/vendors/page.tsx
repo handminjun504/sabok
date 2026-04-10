@@ -2,7 +2,6 @@ import Link from "next/link";
 import { vendorListByTenant } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings } from "@/lib/permissions";
-import { FUND_VENDOR_ROLE_NOTE } from "@/lib/domain/fund-site-model";
 import { VendorCreateForm } from "@/components/VendorCreateForm";
 import { VendorsSubNav } from "@/components/VendorsSubNav";
 import { redirect } from "next/navigation";
@@ -24,7 +23,7 @@ export default async function VendorsPage() {
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">출연처</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          {FUND_VENDOR_ROLE_NOTE} 새 사업장은 거래처 전환 → <strong>+</strong>.
+          출연 주체 등록 · 새 사업장은 거래처 전환 → <strong>+</strong>
         </p>
       </div>
 

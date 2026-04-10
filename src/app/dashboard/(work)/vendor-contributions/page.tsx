@@ -18,7 +18,7 @@ export default async function VendorContributionsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">적립금</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">출연금 입력 시 추가 적립이 규칙대로 누적됩니다.</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">출연금 입력 시 규칙대로 추가 적립이 누적됩니다.</p>
       </div>
 
       <VendorsSubNav active="contribute" />

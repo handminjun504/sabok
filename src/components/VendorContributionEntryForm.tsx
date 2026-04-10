@@ -13,7 +13,7 @@ export function VendorContributionEntryForm({ vendors }: { vendors: Vendor[] }) 
   return (
     <form action={formAction} className="surface max-w-2xl space-y-5 p-5 sm:p-6">
       <h2 className="text-base font-semibold tracking-tight text-[var(--text)]">출연금 입력</h2>
-      <p className="text-sm text-[var(--muted)]">출연처·금액 입력 후 반영.</p>
+      <p className="text-sm text-[var(--muted)]">출연처·금액 선택 후 반영</p>
       {state?.오류 && <p className="text-[0.9375rem] leading-relaxed text-[var(--danger)]">{state.오류}</p>}
       {state?.성공 && <p className="text-[0.9375rem] text-[var(--success)]">반영되었습니다.</p>}
 

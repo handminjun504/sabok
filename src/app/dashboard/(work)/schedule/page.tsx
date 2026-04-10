@@ -180,7 +180,7 @@ export default async function SchedulePage() {
   const noteTab = canNote ? (
     <div className="surface p-5">
       <p className="mb-4 text-sm text-[var(--muted)]">
-        <strong>선택 복지</strong>는 여기서만. 해당 월 합계에 더해짐.
+        선택 복지는 여기서만 입력 · 해당 월 합계에 더해집니다.
       </p>
       <form action={saveMonthlyNoteFormAction} className="space-y-4">
         <input type="hidden" name="year" value={year} />
@@ -188,7 +188,7 @@ export default async function SchedulePage() {
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">직원</label>
             <select name="employeeId"
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]"
+              className="input"
               required>
               {employees.map((e) => (
                 <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
@@ -198,39 +198,37 @@ export default async function SchedulePage() {
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">월</label>
             <input name="month" type="number" min={1} max={12}
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]"
+              className="input"
               required />
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">선택적 복지 금액</label>
             <input
               name="optionalExtraAmount"
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]"
+              className="input"
               placeholder="원 단위로 입력"
             />
           </div>
           <div className="sm:col-span-2 lg:col-span-4">
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">메모 (선택)</label>
             <input name="optionalWelfareText"
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]" />
+              className="input" />
           </div>
         </div>
         <button type="submit" className="btn btn-primary">저장</button>
       </form>
     </div>
   ) : (
-    <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-hover)] px-4 py-3 text-sm text-[var(--muted)]">
-      메모·추가 금액 수정 권한이 없습니다.
-    </p>
+    <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
   );
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">월별 지급 스케줄</h1>
+        <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          연도 <strong>{year}</strong>. 지급월 합계(정기+분기+선택). 정기:{" "}
-          {accrual ? "당월 귀속·익월 지급 표시." : "귀속=지급 월."}
+          기준 연도 <strong>{year}</strong> · 지급월 합계(정기+분기+선택 복지).{" "}
+          {accrual ? "정기는 당월 귀속·익월 지급." : "정기는 귀속·지급 동월."}
         </p>
       </div>
       <Tabs

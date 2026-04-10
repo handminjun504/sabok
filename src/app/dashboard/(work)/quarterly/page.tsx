@@ -15,11 +15,7 @@ import {
 import { Tabs } from "@/components/Tabs";
 
 const INPUT_SM =
-  "w-20 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
-const SELECT_CLS =
-  "w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
-const INPUT_CLS =
-  "w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
+  "w-20 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
 
 export default async function QuarterlyPage() {
   const { tenantId, role } = await requireTenantContext();
@@ -121,9 +117,7 @@ export default async function QuarterlyPage() {
           </form>
         </div>
       ) : (
-        <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-hover)] px-4 py-3 text-sm text-[var(--muted)]">
-          요율 조회는 가능하나 수정 권한이 없습니다.
-        </p>
+        <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
       )}
 
       {canRates && (
@@ -133,7 +127,7 @@ export default async function QuarterlyPage() {
             <input type="hidden" name="year" value={year} />
             <div>
               <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">직원</label>
-              <select name="employeeId" className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm">
+              <select name="employeeId" className="input">
                 {employees.map((e) => (
                   <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
                 ))}
@@ -142,7 +136,7 @@ export default async function QuarterlyPage() {
             <div>
               <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">기본 지급월</label>
               <input name="paymentMonth" type="number" min={1} max={12} defaultValue={3}
-                className="w-20 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm" />
+                className={INPUT_SM} />
             </div>
             <button type="submit" className="btn btn-outline">
               일괄 채우기
@@ -163,7 +157,7 @@ export default async function QuarterlyPage() {
               <input type="hidden" name="year" value={year} />
               <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">직원</label>
-                <select name="employeeId" className={SELECT_CLS} required>
+                <select name="employeeId" className="input" required>
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
                   ))}
@@ -171,7 +165,7 @@ export default async function QuarterlyPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">항목</label>
-                <select name="itemKey" className={SELECT_CLS}>
+                <select name="itemKey" className="input">
                   {items.map((k) => (
                     <option key={k} value={k}>{QUARTERLY_ITEM_LABELS[k]}</option>
                   ))}
@@ -179,11 +173,11 @@ export default async function QuarterlyPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">지급 월</label>
-                <input name="paymentMonth" type="number" min={1} max={12} defaultValue={3} className={INPUT_CLS} required />
+                <input name="paymentMonth" type="number" min={1} max={12} defaultValue={3} className="input" required />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">금액</label>
-                <input name="amount" className={INPUT_CLS} required />
+                <input name="amount" className="input" required />
               </div>
               <div className="flex items-end sm:col-span-4">
                 <button type="submit" className="btn btn-primary">저장</button>
@@ -222,9 +216,7 @@ export default async function QuarterlyPage() {
           </div>
         </>
       ) : (
-        <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-hover)] px-4 py-3 text-sm text-[var(--muted)]">
-          직원별 분기 항목 수정 권한이 없습니다.
-        </p>
+        <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
       )}
     </div>
   );
@@ -232,9 +224,9 @@ export default async function QuarterlyPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">분기 지원금</h1>
+        <h1 className="neu-title-gradient text-2xl font-bold">분기 지원금</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          연도 <strong>{year}</strong>. 3개월 주기, 직원별 지급 월 지정.
+          기준 연도 <strong>{year}</strong> · 3개월 주기, 직원별 지급 월
         </p>
       </div>
       <Tabs
