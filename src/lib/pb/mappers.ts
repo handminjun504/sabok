@@ -1,10 +1,12 @@
 import type {
   CompanySettings,
+  CustomPaymentEventDef,
   Employee,
   Level5Override,
   LevelPaymentRule,
   LevelTarget,
   MonthlyEmployeeNote,
+  PaymentEventDefsByYear,
   QuarterlyEmployeeConfig,
   QuarterlyRate,
 } from "@/types/models";
@@ -133,6 +135,27 @@ export function mapMonthlyNote(r: Record<string, unknown>): MonthlyEmployeeNote 
   };
 }
 
+function parsePaymentEventDefs(v: unknown): PaymentEventDefsByYear | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  const out: PaymentEventDefsByYear = {};
+  for (const [yk, arr] of Object.entries(o)) {
+    if (!Array.isArray(arr)) continue;
+    const list: CustomPaymentEventDef[] = [];
+    for (const item of arr) {
+      if (!item || typeof item !== "object") continue;
+      const rec = item as Record<string, unknown>;
+      const eventKey = String(rec.eventKey ?? "").trim();
+      const label = String(rec.label ?? "").trim();
+      const accrualMonth = num(rec.accrualMonth, 0);
+      if (!eventKey || !label || accrualMonth < 1 || accrualMonth > 12) continue;
+      list.push({ eventKey, label, accrualMonth });
+    }
+    if (list.length) out[yk] = list;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 export function mapCompanySettings(r: Record<string, unknown>): CompanySettings {
   return {
     id: String(r.id),
@@ -141,5 +164,6 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     defaultPayDay: num(r.defaultPayDay, 25),
     activeYear: num(r.activeYear, new Date().getFullYear()),
     accrualCurrentMonthPayNext: bool(r.accrualCurrentMonthPayNext),
+    paymentEventDefs: parsePaymentEventDefs(r.paymentEventDefs),
   };
 }

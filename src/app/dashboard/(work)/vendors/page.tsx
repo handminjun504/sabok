@@ -2,6 +2,7 @@ import Link from "next/link";
 import { vendorListByTenant } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings } from "@/lib/permissions";
+import { FUND_VENDOR_ROLE_NOTE } from "@/lib/domain/fund-site-model";
 import { VendorCreateForm } from "@/components/VendorCreateForm";
 import { VendorsSubNav } from "@/components/VendorsSubNav";
 import { redirect } from "next/navigation";
@@ -11,7 +12,7 @@ function fmt(n: number) {
 }
 
 export default async function VendorsPage() {
-  const { tenantId, role, session } = await requireTenantContext();
+  const { tenantId, role } = await requireTenantContext();
   if (!canEditCompanySettings(role)) {
     redirect("/dashboard");
   }
@@ -21,18 +22,20 @@ export default async function VendorsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="neu-title-gradient text-2xl font-bold">거래처 등록</h1>
+        <h1 className="neu-title-gradient text-2xl font-bold">출연처</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          사복 관련 거래처별로 개인/법인을 구분합니다. 출연금 등록 시 법인은 사업장 자본금의 50%까지 추가 적립(출연금의 20%)이 반영되고, 개인은 매번 20%가 누적됩니다.
+          {FUND_VENDOR_ROLE_NOTE} 법인 출연처는 사업장 자본금의 50%까지 추가 적립(출연의 20%)이 반영되고, 개인은 매번
+          20%가 누적됩니다. 새 <strong>사업장(거래처)</strong> 단위는 상단 메뉴에서 거래처 전환 →{" "}
+          <span className="font-medium text-[var(--text)]">+</span> 로 등록하세요.
         </p>
       </div>
 
-      <VendorsSubNav active="list" showClientTenantOnboard={session.isPlatformAdmin} />
+      <VendorsSubNav active="list" />
 
       <VendorCreateForm />
 
       <div className="surface overflow-x-auto p-4">
-        <h2 className="mb-3 text-sm font-semibold">거래처 목록</h2>
+        <h2 className="mb-3 text-sm font-semibold">출연처 목록</h2>
         <table className="min-w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-[var(--muted)]">
@@ -63,7 +66,7 @@ export default async function VendorsPage() {
             ))}
           </tbody>
         </table>
-        {list.length === 0 && <p className="py-4 text-sm text-[var(--muted)]">등록된 거래처가 없습니다.</p>}
+        {list.length === 0 && <p className="py-4 text-sm text-[var(--muted)]">등록된 출연처가 없습니다.</p>}
       </div>
     </div>
   );

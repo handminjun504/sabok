@@ -1,12 +1,14 @@
 import type {
   AuditLogRow,
   CompanySettings,
+  CustomPaymentEventDef,
   Employee,
   GlSyncJobRow,
   Level5Override,
   LevelPaymentRule,
   LevelTarget,
   MonthlyEmployeeNote,
+  PaymentEventDefsByYear,
   QuarterlyEmployeeConfig,
   QuarterlyRate,
   Tenant,
@@ -17,6 +19,12 @@ import type {
   VendorContribution,
 } from "@/types/models";
 import type { VendorBusinessType } from "@/lib/domain/vendor-reserve";
+import {
+  parseTenantClientEntityType,
+  parseTenantOperationMode,
+  type TenantClientEntityType,
+  type TenantOperationMode,
+} from "@/lib/domain/tenant-profile";
 import type { Role } from "@/lib/role";
 import { parseRole } from "@/lib/role";
 import { getAdminPb } from "./admin-client";
@@ -80,18 +88,24 @@ function mapVendorContributionRow(r: Record<string, unknown>): VendorContributio
   };
 }
 
+function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
+  return {
+    id: String(r.id),
+    code: String(r.code),
+    name: String(r.name),
+    active: Boolean(r.active ?? true),
+    memo: r.memo == null || r.memo === "" ? null : String(r.memo),
+    clientEntityType: parseTenantClientEntityType(r.clientEntityType),
+    operationMode: parseTenantOperationMode(r.operationMode),
+  };
+}
+
 /** --- Tenants --- */
 export async function tenantGetById(id: string): Promise<Tenant | null> {
   try {
     const pb = await getAdminPb();
     const r = asRecord(await pb.collection(C.tenants).getOne(id));
-    return {
-      id: String(r.id),
-      code: String(r.code),
-      name: String(r.name),
-      active: Boolean(r.active),
-      memo: r.memo == null ? null : String(r.memo),
-    };
+    return tenantFromPbRecord(r);
   } catch (e) {
     console.error("[pb] tenantGetById", id, e);
     return null;
@@ -101,13 +115,7 @@ export async function tenantGetById(id: string): Promise<Tenant | null> {
 export async function tenantFindFirstActive(id: string): Promise<Tenant | null> {
   const r = await firstByFilter(C.tenants, `id="${esc(id)}" && active=true`);
   if (!r || !r.id) return null;
-  return {
-    id: String(r.id),
-    code: String(r.code),
-    name: String(r.name),
-    active: Boolean(r.active),
-    memo: r.memo == null ? null : String(r.memo),
-  };
+  return tenantFromPbRecord(r);
 }
 
 export async function tenantFindByCode(code: string): Promise<Tenant | null> {
@@ -115,29 +123,14 @@ export async function tenantFindByCode(code: string): Promise<Tenant | null> {
   if (!trimmed) return null;
   const r = await firstByFilter(C.tenants, `code="${esc(trimmed)}"`);
   if (!r || !r.id) return null;
-  return {
-    id: String(r.id),
-    code: String(r.code),
-    name: String(r.name),
-    active: Boolean(r.active),
-    memo: r.memo == null ? null : String(r.memo),
-  };
+  return tenantFromPbRecord(r);
 }
 
 export async function tenantListActiveByCodeAsc(): Promise<Tenant[]> {
   try {
     const pb = await getAdminPb();
     const rows = await pb.collection(C.tenants).getFullList({ filter: `active=true`, sort: "code" });
-    return rows.map((x) => {
-      const r = asRecord(x);
-      return {
-        id: String(r.id),
-        code: String(r.code),
-        name: String(r.name),
-        active: Boolean(r.active),
-        memo: r.memo == null ? null : String(r.memo),
-      };
-    });
+    return rows.map((x) => tenantFromPbRecord(asRecord(x)));
   } catch (e) {
     console.error("[pb] tenantListActiveByCodeAsc", e);
     return [];
@@ -156,11 +149,7 @@ export async function tenantListAllByCodeAscWithCounts(): Promise<TenantWithCoun
       const tid = String(r.id);
       const ec = await pb.collection(C.employees).getList(1, 1, { filter: `tenantId="${esc(tid)}"` });
       out.push({
-        id: tid,
-        code: String(r.code),
-        name: String(r.name),
-        active: Boolean(r.active),
-        memo: r.memo == null ? null : String(r.memo),
+        ...tenantFromPbRecord(r),
         _count: { employees: ec.totalItems },
       });
     }
@@ -171,16 +160,26 @@ export async function tenantListAllByCodeAscWithCounts(): Promise<TenantWithCoun
   }
 }
 
-export async function tenantCreate(data: { code: string; name: string; active: boolean }): Promise<Tenant> {
+export async function tenantCreate(data: {
+  code: string;
+  name: string;
+  active: boolean;
+  clientEntityType: TenantClientEntityType;
+  operationMode: TenantOperationMode;
+  memo?: string | null;
+}): Promise<Tenant> {
   const pb = await getAdminPb();
-  const created = asRecord(await pb.collection(C.tenants).create(data));
-  return {
-    id: String(created.id),
-    code: String(created.code),
-    name: String(created.name),
-    active: Boolean(created.active),
-    memo: created.memo == null ? null : String(created.memo),
-  };
+  const created = asRecord(
+    await pb.collection(C.tenants).create({
+      code: data.code,
+      name: data.name,
+      active: data.active,
+      clientEntityType: data.clientEntityType,
+      operationMode: data.operationMode,
+      memo: data.memo ?? null,
+    })
+  );
+  return tenantFromPbRecord(created);
 }
 
 export async function tenantUpdateActive(id: string, active: boolean): Promise<void> {
@@ -284,6 +283,7 @@ export async function companySettingsCreateForTenant(tenantId: string): Promise<
     defaultPayDay: 25,
     activeYear: 2026,
     accrualCurrentMonthPayNext: false,
+    paymentEventDefs: {},
   });
 }
 
@@ -301,7 +301,82 @@ export async function companySettingsUpsert(
   if (existing) {
     await pb.collection(C.companySettings).update(existing.id, data);
   } else {
-    await pb.collection(C.companySettings).create({ tenantId, ...data });
+    await pb.collection(C.companySettings).create({ tenantId, ...data, paymentEventDefs: {} });
+  }
+}
+
+function clonePaymentEventDefs(src: PaymentEventDefsByYear | null): PaymentEventDefsByYear {
+  if (!src) return {};
+  const out: PaymentEventDefsByYear = {};
+  for (const [k, v] of Object.entries(src)) {
+    out[k] = v.map((d) => ({ ...d }));
+  }
+  return out;
+}
+
+/** 추가 정기 지급 행사 등록. 반환: 생성된 eventKey */
+export async function paymentEventDefAppend(
+  tenantId: string,
+  year: number,
+  def: Omit<CustomPaymentEventDef, "eventKey"> & { eventKey?: string }
+): Promise<string> {
+  const existing = await companySettingsByTenant(tenantId);
+  if (!existing?.id) throw new Error("company settings missing");
+  const pb = await getAdminPb();
+  const eventKey = def.eventKey?.trim() || `EXT_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  const yk = String(year);
+  const next = clonePaymentEventDefs(existing.paymentEventDefs);
+  const list = [...(next[yk] ?? [])];
+  if (list.some((d) => d.eventKey === eventKey)) throw new Error("duplicate eventKey");
+  list.push({ eventKey, label: def.label, accrualMonth: def.accrualMonth });
+  next[yk] = list;
+  await pb.collection(C.companySettings).update(existing.id, { paymentEventDefs: next });
+  return eventKey;
+}
+
+export async function paymentEventDefRemove(tenantId: string, year: number, eventKey: string): Promise<void> {
+  const existing = await companySettingsByTenant(tenantId);
+  if (!existing?.id) return;
+  const pb = await getAdminPb();
+  const yk = String(year);
+  const next = clonePaymentEventDefs(existing.paymentEventDefs);
+  const list = (next[yk] ?? []).filter((d) => d.eventKey !== eventKey);
+  if (list.length) next[yk] = list;
+  else delete next[yk];
+  await pb.collection(C.companySettings).update(existing.id, {
+    paymentEventDefs: Object.keys(next).length ? next : {},
+  });
+}
+
+export async function levelPaymentRuleDeleteByTenantYearEventKey(
+  tenantId: string,
+  year: number,
+  eventKey: string
+): Promise<void> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.levelPaymentRules).getFullList({
+    filter: `tenantId="${esc(tenantId)}" && year=${year} && eventKey="${esc(eventKey)}"`,
+  });
+  for (const r of rows) {
+    await pb.collection(C.levelPaymentRules).delete(r.id);
+  }
+}
+
+export async function level5OverrideDeleteByTenantYearEventKey(
+  tenantId: string,
+  year: number,
+  eventKey: string
+): Promise<void> {
+  const emps = await employeeListByTenantCodeAsc(tenantId);
+  if (emps.length === 0) return;
+  const idSet = new Set(emps.map((e) => e.id));
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.level5Overrides).getFullList({
+    filter: `year=${year} && eventKey="${esc(eventKey)}"`,
+  });
+  for (const r of rows) {
+    const eid = String((r as { employeeId?: string }).employeeId ?? "");
+    if (idSet.has(eid)) await pb.collection(C.level5Overrides).delete(r.id);
   }
 }
 

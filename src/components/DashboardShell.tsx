@@ -91,7 +91,7 @@ export function DashboardShell({
         <header className="neu-topbar sticky top-0 z-30 mx-auto flex w-full max-w-[var(--content-max)] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div className="min-w-0">
             <p className="neu-title-gradient text-base font-bold tracking-tight">사내근로복지기금</p>
-            <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">업체를 선택하면 직원·업무 메뉴가 표시됩니다.</p>
+            <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">거래처를 선택하면 직원·업무 메뉴가 표시됩니다.</p>
           </div>
           <form action={logoutAction}>
             <button
@@ -121,7 +121,7 @@ export function DashboardShell({
                   href="/dashboard/select-tenant"
                   className="inline-flex w-full items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-hover)] px-3 py-2.5 text-center text-sm font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--neu-bg-secondary)]"
                 >
-                  다른 업체로 전환
+                  다른 거래처로 전환
                 </Link>
               ) : null}
             </div>
@@ -159,7 +159,7 @@ export function DashboardShell({
               href="/dashboard/select-tenant"
               className="neu-field shrink-0 rounded-xl px-2.5 py-2 text-sm font-semibold text-[var(--accent)]"
             >
-              업체 전환
+              거래처 전환
             </Link>
           ) : null}
         </header>
@@ -190,7 +190,7 @@ export function DashboardShell({
                     onClick={() => setMobileOpen(false)}
                     className="flex w-full items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-hover)] px-3 py-2.5 text-sm font-semibold text-[var(--accent)]"
                   >
-                    다른 업체로 전환
+                    다른 거래처로 전환
                   </Link>
                 </div>
               ) : null}

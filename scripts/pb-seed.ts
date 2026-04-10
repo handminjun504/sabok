@@ -27,6 +27,11 @@ async function upsertUser(email: string, data: Record<string, unknown>) {
   return String((created as Record<string, unknown>).id);
 }
 
+const tenantProfileDefaults = {
+  clientEntityType: "INDIVIDUAL",
+  operationMode: "GENERAL",
+} as const;
+
 async function upsertTenantByCode(code: string, name: string) {
   const existing = await firstByFilter(C.tenants, `code="${esc(code)}"`);
   const pb = await pbReady();
@@ -34,7 +39,12 @@ async function upsertTenantByCode(code: string, name: string) {
     await pb.collection(C.tenants).update(String(existing.id), { name, active: true });
     return String(existing.id);
   }
-  const created = await pb.collection(C.tenants).create({ code, name, active: true });
+  const created = await pb.collection(C.tenants).create({
+    code,
+    name,
+    active: true,
+    ...tenantProfileDefaults,
+  });
   return String((created as Record<string, unknown>).id);
 }
 
@@ -95,6 +105,7 @@ async function main() {
       defaultPayDay: 25,
       activeYear: 2026,
       accrualCurrentMonthPayNext: false,
+      paymentEventDefs: {},
     });
   }
 

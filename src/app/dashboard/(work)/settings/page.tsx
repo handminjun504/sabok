@@ -1,3 +1,4 @@
+import { FUND_SITE_MODEL_SUMMARY } from "@/lib/domain/fund-site-model";
 import { companySettingsByTenant } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings } from "@/lib/permissions";
@@ -12,7 +13,12 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold">전사 설정</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">창립월·급여일·기준 연도·지급 정책 (현재 업체)</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          창립월·급여일·기준 연도·지급 정책 — 지금 선택한 사업장(거래처)에 묶인 기금 기준입니다.
+        </p>
+        <p className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-hover)]/80 px-3 py-2 text-xs leading-relaxed text-[var(--muted)]">
+          {FUND_SITE_MODEL_SUMMARY}
+        </p>
       </div>
       {!canEdit && (
         <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>

@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 import {
+  companySettingsByTenant,
   employeeCreate,
   employeeDelete,
   employeeFindFirst,
@@ -12,6 +14,7 @@ import {
 import { canEditEmployees } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
+import { koreaMinimumAnnualSalaryWon, koreaMinimumHourlyWon } from "@/lib/domain/korea-minimum-wage";
 
 function d(v: FormDataEntryValue | null): number {
   const s = v == null || v === "" ? "0" : String(v).replace(/,/g, "");
@@ -52,7 +55,7 @@ function resolvePosition(position: string): string {
   return position.trim();
 }
 
-export type EmployeeActionState = { 오류?: string; 성공?: boolean } | null;
+export type EmployeeActionState = { 오류?: string; 성공?: boolean; 경고?: string } | null;
 
 export async function saveEmployeeAction(_prev: EmployeeActionState, formData: FormData): Promise<EmployeeActionState> {
   const ctx = await resolveActionTenant();
@@ -71,16 +74,37 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
   const { name, position: positionRaw, level } = parsed.data;
   const position = resolvePosition(positionRaw);
 
+  const baseSalary = d(formData.get("baseSalary"));
+  const adjustedSalary = d(formData.get("adjustedSalary"));
+
+  if (baseSalary > 0 && adjustedSalary > 0) {
+    const minAdj = Math.floor(baseSalary * 0.8);
+    if (adjustedSalary < minAdj || adjustedSalary > baseSalary) {
+      return {
+        오류: `조정급여는 기존연봉의 80%~100% 범위(최대 20% 감액)여야 합니다. 허용: ${minAdj.toLocaleString("ko-KR")}원 ~ ${baseSalary.toLocaleString("ko-KR")}원.`,
+      };
+    }
+  }
+
+  const settings = await companySettingsByTenant(ctx.tenantId);
+  const payYear = settings?.activeYear ?? new Date().getFullYear();
+  const minAnnual = koreaMinimumAnnualSalaryWon(payYear);
+  const effectiveAnnual = adjustedSalary > 0 ? adjustedSalary : baseSalary;
+  let 경고: string | undefined;
+  if (effectiveAnnual > 0 && effectiveAnnual < minAnnual) {
+    const hourly = koreaMinimumHourlyWon(payYear);
+    경고 = `${payYear}년 최저시급 ${hourly.toLocaleString("ko-KR")}원·월 209시간 기준 연간 환산 약 ${minAnnual.toLocaleString("ko-KR")}원보다, 적용 연봉(${effectiveAnnual.toLocaleString("ko-KR")}원)이 낮게 잡혀 있습니다. 계약·임금 구조는 노무 전문가 확인을 권장합니다.`;
+  }
+
   const data = {
     name,
     position,
     level,
-    baseSalary: d(formData.get("baseSalary")),
-    adjustedSalary: d(formData.get("adjustedSalary")),
+    baseSalary,
+    adjustedSalary,
     welfareAllocation: d(formData.get("welfareAllocation")),
     incentiveAmount: optDec(formData.get("incentiveAmount")),
     discretionaryAmount: optDec(formData.get("discretionaryAmount")),
-    optionalWelfareAmount: optDec(formData.get("optionalWelfareAmount")),
     monthlyPayAmount: optDec(formData.get("monthlyPayAmount")),
     quarterlyPayAmount: optDec(formData.get("quarterlyPayAmount")),
     birthMonth: intOpt(formData.get("birthMonth")),
@@ -128,17 +152,19 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     }
   } catch (e) {
     console.error(e);
+    const pbMsg = e instanceof ClientResponseError ? e.message : null;
+    const suffix = pbMsg && pbMsg !== "Something went wrong." ? ` ${pbMsg}` : "";
     return {
       오류:
         position === CEO_POSITION
-          ? "저장에 실패했습니다. 이미 코드 0번(대표이사) 직원이 있을 수 있습니다."
-          : "저장에 실패했습니다. 직원 코드 중복 여부를 확인하세요.",
+          ? `저장에 실패했습니다. 이미 코드 0번(대표이사) 직원이 있을 수 있습니다.${suffix}`
+          : `저장에 실패했습니다. 직원 코드 중복·필수 필드·PocketBase 스키마를 확인하세요.${suffix}`,
     };
   }
 
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard/schedule");
-  return { 성공: true };
+  return 경고 ? { 성공: true, 경고 } : { 성공: true };
 }
 
 export async function deleteEmployeeAction(employeeId: string): Promise<EmployeeActionState> {

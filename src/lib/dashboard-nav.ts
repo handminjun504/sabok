@@ -22,11 +22,11 @@ export function getDashboardNav(opts: {
   if (!hasActiveTenant) {
     if (isPlatformAdmin && !single) {
       return [
-        { title: "업체", items: [{ href: "/dashboard/select-tenant", label: "업체 선택" }] },
+        { title: "거래처", items: [{ href: "/dashboard/select-tenant", label: "거래처 선택" }] },
         {
           title: "플랫폼",
           items: [
-            { href: "/dashboard/tenants", label: "업체 관리" },
+            { href: "/dashboard/tenants", label: "거래처 관리" },
             { href: "/dashboard/audit", label: "감사 로그" },
           ],
         },
@@ -37,14 +37,14 @@ export function getDashboardNav(opts: {
 
   const startItems: NavItem[] = [{ href: "/dashboard", label: "대시보드" }];
   if (!single) {
-    startItems.push({ href: "/dashboard/select-tenant", label: "업체 전환" });
+    startItems.push({ href: "/dashboard/select-tenant", label: "거래처 전환" });
   }
   groups.push({ title: "시작", items: startItems });
 
   if (isPlatformAdmin && !single) {
     groups.push({
       title: "플랫폼",
-      items: [{ href: "/dashboard/tenants", label: "업체 관리" }],
+      items: [{ href: "/dashboard/tenants", label: "거래처 관리" }],
     });
   }
 
@@ -60,8 +60,8 @@ export function getDashboardNav(opts: {
   if (canEditCompanySettings(role)) {
     work.push(
       { href: "/dashboard/settings", label: "전사 설정" },
-      { href: "/dashboard/vendors", label: "거래처" },
-      { href: "/dashboard/vendor-contributions", label: "적립금 작성" },
+      /** 출연처(기금 출연 상대) + 적립금 — 거래처(업체) 자체는 선택 화면에서 등록 */
+      { href: "/dashboard/vendor-contributions", label: "출연·적립" },
     );
   }
   groups.push({ title: "업무", items: work });

@@ -8,7 +8,7 @@ export function VendorCreateForm() {
 
   return (
     <form action={formAction} className="surface space-y-4 p-5 sm:p-6">
-      <h2 className="text-base font-semibold tracking-tight text-[var(--text)]">거래처 등록</h2>
+      <h2 className="text-base font-semibold tracking-tight text-[var(--text)]">출연처 등록</h2>
       {state?.오류 && <p className="text-[0.9375rem] leading-relaxed text-[var(--danger)]">{state.오류}</p>}
       {state?.성공 && <p className="text-[0.9375rem] text-[var(--success)]">등록되었습니다.</p>}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -17,7 +17,7 @@ export function VendorCreateForm() {
           <input name="code" required className="input w-full" />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-[var(--muted)]">거래처명</label>
+          <label className="mb-1 block text-sm font-medium text-[var(--muted)]">출연처명</label>
           <input name="name" required className="input w-full" />
         </div>
         <div className="sm:col-span-2">

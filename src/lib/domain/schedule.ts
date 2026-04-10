@@ -1,3 +1,4 @@
+/** 월별 기금(정기·분기·선택) 집계 */
 import type {
   Employee,
   Level5Override,
@@ -11,12 +12,15 @@ import {
   QUARTERLY_INTERVAL_MONTHS,
 } from "../business-rules";
 
+/** 테넌트 추가 정기 행사(귀속 월) */
+export type CustomPaymentScheduleDef = { eventKey: string; accrualMonth: number };
+
 export type MonthBreakdown = {
   /** 귀속(이벤트 발생) 기준 월 */
   accrualMonth: number;
   /** 실제 지급 표시 월 (당월귀속·차월지급 시 익월) */
   paidMonth: number;
-  regularEvents: { eventKey: PaymentEventKey; amount: number }[];
+  regularEvents: { eventKey: string; amount: number }[];
   quarterly: { itemKey: string; amount: number }[];
   totalWelfareMonth: number;
 };
@@ -28,7 +32,7 @@ function toNum(v: number | null | undefined): number {
 
 export function resolveEventAmount(
   employee: Pick<Employee, "level">,
-  eventKey: PaymentEventKey,
+  eventKey: string,
   year: number,
   rules: LevelPaymentRule[],
   overrides: Level5Override[]
@@ -45,9 +49,10 @@ export function resolveEventAmount(
 export function eventsOccurringInMonth(
   month: number,
   employee: Pick<Employee, "hireMonth" | "birthMonth" | "weddingMonth">,
-  foundingMonth: number
-): PaymentEventKey[] {
-  const keys: PaymentEventKey[] = [];
+  foundingMonth: number,
+  customPaymentEvents: CustomPaymentScheduleDef[] = []
+): string[] {
+  const keys: string[] = [];
   (Object.keys(FIXED_EVENT_MONTH) as PaymentEventKey[]).forEach((k) => {
     if (FIXED_EVENT_MONTH[k] === month) keys.push(k);
   });
@@ -55,6 +60,9 @@ export function eventsOccurringInMonth(
   if (foundingMonth === month) keys.push(PAYMENT_EVENT.FOUNDING_MONTH);
   if (employee.birthMonth === month) keys.push(PAYMENT_EVENT.BIRTH_MONTH);
   if (employee.weddingMonth === month) keys.push(PAYMENT_EVENT.WEDDING_MONTH);
+  for (const c of customPaymentEvents) {
+    if (c.accrualMonth === month) keys.push(c.eventKey);
+  }
   return keys;
 }
 
@@ -65,7 +73,8 @@ export function buildMonthlyBreakdown(
   rules: LevelPaymentRule[],
   overrides: Level5Override[],
   quarterly: QuarterlyEmployeeConfig[],
-  accrualCurrentMonthPayNext: boolean
+  accrualCurrentMonthPayNext: boolean,
+  customPaymentEvents: CustomPaymentScheduleDef[] = []
 ): MonthBreakdown[] {
   const qByPaidMonth = new Map<number, { itemKey: string; amount: number }[]>();
   for (const q of quarterly) {
@@ -83,7 +92,7 @@ export function buildMonthlyBreakdown(
         ? 1
         : accrualMonth + 1
       : accrualMonth;
-    const eventKeys = eventsOccurringInMonth(accrualMonth, employee, foundingMonth);
+    const eventKeys = eventsOccurringInMonth(accrualMonth, employee, foundingMonth, customPaymentEvents);
     const regularEvents = eventKeys.map((eventKey) => ({
       eventKey,
       amount: resolveEventAmount(employee, eventKey, year, rules, overrides),
@@ -206,7 +215,8 @@ export function computeActualYearlyWelfareForEmployee(
   monthlyNotesForEmployee: Pick<
     { year: number; optionalExtraAmount: number | null },
     "year" | "optionalExtraAmount"
-  >[]
+  >[],
+  customPaymentEvents: CustomPaymentScheduleDef[] = []
 ): number {
   const br = buildMonthlyBreakdown(
     employee,
@@ -215,7 +225,8 @@ export function computeActualYearlyWelfareForEmployee(
     rules,
     overridesForEmployee,
     quarterlyForEmployee,
-    accrualCurrentMonthPayNext
+    accrualCurrentMonthPayNext,
+    customPaymentEvents
   );
   return yearlyWelfareTotal(br) + sumMonthlyNoteExtrasForYear(monthlyNotesForEmployee, year);
 }

@@ -10,16 +10,22 @@ Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사
 
 - **Unique 인덱스**: 각 테이블 아래에 표기한 필드(조합)에 Admin에서 Unique 인덱스 추가.
 
-**내부 단일 업체**: 배포 `.env`에 `SABOK_SINGLE_TENANT_ID=<sabok_tenants 레코드 id>` 를 넣으면 업체 선택·업체 관리 UI가 숨겨지고, 로그인 시 항상 그 테넌트로 고정된다. 거래처(`sabok_vendors`)는 그 업체 안의 **거래처 마스터**로 계속 쓰면 된다.
+**내부 단일 업체**: 배포 `.env`에 `SABOK_SINGLE_TENANT_ID=<sabok_tenants 레코드 id>` 를 넣으면 거래처 선택·관리 UI가 숨겨지고, 로그인 시 항상 그 테넌트로 고정된다. `sabok_vendors`는 그 사업장(테넌트) 기금에 대한 **출연 상대(출연처)** 로 계속 쓰면 된다.
 
 ## `sabok_tenants`
 
-| 필드     | 타입 | 필수 | 비고        |
-|----------|------|------|-------------|
-| code     | text | yes  | unique      |
-| name     | text | yes  |             |
-| active   | bool | yes  | default true |
-| memo     | text | no   |             |
+| 필드               | 타입 | 필수 | 비고        |
+|--------------------|------|------|-------------|
+| code               | text | yes  | unique      |
+| name               | text | yes  |             |
+| active             | bool | yes  | default true |
+| memo               | text | no   |             |
+| clientEntityType   | text | yes  | `INDIVIDUAL` \| `CORPORATE` — 고객사(위탁사) 사업자 유형. **기존 DB**: 마이그레이션 시 일괄 `INDIVIDUAL` 권장 |
+| operationMode      | text | yes  | `GENERAL` \| `SALARY_WELFARE` \| `INCENTIVE_WELFARE` \| `COMBINED` — 일반 / 급여낮추기(고위험) / 인센 기금 / 복합. **기존 DB**: 없으면 `GENERAL`, 저장 시 필드 추가 후 기본값 |
+
+**도메인 전제(사내근로복지기금)**: 테넌트 1건은 통상 **사업장(기금 운용 단위) 1곳**에 대응한다. 사업장이 기금에 납입하고 기금이 그 사업장 소속 직원에게 지급하는 전제이며, **사업장당 기금 1개**, **한 기금이 여러 사업장을 포괄하지 않음**을 앱 카피·가이드에 반영한다. 출연(유입)은 통상 본사에서 이루어진다는 안내는 UI에 표시한다(앱 코드: `src/lib/domain/fund-site-model.ts`).
+
+앱은 PB에 필드가 없어도 **조회 시** 기본값(개인·일반운영)으로 동작하지만, **신규 업체 등록(create)** 은 위 두 필드가 컬렉션에 있어야 합니다.
 
 ## `sabok_users`
 
@@ -62,6 +68,7 @@ Unique: `(userId, tenantId)`
 | defaultPayDay              | number | yes | default 25 |
 | activeYear                 | number | yes | |
 | accrualCurrentMonthPayNext | bool | yes | default false |
+| paymentEventDefs           | json | no  | 연도 문자열 키 → `{ eventKey, label, accrualMonth }[]` 배열. 추가 정기 지급 행사(레벨 금액·스케줄). 없으면 `{}` 또는 생략 |
 
 ## `sabok_employees`
 
@@ -73,7 +80,7 @@ Prisma 스키마와 동일한 의미의 필드 (숫자 금액은 **number**).
 | employeeCode          | text   | yes  | unique with tenantId |
 | name, position        | text   | yes  |      |
 | baseSalary, adjustedSalary, welfareAllocation | number | yes | |
-| incentiveAmount, discretionaryAmount, optionalWelfareAmount, monthlyPayAmount, quarterlyPayAmount | number | no | |
+| incentiveAmount, discretionaryAmount, optionalWelfareAmount, monthlyPayAmount, quarterlyPayAmount | number | no | `optionalWelfareAmount`는 UI·저장에서 사용하지 않음(항상 null). 선택적 복지는 `sabok_monthly_employee_notes.optionalExtraAmount`로 월별 입력 |
 | birthMonth, hireMonth, weddingMonth, payDay | number | no | |
 | childrenInfant, childrenPreschool, childrenTeen, parentsCount, parentsInLawCount | number | yes | default 0 |
 | insurancePremium, loanInterest | number | yes | |
@@ -172,7 +179,9 @@ Unique: `(employeeId, year, month)`
 | payload  | json | no   |
 | error    | text | no   |
 
-## `sabok_vendors` (사복 거래처)
+## `sabok_vendors` (출연 상대 / 출연처)
+
+UI에서는 **출연처**로 부른다. 본사 등이 해당 사업장(테넌트) 기금에 출연할 때 규칙상 구분이 필요한 상대(개인·법인)이다. 테넌트 = 사업장·기금 단위 1건과 대응 (`fund-site-model.ts`).
 
 | 필드                | 타입   | 필수 | 비고 |
 |---------------------|--------|------|------|
@@ -187,7 +196,9 @@ Unique: `(employeeId, year, month)`
 
 Unique: `(tenantId, code)`
 
-## `sabok_vendor_contributions` (출연금 이력)
+## `sabok_vendor_contributions` (출연금 이력 — 기금 유입 기록)
+
+통상 출연 실무는 본사에서 하며, 이 테이블은 그 사업장 기금으로 반영되는 출연액·추가 적립 결과를 남긴다.
 
 | 필드                 | 타입   | 필수 | 비고 |
 |----------------------|--------|------|------|

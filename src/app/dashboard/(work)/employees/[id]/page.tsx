@@ -4,21 +4,30 @@ import {
   employeeFindFirst,
   level5OverrideListByEmployeeYear,
 } from "@/lib/pb/repository";
+import type { CustomPaymentEventDef } from "@/types/models";
+import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
 import { EmployeeForm } from "@/components/EmployeeForm";
-import { PAYMENT_EVENT, PAYMENT_EVENT_LABELS, type PaymentEventKey } from "@/lib/business-rules";
+import { PAYMENT_EVENT_LABELS } from "@/lib/business-rules";
+import {
+  customPaymentDefsForYear,
+  orderedBuiltinPaymentEventKeys,
+  paymentEventLabel,
+} from "@/lib/domain/payment-events";
 import { deleteLevel5OverrideFormAction, saveLevel5OverrideFormAction } from "@/app/actions/levelRules";
 
 async function OverrideForm({
   employeeId,
   year,
+  customDefs,
 }: {
   employeeId: string;
   year: number;
+  customDefs: CustomPaymentEventDef[];
 }) {
   const existing = await level5OverrideListByEmployeeYear(employeeId, year);
-  const events = Object.values(PAYMENT_EVENT);
+  const builtinKeys = orderedBuiltinPaymentEventKeys();
 
   return (
     <div className="surface p-4">
@@ -32,9 +41,14 @@ async function OverrideForm({
         <div className="sm:col-span-2">
           <label className="text-xs text-[var(--muted)]">이벤트</label>
           <select name="eventKey" className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm" required>
-            {events.map((k) => (
+            {builtinKeys.map((k) => (
               <option key={k} value={k}>
                 {PAYMENT_EVENT_LABELS[k]}
+              </option>
+            ))}
+            {customDefs.map((d) => (
+              <option key={d.eventKey} value={d.eventKey}>
+                {d.label}
               </option>
             ))}
           </select>
@@ -53,8 +67,7 @@ async function OverrideForm({
         {existing.map((o) => (
           <li key={o.id} className="flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2">
             <span>
-              {PAYMENT_EVENT_LABELS[o.eventKey as PaymentEventKey] ?? o.eventKey}:{" "}
-              <strong>{String(o.amount)}</strong> 원
+              {paymentEventLabel(o.eventKey, customDefs)}: <strong>{String(o.amount)}</strong> 원
             </span>
             <form action={deleteLevel5OverrideFormAction}>
               <input type="hidden" name="employeeId" value={employeeId} />
@@ -79,6 +92,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
 
   const settings = await companySettingsByTenant(tenantId);
   const year = settings?.activeYear ?? new Date().getFullYear();
+  const minimumAnnualSalaryWon = koreaMinimumAnnualSalaryWon(year);
 
   return (
     <div className="space-y-6">
@@ -92,12 +106,15 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           employee={emp}
           activeYear={year}
           foundingMonth={settings?.foundingMonth ?? 1}
+          minimumAnnualSalaryWon={minimumAnnualSalaryWon}
         />
       ) : (
         <p className="text-sm text-[var(--muted)]">조회 전용입니다.</p>
       )}
 
-      {emp.level === 5 && canEditLevelRules(role) && <OverrideForm employeeId={emp.id} year={year} />}
+      {emp.level === 5 && canEditLevelRules(role) && (
+        <OverrideForm employeeId={emp.id} year={year} customDefs={customPaymentDefsForYear(settings, year)} />
+      )}
     </div>
   );
 }

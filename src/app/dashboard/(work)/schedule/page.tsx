@@ -10,12 +10,14 @@ import {
 } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees } from "@/lib/permissions";
+import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
 import {
   buildMonthlyBreakdown,
   computeActualYearlyWelfareForEmployee,
   computeWelfareCapVsActual,
   monthlySalaryPortion,
 } from "@/lib/domain/schedule";
+import { WELFARE_ANNUAL_HINT, WELFARE_INTRO } from "@/lib/domain/welfare-payment-principles";
 import { saveMonthlyNoteFormAction } from "@/app/actions/quarterly";
 import { Tabs } from "@/components/Tabs";
 
@@ -51,11 +53,13 @@ export default async function SchedulePage() {
     capVs: ReturnType<typeof computeWelfareCapVsActual>;
   };
 
+  const customSchedule = customPaymentScheduleRows(settings, year);
+
   const rows: Row[] = employees.map((emp) => {
     const ovr = overrides.filter((x) => x.employeeId === emp.id);
     const qcfg = quarterly.filter((x) => x.employeeId === emp.id);
     const empNotes = notes.filter((n) => n.employeeId === emp.id);
-    const br = buildMonthlyBreakdown(emp, year, foundingMonth, rules, ovr, qcfg, accrual);
+    const br = buildMonthlyBreakdown(emp, year, foundingMonth, rules, ovr, qcfg, accrual, customSchedule);
     const byPaidMonth = new Map<number, number>();
     for (const r of br) {
       byPaidMonth.set(r.paidMonth, (byPaidMonth.get(r.paidMonth) ?? 0) + r.totalWelfareMonth);
@@ -67,7 +71,15 @@ export default async function SchedulePage() {
     }
 
     const yearlyWelfare = computeActualYearlyWelfareForEmployee(
-      emp, year, foundingMonth, accrual, rules, ovr, qcfg, empNotes
+      emp,
+      year,
+      foundingMonth,
+      accrual,
+      rules,
+      ovr,
+      qcfg,
+      empNotes,
+      customSchedule
     );
     const capVs = computeWelfareCapVsActual(emp.welfareAllocation, yearlyWelfare);
 
@@ -123,8 +135,8 @@ export default async function SchedulePage() {
                 </th>
               ))}
               <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">급여(월)</th>
-              <th className="whitespace-nowrap px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">급여+사복 평균</th>
-              <th className="whitespace-nowrap px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">연간 사복 합계</th>
+              <th className="whitespace-nowrap px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">급여+기금(월평)</th>
+              <th className="whitespace-nowrap px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">연간 기금 합계</th>
               <th className="whitespace-nowrap px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">상한</th>
               <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">초과</th>
             </tr>
@@ -168,7 +180,11 @@ export default async function SchedulePage() {
 
   const noteTab = canNote ? (
     <div className="surface p-5">
-      <p className="mb-4 text-sm text-[var(--muted)]">지급월에 합산되는 선택적 복지 메모 및 추가 금액을 입력합니다.</p>
+      <p className="mb-4 text-sm text-[var(--muted)]">
+        <strong>선택적 복지금</strong>은 사전에 직원 정보에 넣지 않습니다. 실제 받을 때마다 아래에서{" "}
+        <strong>직원·지급월·금액</strong>을 직접 입력하세요. 입력한 금액은 해당 지급월 합계(정기·분기와 함께)에
+        더해집니다.
+      </p>
       <form action={saveMonthlyNoteFormAction} className="space-y-4">
         <input type="hidden" name="year" value={year} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -189,10 +205,12 @@ export default async function SchedulePage() {
               required />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">추가 금액</label>
-            <input name="optionalExtraAmount"
+            <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">선택적 복지 금액</label>
+            <input
+              name="optionalExtraAmount"
               className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]"
-              placeholder="0" />
+              placeholder="원 단위로 입력"
+            />
           </div>
           <div className="sm:col-span-2 lg:col-span-4">
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">메모 (선택)</label>
@@ -213,15 +231,17 @@ export default async function SchedulePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[var(--text)]">월별 지급 스케줄</h1>
+        <p className="mt-1 text-sm text-[var(--muted)]">{WELFARE_INTRO}</p>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          기준 연도 <strong>{year}</strong> — 지급월 기준 합계(정기+분기+선택적 복지 추가금).{" "}
-          {accrual ? "정기분은 당월 귀속·차월 지급으로 표시했습니다." : "정기분은 귀속·지급이 같은 달입니다."}
+          연도 <strong>{year}</strong>, 지급월 합계(정기+분기+선택 복지 추가).{" "}
+          {accrual ? "정기는 당월 귀속·다음 달 지급으로 표시." : "정기는 귀속·지급이 같은 달."}{" "}
+          {WELFARE_ANNUAL_HINT}
         </p>
       </div>
       <Tabs
         tabs={[
           { label: "월별 스케줄", content: scheduleTab },
-          { label: "메모·추가금액", content: noteTab },
+          { label: "선택적 복지·메모", content: noteTab },
         ]}
       />
     </div>

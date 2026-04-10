@@ -7,6 +7,7 @@ import {
   quarterlyEmployeeConfigListByTenantYear,
 } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
+import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
 import {
   computeActualYearlyWelfareForEmployee,
   computeWelfareCapVsActual,
@@ -33,6 +34,8 @@ export default async function SalaryInclusionReportPage() {
     monthlyNoteListByTenantYear(tenantId, year, ids),
   ]);
 
+  const customSchedule = customPaymentScheduleRows(settings, year);
+
   const rows = employees.map((emp) => {
     const ovr = overrides.filter((x) => x.employeeId === emp.id);
     const qcfg = quarterly.filter((x) => x.employeeId === emp.id);
@@ -45,7 +48,8 @@ export default async function SalaryInclusionReportPage() {
       rules,
       ovr,
       qcfg,
-      empNotes
+      empNotes,
+      customSchedule
     );
     const capVs = computeWelfareCapVsActual(emp.welfareAllocation, actual);
     return { emp, capVs };
@@ -56,9 +60,8 @@ export default async function SalaryInclusionReportPage() {
       <div>
         <h1 className="text-2xl font-bold">급여포함신고</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          기준 연도 <strong>{year}</strong> — 직원별 <strong>사복지급분</strong>은 급여에서 기금으로 돌린 한도(상한)로
-          봅니다. 스케줄상 연간 실지급 합계가 상한을 넘으면 <strong>초과</strong>, 미치지 못하면{" "}
-          <strong>미달(급여포함신고)</strong>란에 그 차액을 표시합니다. 세무·신고 처리는 담당자 확인이 필요합니다.
+          연도 <strong>{year}</strong>. 직원별 <strong>사복지급분(상한)</strong>과 연간 실지급 합계를 비교합니다. 넘치면{" "}
+          <strong>초과</strong>, 모자라면 <strong>미달(급여포함신고)</strong>에 차액. 신고는 담당자 확인.
         </p>
       </div>
 

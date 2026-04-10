@@ -46,10 +46,52 @@ export default async function QuarterlyPage() {
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
                 <thead>
+                  <tr className="border-b border-[var(--border)]">
+                    <th
+                      rowSpan={2}
+                      className="border-b-2 border-[var(--border)] py-2 pr-4 align-bottom text-xs font-semibold uppercase tracking-wide text-[var(--muted)]"
+                    >
+                      항목
+                    </th>
+                    <th
+                      colSpan={3}
+                      className="py-2 pr-2 text-center text-xs font-semibold tracking-wide text-[var(--text)]"
+                    >
+                      자녀장학금
+                    </th>
+                    <th
+                      colSpan={2}
+                      className="py-2 pr-2 text-center text-xs font-semibold tracking-wide text-[var(--text)]"
+                    >
+                      부모봉양지원금
+                    </th>
+                    <th
+                      rowSpan={2}
+                      className="border-b-2 border-[var(--border)] py-2 pr-2 align-bottom text-xs font-semibold uppercase tracking-wide text-[var(--muted)]"
+                    >
+                      정액
+                    </th>
+                    <th
+                      rowSpan={2}
+                      className="border-b-2 border-[var(--border)] py-2 pr-2 align-bottom text-xs font-semibold uppercase tracking-wide text-[var(--muted)]"
+                    >
+                      보험%
+                    </th>
+                    <th
+                      rowSpan={2}
+                      className="border-b-2 border-[var(--border)] py-2 pr-2 align-bottom text-xs font-semibold uppercase tracking-wide text-[var(--muted)]"
+                    >
+                      이자%
+                    </th>
+                  </tr>
                   <tr className="border-b-2 border-[var(--border)]">
-                    <th className="py-2 pr-4 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">항목</th>
-                    {["영유아단가", "미취학단가", "청소년단가", "부모단가", "시부모단가", "정액", "보험%", "이자%"].map((h) => (
-                      <th key={h} className="py-2 pr-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{h}</th>
+                    {["영유아 단가", "미취학 단가", "청소년 단가", "부모 단가", "시부모 단가"].map((h) => (
+                      <th
+                        key={h}
+                        className="py-2 pr-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]"
+                      >
+                        {h}
+                      </th>
                     ))}
                   </tr>
                 </thead>

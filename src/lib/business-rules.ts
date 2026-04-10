@@ -1,6 +1,5 @@
 /**
- * 사내근로복지기금 — 운영 규칙 상수 (Phase 0 동결본)
- * 회계/인사 확정 시 이 파일과 DB 설정을 함께 조정합니다.
+ * 사내근로복지기금 운영 규칙 상수 (Phase 0). 사업장·기금: fund-site-model, 안내 문구: welfare-payment-principles.
  */
 
 export const RBAC_MATRIX = {
@@ -64,17 +63,17 @@ export const PAYMENT_EVENT = {
 export type PaymentEventKey = (typeof PAYMENT_EVENT)[keyof typeof PAYMENT_EVENT];
 
 export const PAYMENT_EVENT_LABELS: Record<PaymentEventKey, string> = {
-  NEW_YEAR_FEB: "2월 신년",
-  FAMILY_MAY: "5월 가정의 달",
+  NEW_YEAR_FEB: "2월 연초·신년",
+  FAMILY_MAY: "5월 근로자의 날·가정의 달",
   CHUSEOK_AUG: "8월 추석",
   YEAR_END_NOV: "11월 연말",
-  HIRE_MONTH: "입사기념 월",
+  HIRE_MONTH: "입사축하(입사월)",
   FOUNDING_MONTH: "창립기념 월",
   BIRTH_MONTH: "생일 월",
   WEDDING_MONTH: "결혼기념 월",
 };
 
-/** 고정 월 이벤트 → 발생 월 */
+/** 고정 월 이벤트 → 귀속 월 */
 export const FIXED_EVENT_MONTH: Partial<Record<PaymentEventKey, number>> = {
   NEW_YEAR_FEB: 2,
   FAMILY_MAY: 5,

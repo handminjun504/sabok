@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState, useId, useState } from "react";
+import { useActionState, useEffect, useId, useMemo, useState } from "react";
+import { employeePositionSelectValues } from "@/lib/domain/employee-positions";
 import type { Employee } from "@/types/models";
 import { saveEmployeeAction, type EmployeeActionState } from "@/app/actions/employee";
-import { SALARY_PRESET_WON } from "@/lib/salary-presets";
+
+const fieldLabelClass = "mb-1 block text-xs font-medium text-[var(--muted)]";
 
 const inputClass =
-  "neu-field mt-0.5 min-w-[5.5rem] px-2 py-1.5 text-sm text-[var(--text)]";
+  "neu-field w-full min-w-0 px-2.5 py-2 text-sm leading-normal text-[var(--text)]";
 
 function formatWonInput(n: number): string {
   return n.toLocaleString("ko-KR");
@@ -20,18 +22,15 @@ function CommaNumberInput({
   name,
   label,
   defaultValue,
-  presetOptions,
   optional,
   className = "",
 }: {
   name: string;
   label: string;
   defaultValue?: number | null;
-  presetOptions?: readonly number[];
   optional?: boolean;
   className?: string;
 }) {
-  const selectId = useId();
   const init =
     defaultValue != null && Number.isFinite(Number(defaultValue)) && Number(defaultValue) !== 0
       ? formatWonInput(Number(defaultValue))
@@ -41,28 +40,8 @@ function CommaNumberInput({
   const [val, setVal] = useState(init);
 
   return (
-    <div className={className}>
-      <label className="block text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">{label}</label>
-      {presetOptions && presetOptions.length > 0 && (
-        <select
-          id={selectId}
-          className={`${inputClass} mb-1`}
-          aria-label={`${label} 빠른 선택`}
-          defaultValue=""
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v) setVal(formatWonInput(Number(v)));
-            e.currentTarget.selectedIndex = 0;
-          }}
-        >
-          <option value="">빠른 선택…</option>
-          {presetOptions.map((n) => (
-            <option key={n} value={n}>
-              {formatWonInput(n)}원
-            </option>
-          ))}
-        </select>
-      )}
+    <div className={`min-w-0 ${className}`}>
+      <label className={fieldLabelClass}>{label}</label>
       <input
         className={inputClass}
         name={name}
@@ -84,6 +63,145 @@ function CommaNumberInput({
   );
 }
 
+function SalaryPairFields({
+  defaultBase,
+  defaultAdjusted,
+  activeYear,
+  minimumAnnualSalaryWon,
+  onSalaryRangeValid,
+}: {
+  defaultBase?: number | null;
+  defaultAdjusted?: number | null;
+  activeYear: number;
+  minimumAnnualSalaryWon: number;
+  onSalaryRangeValid?: (ok: boolean) => void;
+}) {
+  const baseId = useId();
+  const adjId = useId();
+
+  const initBase =
+    defaultBase != null && Number.isFinite(Number(defaultBase)) && Number(defaultBase) !== 0
+      ? formatWonInput(Number(defaultBase))
+      : defaultBase === 0
+        ? "0"
+        : "";
+  const initAdj =
+    defaultAdjusted != null &&
+    Number.isFinite(Number(defaultAdjusted)) &&
+    Number(defaultAdjusted) !== 0
+      ? formatWonInput(Number(defaultAdjusted))
+      : defaultAdjusted === 0
+        ? "0"
+        : "";
+
+  const [baseStr, setBaseStr] = useState(initBase);
+  const [adjStr, setAdjStr] = useState(initAdj);
+
+  const baseNum = useMemo(() => {
+    const d = digitsOnly(baseStr);
+    return d ? Number(d) : 0;
+  }, [baseStr]);
+
+  const adjNum = useMemo(() => {
+    const d = digitsOnly(adjStr);
+    return d ? Number(d) : 0;
+  }, [adjStr]);
+
+  const adjRangeHint = useMemo(() => {
+    if (baseNum <= 0) return null;
+    const minA = Math.floor(baseNum * 0.8);
+    return `조정급여 입력 시: ${minA.toLocaleString("ko-KR")}원 ~ ${baseNum.toLocaleString("ko-KR")}원 (기존연봉의 80~100%, 최대 20% 감액). 비우거나 0이면 기존연봉만 적용됩니다.`;
+  }, [baseNum]);
+
+  const adjRangeError = useMemo(() => {
+    if (baseNum <= 0 || adjNum <= 0) return null;
+    const minA = Math.floor(baseNum * 0.8);
+    if (adjNum < minA || adjNum > baseNum) {
+      return `조정급여는 기존연봉의 80%~100%여야 합니다. (${minA.toLocaleString("ko-KR")}원 ~ ${baseNum.toLocaleString("ko-KR")}원)`;
+    }
+    return null;
+  }, [baseNum, adjNum]);
+
+  useEffect(() => {
+    onSalaryRangeValid?.(!adjRangeError);
+  }, [adjRangeError, onSalaryRangeValid]);
+
+  const effectiveAnnual = adjNum > 0 ? adjNum : baseNum;
+  const minWageWarning = useMemo(() => {
+    if (effectiveAnnual <= 0) return null;
+    if (effectiveAnnual < minimumAnnualSalaryWon) {
+      return `${activeYear}년 최저임금(월 209시간 기준 연간 환산 약 ${minimumAnnualSalaryWon.toLocaleString("ko-KR")}원) 미만입니다. 저장은 가능하나 계약 검토를 권장합니다.`;
+    }
+    return null;
+  }, [effectiveAnnual, minimumAnnualSalaryWon, activeYear]);
+
+  return (
+    <div className="w-full min-w-0 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/60 p-4">
+      <p className="text-xs font-semibold text-[var(--text)]">기존연봉 · 조정급여</p>
+      <p className="text-xs leading-relaxed text-[var(--muted)]">
+        연봉은 직접 입력합니다. 조정급여는 기존연봉 대비 <strong className="text-[var(--text)]">최대 20% 감액</strong>
+        (즉 조정액은 기존의 80~100%)만 허용됩니다.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="min-w-0">
+          <label className={fieldLabelClass} htmlFor={baseId}>
+            기존연봉 (원)
+          </label>
+          <input
+            id={baseId}
+            className={inputClass}
+            name="baseSalary"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={baseStr}
+            onChange={(e) => {
+              const d = digitsOnly(e.target.value);
+              if (!d) {
+                setBaseStr("");
+                return;
+              }
+              setBaseStr(formatWonInput(Number(d)));
+            }}
+          />
+        </div>
+        <div className="min-w-0">
+          <label className={fieldLabelClass} htmlFor={adjId}>
+            조정급여 (원)
+          </label>
+          <input
+            id={adjId}
+            className={inputClass}
+            name="adjustedSalary"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={adjStr}
+            placeholder="미입력·0 = 기존연봉 적용"
+            onChange={(e) => {
+              const d = digitsOnly(e.target.value);
+              if (!d) {
+                setAdjStr("");
+                return;
+              }
+              setAdjStr(formatWonInput(Number(d)));
+            }}
+          />
+        </div>
+      </div>
+      {adjRangeHint && !adjRangeError ? (
+        <p className="text-xs leading-relaxed text-[var(--muted)]">{adjRangeHint}</p>
+      ) : null}
+      {adjRangeError ? <p className="text-sm font-medium text-[var(--danger)]">{adjRangeError}</p> : null}
+      {minWageWarning ? (
+        <p className="rounded-lg border border-amber-200/90 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950">
+          {minWageWarning}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function Cell({
   label,
   name,
@@ -98,8 +216,8 @@ function Cell({
   className?: string;
 }) {
   return (
-    <div className={className}>
-      <label className="block text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">{label}</label>
+    <div className={`min-w-0 ${className}`}>
+      <label className={fieldLabelClass}>{label}</label>
       <input className={inputClass} name={name} type={type} defaultValue={defaultValue ?? ""} />
     </div>
   );
@@ -109,14 +227,20 @@ export function EmployeeForm({
   employee,
   activeYear,
   foundingMonth,
+  minimumAnnualSalaryWon,
 }: {
   employee?: Employee | null;
   activeYear: number;
   foundingMonth: number;
+  minimumAnnualSalaryWon: number;
 }) {
   const [state, formAction] = useActionState<EmployeeActionState, FormData>(saveEmployeeAction, null);
+  const [salaryRangeOk, setSalaryRangeOk] = useState(true);
   const yy = String(activeYear).slice(-2);
   const isNew = !employee;
+  const positionOptions = employeePositionSelectValues(employee?.position);
+  const positionDefault = (employee?.position ?? "").trim();
+  const positionNeedsPlaceholder = !positionDefault;
 
   return (
     <form action={formAction} className="space-y-4">
@@ -126,64 +250,93 @@ export function EmployeeForm({
           {state.오류}
         </div>
       )}
-      {state?.성공 && (
+      {state?.경고 && (
+        <div className="rounded-lg border border-amber-200/90 bg-amber-50 p-3 text-sm leading-relaxed text-amber-950">
+          <strong className="font-semibold">저장됨 · 확인 권장</strong>
+          <p className="mt-1">{state.경고}</p>
+        </div>
+      )}
+      {state?.성공 && !state?.경고 ? (
         <div className="rounded-lg border border-[var(--success)] p-3 text-sm text-[var(--success)]">
           저장되었습니다.
         </div>
-      )}
+      ) : null}
 
-      <div className="surface overflow-x-auto p-4">
-        <p className="border-b border-[var(--border)] pb-2 text-sm font-semibold tracking-tight">
+      <div className="surface overflow-x-auto p-4 sm:p-5">
+        <p className="border-b border-[var(--border)] pb-2 text-base font-semibold tracking-tight text-[var(--text)]">
           &lt;{yy}년 사복 진행 조사표&gt;
         </p>
-        <p className="mt-2 text-xs text-[var(--muted)]">
-          회사창립월 <span className="font-mono text-[var(--text)]">{foundingMonth}</span>월 · 인적사항·급여는 아래 직원
-          행에 입력합니다. (전사 설정은 &quot;전사 설정&quot; 메뉴)
+        <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+          회사창립월 <span className="font-mono font-medium text-[var(--text)]">{foundingMonth}</span>월 · 인적사항·급여는
+          아래에 입력합니다. (전사 설정은 &quot;전사 설정&quot; 메뉴)
         </p>
 
-        <div className="mt-4 min-w-[72rem] space-y-3 border border-[var(--border)] bg-[var(--bg)] p-3">
-          <p className="text-[10px] font-semibold text-[var(--muted)]">
-            직원 행 — 시트 3행 헤더 순서 (CODE → 급여일)
+        <div className="mt-5 space-y-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            직원 행 — CODE → 급여일 순서
           </p>
-          <div className="grid grid-cols-6 gap-2 gap-y-3 md:grid-cols-8 lg:grid-cols-12">
-            <div>
-              <label className="block text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">CODE</label>
+
+          <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-start">
+            <div className="w-full min-w-0 max-w-xl rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+              <p className="text-xs font-semibold text-[var(--text)]">CODE</p>
               {isNew ? (
-                <p className={`${inputClass} text-[var(--muted)] leading-relaxed`}>
-                  자동 부여 · 직급이 &quot;대표이사&quot;면 0번
+                <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+                  저장 시 자동 부여됩니다. 직급이 <span className="whitespace-nowrap font-medium text-[var(--text)]">「대표이사」</span>
+                  이면 코드 <span className="font-mono text-[var(--text)]">0</span>번입니다.
                 </p>
               ) : (
-                <p className={`${inputClass} font-mono`}>{employee!.employeeCode}</p>
+                <p className="mt-2 font-mono text-sm text-[var(--text)]">{employee!.employeeCode}</p>
               )}
             </div>
-            <Cell label="이름" name="name" defaultValue={employee?.name} />
-            <Cell label="직급" name="position" defaultValue={employee?.position} />
-            <div>
-              <label className="block text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">레벨(1~5)</label>
-              <input
-                className={inputClass}
-                name="level"
-                type="number"
-                min={1}
-                max={5}
-                defaultValue={employee?.level ?? 3}
-                required
-              />
+
+            <div className="grid min-w-0 flex-1 grid-cols-2 gap-3 sm:grid-cols-3 lg:max-w-2xl">
+              <Cell label="이름" name="name" defaultValue={employee?.name} />
+              <div className="min-w-0">
+                <label className={fieldLabelClass}>직급</label>
+                <select
+                  name="position"
+                  className={inputClass}
+                  required
+                  defaultValue={positionNeedsPlaceholder ? "" : positionDefault}
+                >
+                  {positionNeedsPlaceholder ? (
+                    <option value="" disabled>
+                      선택하세요
+                    </option>
+                  ) : null}
+                  {positionOptions.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="min-w-0">
+                <label className={fieldLabelClass}>레벨(1~5)</label>
+                <input
+                  className={inputClass}
+                  name="level"
+                  type="number"
+                  min={1}
+                  max={5}
+                  defaultValue={employee?.level ?? 3}
+                  required
+                />
+              </div>
             </div>
+          </div>
+
+          <SalaryPairFields
+            defaultBase={employee?.baseSalary}
+            defaultAdjusted={employee?.adjustedSalary}
+            activeYear={activeYear}
+            minimumAnnualSalaryWon={minimumAnnualSalaryWon}
+            onSalaryRangeValid={setSalaryRangeOk}
+          />
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             <CommaNumberInput
-              label="기존연봉"
-              name="baseSalary"
-              defaultValue={employee?.baseSalary}
-              presetOptions={SALARY_PRESET_WON}
-            />
-            <CommaNumberInput
-              label="조정급여"
-              name="adjustedSalary"
-              defaultValue={employee?.adjustedSalary}
-              presetOptions={SALARY_PRESET_WON}
-            />
-            <CommaNumberInput
-              className="lg:col-span-2"
+              className="sm:col-span-2"
               label="사복지급분"
               name="welfareAllocation"
               defaultValue={employee?.welfareAllocation}
@@ -195,16 +348,10 @@ export function EmployeeForm({
               optional
             />
             <CommaNumberInput
-              className="lg:col-span-2"
+              className="sm:col-span-2"
               label="알아서금액"
               name="discretionaryAmount"
               defaultValue={employee?.discretionaryAmount ?? undefined}
-              optional
-            />
-            <CommaNumberInput
-              label="선택복지금액"
-              name="optionalWelfareAmount"
-              defaultValue={employee?.optionalWelfareAmount ?? undefined}
               optional
             />
             <CommaNumberInput
@@ -221,43 +368,58 @@ export function EmployeeForm({
             />
           </div>
 
-          <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-[var(--border)] pt-3 text-sm">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-[var(--border)] pt-4 text-sm">
             <label className="flex cursor-pointer items-center gap-2">
               <input type="checkbox" name="flagAutoAmount" defaultChecked={employee?.flagAutoAmount} />
-              <span className="text-xs">알아서 금액(자동)</span>
+              <span className="text-sm">알아서 금액(자동)</span>
             </label>
             <label className="flex cursor-pointer items-center gap-2">
               <input type="checkbox" name="flagRepReturn" defaultChecked={employee?.flagRepReturn} />
-              <span className="text-xs">대표반환</span>
+              <span className="text-sm">대표반환</span>
             </label>
             <label className="flex cursor-pointer items-center gap-2">
               <input type="checkbox" name="flagSpouseReceipt" defaultChecked={employee?.flagSpouseReceipt} />
-              <span className="text-xs">배우자수령</span>
+              <span className="text-sm">배우자수령</span>
             </label>
             <label className="flex cursor-pointer items-center gap-2">
               <input type="checkbox" name="flagWorkerNet" defaultChecked={employee?.flagWorkerNet} />
-              <span className="text-xs">근로자 실질 수령</span>
+              <span className="text-sm">근로자 실질 수령</span>
             </label>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 border-t border-[var(--border)] pt-3 md:grid-cols-6 lg:grid-cols-9">
+          <div className="grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             <Cell label="입사 월" name="hireMonth" type="number" defaultValue={employee?.hireMonth ?? ""} />
             <Cell label="생일 월" name="birthMonth" type="number" defaultValue={employee?.birthMonth ?? ""} />
-            <Cell label="결혼기념월(예정)" name="weddingMonth" type="number" defaultValue={employee?.weddingMonth ?? ""} />
+            <Cell
+              label="결혼기념월(예정)"
+              name="weddingMonth"
+              type="number"
+              defaultValue={employee?.weddingMonth ?? ""}
+            />
             <Cell label="영유아" name="childrenInfant" type="number" defaultValue={employee?.childrenInfant ?? 0} />
-            <Cell label="미취학아동" name="childrenPreschool" type="number" defaultValue={employee?.childrenPreschool ?? 0} />
+            <Cell
+              label="미취학아동"
+              name="childrenPreschool"
+              type="number"
+              defaultValue={employee?.childrenPreschool ?? 0}
+            />
             <Cell label="청소년" name="childrenTeen" type="number" defaultValue={employee?.childrenTeen ?? 0} />
             <Cell label="부모님" name="parentsCount" type="number" defaultValue={employee?.parentsCount ?? 0} />
-            <Cell label="시부모님" name="parentsInLawCount" type="number" defaultValue={employee?.parentsInLawCount ?? 0} />
+            <Cell
+              label="시부모님"
+              name="parentsInLawCount"
+              type="number"
+              defaultValue={employee?.parentsInLawCount ?? 0}
+            />
             <Cell label="급여일" name="payDay" type="number" defaultValue={employee?.payDay ?? ""} />
             <CommaNumberInput
-              className="md:col-span-2"
+              className="sm:col-span-2"
               label="보험료"
               name="insurancePremium"
               defaultValue={employee?.insurancePremium}
             />
             <CommaNumberInput
-              className="md:col-span-2"
+              className="sm:col-span-2"
               label="대출이자"
               name="loanInterest"
               defaultValue={employee?.loanInterest}
@@ -269,6 +431,11 @@ export function EmployeeForm({
       <button type="submit" className="btn btn-primary px-8 py-2.5">
         저장
       </button>
+      {!salaryRangeOk ? (
+        <p className="text-sm text-[var(--danger)]">
+          조정급여가 기존연봉의 80~100% 범위를 벗어나면 저장 시 서버에서 거절됩니다.
+        </p>
+      ) : null}
     </form>
   );
 }

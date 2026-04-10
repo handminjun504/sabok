@@ -1,6 +1,7 @@
 /** PocketBase `sabok_*` 컬렉션과 정합되는 앱 도메인 타입 (숫자 필드는 number). */
 
 import type { VendorBusinessType } from "@/lib/domain/vendor-reserve";
+import type { TenantClientEntityType, TenantOperationMode } from "@/lib/domain/tenant-profile";
 
 export type Employee = {
   id: string;
@@ -92,6 +93,15 @@ export type MonthlyEmployeeNote = {
   optionalExtraAmount: number | null;
 };
 
+/** 연도 문자열 키(예: "2026") → 추가 정기 지급 행사(귀속 월 지정) */
+export type CustomPaymentEventDef = {
+  eventKey: string;
+  label: string;
+  accrualMonth: number;
+};
+
+export type PaymentEventDefsByYear = Record<string, CustomPaymentEventDef[]>;
+
 export type CompanySettings = {
   id: string;
   tenantId: string;
@@ -99,6 +109,8 @@ export type CompanySettings = {
   defaultPayDay: number;
   activeYear: number;
   accrualCurrentMonthPayNext: boolean;
+  /** PB JSON. 없으면 null */
+  paymentEventDefs: PaymentEventDefsByYear | null;
 };
 
 export type Tenant = {
@@ -107,6 +119,10 @@ export type Tenant = {
   name: string;
   active: boolean;
   memo?: string | null;
+  /** 고객사(위탁사) 사업자 유형 — PB `clientEntityType` */
+  clientEntityType: TenantClientEntityType;
+  /** 사내근로복지기금 운용 방식 — PB `operationMode` (급여낮추기·인센티브 지급 등) */
+  operationMode: TenantOperationMode;
 };
 
 export type UserRow = {
