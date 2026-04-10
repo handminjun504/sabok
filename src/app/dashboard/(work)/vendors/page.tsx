@@ -2,7 +2,6 @@ import Link from "next/link";
 import { vendorListByTenant } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings } from "@/lib/permissions";
-import { FUND_VENDOR_ROLE_NOTE } from "@/lib/domain/fund-site-model";
 import { VendorCreateForm } from "@/components/VendorCreateForm";
 import { VendorsSubNav } from "@/components/VendorsSubNav";
 import { redirect } from "next/navigation";
@@ -23,11 +22,7 @@ export default async function VendorsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">출연처</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          {FUND_VENDOR_ROLE_NOTE} 법인 출연처는 사업장 자본금의 50%까지 추가 적립(출연의 20%)이 반영되고, 개인은 매번
-          20%가 누적됩니다. 새 <strong>사업장(거래처)</strong> 단위는 상단 메뉴에서 거래처 전환 →{" "}
-          <span className="font-medium text-[var(--text)]">+</span> 로 등록하세요.
-        </p>
+        <p className="mt-1 text-sm text-[var(--muted)]">출연 주체를 등록하고 적립 현황을 관리합니다.</p>
       </div>
 
       <VendorsSubNav active="list" />

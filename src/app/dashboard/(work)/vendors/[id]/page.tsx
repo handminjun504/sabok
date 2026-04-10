@@ -37,7 +37,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
         <Link href="/dashboard/vendors" className="text-sm text-[var(--accent)] hover:underline">
           ← 목록
         </Link>
-        <h1 className="text-2xl font-bold">
+        <h1 className="neu-title-gradient text-2xl font-bold">
           {vendor.name} <span className="font-mono text-base font-normal text-[var(--muted)]">({vendor.code})</span>
         </h1>
       </div>
@@ -88,7 +88,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
             <tbody>
               {history.map((h) => (
                 <tr key={h.id} className="border-b border-[var(--border)]">
-                  <td className="py-1 whitespace-nowrap">{h.created.toISOString()}</td>
+                  <td className="py-1 whitespace-nowrap">{h.created.toLocaleDateString("ko-KR")}</td>
                   <td className="py-1 text-right">{fmt(h.contributionAmount)}</td>
                   <td className="py-1 text-right">{fmt(h.additionalReserved)}</td>
                   <td className="py-1 text-right">{fmt(h.reserveAfter)}</td>

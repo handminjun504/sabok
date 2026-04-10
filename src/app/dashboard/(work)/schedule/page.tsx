@@ -17,7 +17,6 @@ import {
   computeWelfareCapVsActual,
   monthlySalaryPortion,
 } from "@/lib/domain/schedule";
-import { WELFARE_ANNUAL_HINT, WELFARE_INTRO } from "@/lib/domain/welfare-payment-principles";
 import { saveMonthlyNoteFormAction } from "@/app/actions/quarterly";
 import { Tabs } from "@/components/Tabs";
 
@@ -180,18 +179,14 @@ export default async function SchedulePage() {
 
   const noteTab = canNote ? (
     <div className="surface p-5">
-      <p className="mb-4 text-sm text-[var(--muted)]">
-        <strong>선택적 복지금</strong>은 사전에 직원 정보에 넣지 않습니다. 실제 받을 때마다 아래에서{" "}
-        <strong>직원·지급월·금액</strong>을 직접 입력하세요. 입력한 금액은 해당 지급월 합계(정기·분기와 함께)에
-        더해집니다.
-      </p>
+      <p className="mb-4 text-sm text-[var(--muted)]">직원·지급월·금액을 입력하면 해당 월 합계에 더해집니다.</p>
       <form action={saveMonthlyNoteFormAction} className="space-y-4">
         <input type="hidden" name="year" value={year} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">직원</label>
             <select name="employeeId"
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]"
+              className="input"
               required>
               {employees.map((e) => (
                 <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
@@ -201,41 +196,37 @@ export default async function SchedulePage() {
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">월</label>
             <input name="month" type="number" min={1} max={12}
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]"
+              className="input"
               required />
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">선택적 복지 금액</label>
             <input
               name="optionalExtraAmount"
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]"
+              className="input"
               placeholder="원 단위로 입력"
             />
           </div>
           <div className="sm:col-span-2 lg:col-span-4">
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">메모 (선택)</label>
             <input name="optionalWelfareText"
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]" />
+              className="input" />
           </div>
         </div>
         <button type="submit" className="btn btn-primary">저장</button>
       </form>
     </div>
   ) : (
-    <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-hover)] px-4 py-3 text-sm text-[var(--muted)]">
-      메모·추가 금액 수정 권한이 없습니다.
-    </p>
+    <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
   );
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">월별 지급 스케줄</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">{WELFARE_INTRO}</p>
+        <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          연도 <strong>{year}</strong>, 지급월 합계(정기+분기+선택 복지 추가).{" "}
-          {accrual ? "정기는 당월 귀속·다음 달 지급으로 표시." : "정기는 귀속·지급이 같은 달."}{" "}
-          {WELFARE_ANNUAL_HINT}
+          기준 연도 <strong>{year}</strong> · 지급월 합계 (정기+분기+선택 복지).{" "}
+          {accrual ? "정기는 당월 귀속·익월 지급." : "정기는 귀속·지급 동월."}
         </p>
       </div>
       <Tabs
