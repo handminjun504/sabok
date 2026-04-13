@@ -14,7 +14,8 @@
     "desktop": "electron electron/main.cjs",
     "lint": "next lint",
     "pb:seed": "tsx scripts/pb-seed.ts",
-    "pb:create-user": "tsx scripts/pb-create-user.ts"
+    "pb:create-user": "tsx scripts/pb-create-user.ts",
+    "pb:fix-employees-schema": "node scripts/pb-fix-employees-schema.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.3",

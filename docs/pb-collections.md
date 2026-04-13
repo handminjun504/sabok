@@ -74,18 +74,25 @@ Unique: `(userId, tenantId)`
 
 Prisma 스키마와 동일한 의미의 필드 (숫자 금액은 **number**).
 
-| 필드                  | 타입   | 필수 | 비고 |
-|-----------------------|--------|------|------|
+> **PocketBase Nonempty(필수) 주의**  
+> 앱은 아래 숫자·불리언 필드에 **0·false** 를 정상 값으로 보냅니다(예: 조정급여 미입력=0, 자녀 0명, 플래그 해제=false).  
+> PocketBase에서 해당 필드에 **Nonempty** 를 켜 두면 `0`·`false` 가 “비어 있음”으로 거절되어 `Cannot be blank` / `Missing required value` 가 납니다.  
+> **해결:** 이 컬렉션의 `number`·`bool` 필드(급여·자녀·부모 수·보험/이자·플래그 등)에서는 **Nonempty를 끄고**, 숫자 범위만 필요하면 Min/Max를 쓰세요.  
+> **일괄 보정(권장):** 배포 서버에서 Admin 자격으로 `npm run pb:fix-employees-schema` 실행(`scripts/pb-fix-employees-schema.mjs`). 미리보기: `DRY_RUN=1 npm run pb:fix-employees-schema`.  
+> (공식 설명: [Required Number and Boolean Fields](https://github.com/pocketbase/pocketbase/issues/526) — “Required/Nonempty”는 Go 제로값 기준으로 `0`·`false` 를 허용하지 않음.)
+
+| 필드                  | 타입   | 앱에서 항상 전송 | 비고 |
+|-----------------------|--------|------------------|------|
 | tenantId              | text   | yes  |      |
 | employeeCode          | text   | yes  | unique with tenantId |
 | name, position        | text   | yes  |      |
-| baseSalary, adjustedSalary, welfareAllocation | number | yes | |
-| incentiveAmount, discretionaryAmount, optionalWelfareAmount, monthlyPayAmount, quarterlyPayAmount | number | no | `optionalWelfareAmount`는 UI·저장에서 사용하지 않음(항상 null). 선택적 복지는 `sabok_monthly_employee_notes.optionalExtraAmount`로 월별 입력 |
-| birthMonth, hireMonth, weddingMonth, payDay | number | no | |
-| childrenInfant, childrenPreschool, childrenTeen, parentsCount, parentsInLawCount | number | yes | default 0 |
-| insurancePremium, loanInterest | number | yes | |
+| baseSalary, adjustedSalary, welfareAllocation | number | yes | PB에서는 **Nonempty 끄기** (조정급여 0 = 기존연봉만 사용) |
+| incentiveAmount, discretionaryAmount, optionalWelfareAmount, monthlyPayAmount, quarterlyPayAmount | number | 선택 | `optionalWelfareAmount`는 UI·저장에서 사용하지 않음(항상 null). 선택적 복지는 `sabok_monthly_employee_notes.optionalExtraAmount`로 월별 입력 |
+| birthMonth, hireMonth, weddingMonth, payDay | number | 선택 | |
+| childrenInfant, childrenPreschool, childrenTeen, parentsCount, parentsInLawCount | number | yes | 0 허용 → PB **Nonempty 끄기** |
+| insurancePremium, loanInterest | number | yes | 0 허용 → PB **Nonempty 끄기** |
 | level                 | number | yes  | |
-| flagAutoAmount, flagRepReturn, flagSpouseReceipt, flagWorkerNet | bool | yes | |
+| flagAutoAmount, flagRepReturn, flagSpouseReceipt, flagWorkerNet | bool | yes | false 허용 → PB **Nonempty 끄기** |
 
 Unique: `(tenantId, employeeCode)`
 

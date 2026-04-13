@@ -15,7 +15,7 @@ import { canEditEmployees } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
 import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
-import { pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
+import { pocketBaseNonemptyBlankHint, pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
 
 function d(v: FormDataEntryValue | null): number {
   const s = v == null || v === "" ? "0" : String(v).replace(/,/g, "");
@@ -178,11 +178,12 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     console.error(e);
     if (e instanceof ClientResponseError) {
       const detail = pocketBaseRecordErrorMessage(e);
+      const hint = pocketBaseNonemptyBlankHint(detail);
       return {
         오류:
           position === CEO_POSITION
-            ? `저장 실패. 이미 코드 0번(대표이사) 직원이 있을 수 있습니다. ${detail}`
-            : `저장 실패. ${detail}`,
+            ? `저장 실패. 이미 코드 0번(대표이사) 직원이 있을 수 있습니다. ${detail}${hint}`
+            : `저장 실패. ${detail}${hint}`,
       };
     }
     return { 오류: "저장에 실패했습니다. 서버 로그를 확인하세요." };

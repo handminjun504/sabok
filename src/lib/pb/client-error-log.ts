@@ -33,3 +33,13 @@ export function pocketBaseRecordErrorMessage(e: ClientResponseError): string {
   }
   return e.message || "PocketBase가 요청을 거절했습니다.";
 }
+
+/**
+ * PB Nonempty 검증이 0·false 를 거절할 때 흔한 메시지. UI에 스키마 수정 안내를 덧붙일 때 사용.
+ */
+export function pocketBaseNonemptyBlankHint(detail: string): string {
+  if (!detail.includes("Cannot be blank") && !detail.includes("Missing required value")) {
+    return "";
+  }
+  return " · PocketBase 관리자에서 `sabok_employees` 의 number·bool 필드 **Nonempty(필수)를 끄세요.** Nonempty가 켜져 있으면 0과 false를 저장할 수 없습니다. (docs/pb-collections.md 참고)";
+}
