@@ -41,7 +41,9 @@ export function CsvImportClient() {
   return (
     <div className="surface fixed inset-0 z-50 m-auto h-fit max-h-[90vh] w-full max-w-2xl overflow-auto p-6">
       <h2 className="text-lg font-semibold">CSV 가져오기</h2>
-      <p className="mt-1 text-xs text-[var(--muted)]">1행 헤더. 시트에서 복사해 붙여넣기.</p>
+      <p className="mt-1 text-xs text-[var(--muted)]">
+        1행 헤더. 사복 조사표와 같은 열 이름이면 됩니다. CSV/스프레드시트에서 복사해 붙여넣기(앱은 시트와 연동하지 않음).
+      </p>
       <textarea
         className="neu-field mt-3 h-52 w-full rounded-xl p-3 text-xs font-mono text-[var(--text)]"
         value={text}

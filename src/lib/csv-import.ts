@@ -1,4 +1,6 @@
-/** Google 시트·CSV 컬럼(한글/영문 별칭) → Employee 입력 */
+/** 사복 진행 조사표 형식 CSV 컬럼(한글/영문 별칭) → Employee 입력. 시트 실시간 연동 없음. */
+
+import type { Employee } from "@/types/models";
 
 const ALIASES: Record<string, string> = {
   code: "employeeCode",
@@ -16,6 +18,8 @@ const ALIASES: Record<string, string> = {
   배우자수령: "flagSpouseReceipt",
   "배우자 수령": "flagSpouseReceipt",
   "근로자 실질 수령": "flagWorkerNet",
+  "근로자 실질 수령(반환분 제외)": "flagWorkerNet",
+  근로자실질수령반환분제외: "flagWorkerNet",
   "입사 월": "hireMonth",
   입사월: "hireMonth",
   "생일 월만입력": "birthMonth",
@@ -103,4 +107,80 @@ export function parseEmployeeCsv(text: string): CsvRowResult[] {
     out.push({ row: r + 1, employeeCode, fields, 오류 });
   }
   return out;
+}
+
+/** 참고 시트 「직원정보」 열 순서 + 앱 확장(레벨, 예상 인센) — CSV 보내기/문서 단일 기준 */
+export const SHEET_EMPLOYEE_EXPORT_HEADERS = [
+  "CODE",
+  "이름",
+  "직급",
+  "기존연봉",
+  "조정급여",
+  "사복지급분",
+  "알아서금액",
+  "대표반환",
+  "배우자수령",
+  "근로자 실질 수령(반환분 제외)",
+  "입사 월",
+  "생일 월만입력",
+  "결혼기념월(예정월)",
+  "영유아",
+  "미취학아동",
+  "청소년",
+  "부모님",
+  "시부모님",
+  "보험료",
+  "대출이자",
+  "급여일",
+  "레벨",
+  "예상 인센",
+] as const;
+
+function csvEscapeCell(v: string): string {
+  if (/[",\r\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  return v;
+}
+
+function wonCell(n: number | null | undefined): string {
+  return Math.round(Number(n) || 0).toLocaleString("ko-KR");
+}
+
+function ynCell(b: boolean): string {
+  return b ? "Y" : "";
+}
+
+/** 스프레드시트에 붙여넣기 하기 좋은 한 행. 숫자는 ko-KR 콤마 형식. */
+export function employeeToSheetCsvCells(e: Employee): string[] {
+  return [
+    e.employeeCode,
+    e.name,
+    e.position,
+    wonCell(e.baseSalary),
+    wonCell(e.adjustedSalary),
+    wonCell(e.welfareAllocation),
+    e.discretionaryAmount != null && Number(e.discretionaryAmount) !== 0 ? wonCell(e.discretionaryAmount) : "",
+    ynCell(e.flagRepReturn),
+    ynCell(e.flagSpouseReceipt),
+    ynCell(e.flagWorkerNet),
+    e.hireMonth != null ? String(e.hireMonth) : "",
+    e.birthMonth != null ? String(e.birthMonth) : "",
+    e.weddingMonth != null ? String(e.weddingMonth) : "",
+    String(e.childrenInfant),
+    String(e.childrenPreschool),
+    String(e.childrenTeen),
+    String(e.parentsCount),
+    String(e.parentsInLawCount),
+    wonCell(e.insurancePremium),
+    wonCell(e.loanInterest),
+    e.payDay != null ? String(e.payDay) : "",
+    String(e.level),
+    e.incentiveAmount != null && Number(e.incentiveAmount) > 0 ? wonCell(e.incentiveAmount) : "",
+  ];
+}
+
+/** UTF-8 BOM + CSV 한 덩어리(파일 저장·다른 도구에 붙여넣기용) */
+export function buildEmployeeSheetCsv(employees: Employee[]): string {
+  const header = SHEET_EMPLOYEE_EXPORT_HEADERS.map(csvEscapeCell).join(",");
+  const body = employees.map((e) => employeeToSheetCsvCells(e).map(csvEscapeCell).join(",")).join("\r\n");
+  return `\uFEFF${header}\r\n${body}\r\n`;
 }

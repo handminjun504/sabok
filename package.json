@@ -13,6 +13,7 @@
     "start:web": "next start -H 0.0.0.0 -p 3000",
     "desktop": "electron electron/main.cjs",
     "lint": "next lint",
+    "sheet:parity": "tsx scripts/sheet-parity.ts",
     "pb:seed": "tsx scripts/pb-seed.ts",
     "pb:create-user": "tsx scripts/pb-create-user.ts",
     "pb:fix-employees-schema": "node scripts/pb-fix-employees-schema.mjs",

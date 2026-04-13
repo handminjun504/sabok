@@ -5,7 +5,6 @@ import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 import { pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
 import { tenantUpdateProfile } from "@/lib/pb/repository";
-import { canEditCompanySettings } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
 
@@ -27,9 +26,6 @@ export async function updateTenantProfileAction(
 ): Promise<TenantProfileState> {
   const ctx = await resolveActionTenant();
   if (!ctx.ok) return { 오류: ctx.message };
-  if (!canEditCompanySettings(ctx.role)) {
-    return { 오류: "거래처 정보를 수정할 권한이 없습니다." };
-  }
 
   const memoRaw = String(formData.get("memo") ?? "").trim();
   const approvalRaw = String(formData.get("approvalNumber") ?? "").trim();

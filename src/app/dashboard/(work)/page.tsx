@@ -1,6 +1,5 @@
 import { companySettingsByTenant, employeeCountByTenant, tenantGetById } from "@/lib/pb/repository";
 import { DashboardTenantProfileForm } from "@/components/DashboardTenantProfileForm";
-import { canEditCompanySettings } from "@/lib/permissions";
 import { requireTenantContext } from "@/lib/tenant-context";
 import type { Tenant } from "@/types/models";
 import Link from "next/link";
@@ -18,7 +17,7 @@ function tenantProfileFormKey(t: Tenant): string {
 }
 
 export default async function DashboardHomePage() {
-  const { tenantId, role } = await requireTenantContext();
+  const { tenantId } = await requireTenantContext();
   const [empCount, settings, tenant] = await Promise.all([
     employeeCountByTenant(tenantId),
     companySettingsByTenant(tenantId),
@@ -77,11 +76,7 @@ export default async function DashboardHomePage() {
       </section>
 
       {tenant ? (
-        <DashboardTenantProfileForm
-          key={tenantProfileFormKey(tenant)}
-          tenant={tenant}
-          canEdit={canEditCompanySettings(role)}
-        />
+        <DashboardTenantProfileForm key={tenantProfileFormKey(tenant)} tenant={tenant} />
       ) : null}
     </div>
   );

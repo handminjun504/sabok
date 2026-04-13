@@ -1,5 +1,7 @@
 # PocketBase 컬렉션 (sabok, `sabok_` 접두사)
 
+참고 스프레드시트(사복 진행 조사표) **열·필드 대응**(연동 아님)은 **[sheet-mapping.md](./sheet-mapping.md)** 를 본다.
+
 Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사용하지 않는다(`sabok_users`는 일반 컬렉션, 비밀번호는 `passwordHash`에 bcrypt).
 
 모든 컬렉션은 PB가 부여하는 **`id`**, **`created`**, **`updated`** 필드를 가진다. 앱에서는 필요 시 `created`를 감사 표시용 시각으로 사용한다.

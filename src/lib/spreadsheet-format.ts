@@ -1,4 +1,4 @@
-/** 구글 시트(사복 진행 조사표) 스타일 숫자·표시 헬퍼 */
+/** 사복 진행 조사표와 같은 표기(콤마 원·체크)용 표시 헬퍼 */
 
 export function formatWon(value: { toString(): string } | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "";

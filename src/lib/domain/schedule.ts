@@ -1,4 +1,4 @@
-/** 월별 기금(정기·분기·선택) 집계 */
+/** 월별 기금(정기·분기·선택) 집계 — 참고 시트의 월별지급·취합과 같은 의미로 맞춤. docs/sheet-mapping.md */
 import type {
   Employee,
   Level5Override,
