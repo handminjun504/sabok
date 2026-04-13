@@ -7,10 +7,17 @@ import {
   levelTargetList,
   monthlyNoteListByTenantYear,
   quarterlyEmployeeConfigListByTenantYear,
+  tenantGetById,
 } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
+import {
+  aggregateWelfareSpendBySource,
+  allocateYearlyWelfareToLegalCategories,
+  LEGAL_WELFARE_CATEGORY_ROWS,
+} from "@/lib/domain/operating-welfare-legal-categories";
 import { computeTenantOperatingSummary } from "@/lib/domain/sheet-aggregate";
+import { OperatingReportTenantIdentifiersForm } from "@/components/OperatingReportTenantIdentifiersForm";
 
 function format(n: number) {
   return n.toLocaleString("ko-KR");
@@ -18,7 +25,10 @@ function format(n: number) {
 
 export default async function OperatingReportPage() {
   const { tenantId } = await requireTenantContext();
-  const settings = await companySettingsByTenant(tenantId);
+  const [tenant, settings] = await Promise.all([tenantGetById(tenantId), companySettingsByTenant(tenantId)]);
+  const tenantName = tenant?.name ?? "—";
+  const approvalNumber = tenant?.approvalNumber?.trim() || "—";
+  const businessRegNo = tenant?.businessRegNo?.trim() || "—";
   const year = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
   const accrual = settings?.accrualCurrentMonthPayNext ?? false;
@@ -47,6 +57,19 @@ export default async function OperatingReportPage() {
     customSchedule
   );
 
+  const spendBySource = aggregateWelfareSpendBySource(
+    employees,
+    year,
+    foundingMonth,
+    accrual,
+    rules,
+    overrides,
+    quarterly,
+    notes,
+    customSchedule
+  );
+  const legalAlloc = allocateYearlyWelfareToLegalCategories(spendBySource, summary.totalYearlyWelfare);
+
   const targetByLevel = new Map(targets.map((t) => [t.level, Math.round(Number(t.targetAmount))]));
 
   return (
@@ -57,6 +80,63 @@ export default async function OperatingReportPage() {
         <p className="page-hero-sub text-sm sm:text-base">
           참고 스프레드시트 「취합」 탭과 같은 의미의 연도·레벨별 기금 합계·전사 요약입니다. 정기·분기·선택 복지 반영. 외부 시트와 연동하지 않습니다.
         </p>
+        <p className="mt-2 text-xs text-[var(--muted)]">
+          업체 이름(거래처명) 수정은{" "}
+          <Link href="/dashboard" className="text-[var(--accent)] hover:underline">
+            대시보드
+          </Link>
+          의 「거래처 등록 정보」에서 할 수 있습니다.
+        </p>
+      </div>
+
+      <div className="surface p-4 sm:p-5">
+        <h2 className="text-sm font-bold text-[var(--text)]">보고서 상단 정보</h2>
+        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">업체 이름</dt>
+            <dd className="mt-1 font-medium text-[var(--text)]">{tenantName}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">인가번호</dt>
+            <dd className="mt-1 font-mono text-[var(--text)]">{approvalNumber}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">사업자등록번호</dt>
+            <dd className="mt-1 font-mono text-[var(--text)]">{businessRegNo}</dd>
+          </div>
+        </dl>
+        {tenant ? <OperatingReportTenantIdentifiersForm tenant={tenant} /> : null}
+      </div>
+
+      <div className="surface overflow-x-auto p-4">
+        <h2 className="text-sm font-bold text-[var(--text)]">연간 지급액 — 복지비 구분(자동 배분)</h2>
+        <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+          정기·분기·선택 복지 원천을 구분 코드에 매핑한 뒤, 한 항목에만 몰리지 않도록 상한(연간 합계의 약 34%)을 넘는 금액은 다른 구분으로 나눕니다. 58·61·65 등 데이터에 없는 구분은 재분배 과정에서 채워질 수 있습니다. 합계는 위 「연간 기금 합계」와 동일합니다.
+        </p>
+        <table className="mt-4 w-full min-w-[520px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-[var(--border)] text-xs text-[var(--muted)]">
+              <th className="px-3 py-2">코드</th>
+              <th className="px-3 py-2">구분</th>
+              <th className="px-3 py-2 text-right">금액(원)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {LEGAL_WELFARE_CATEGORY_ROWS.map((row) => (
+              <tr key={row.code} className="border-b border-[var(--border)]">
+                <td className="px-3 py-2 tabular-nums text-[var(--muted)]">{row.code}</td>
+                <td className="px-3 py-2">{row.label}</td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums">{format(legalAlloc.get(row.code) ?? 0)}</td>
+              </tr>
+            ))}
+            <tr className="bg-[var(--surface-hover)]/50 font-semibold">
+              <td className="px-3 py-2 text-[var(--muted)]" colSpan={2}>
+                합계
+              </td>
+              <td className="px-3 py-2 text-right font-mono tabular-nums">{format(summary.totalYearlyWelfare)}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

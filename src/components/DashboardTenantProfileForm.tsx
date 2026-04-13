@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateTenantProfileAction, type TenantProfileState } from "@/app/actions/tenant-profile";
 import { CommaWonInput } from "@/components/CommaWonInput";
@@ -131,30 +132,13 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
               ))}
             </div>
           </div>
-          <div>
-            <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
-              인가번호
-            </label>
-            <input
-              name="approvalNumber"
-              className="input w-full text-xs"
-              defaultValue={tenant.approvalNumber ?? ""}
-              disabled={fieldsLocked}
-              autoComplete="off"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
-              사업자등록번호
-            </label>
-            <input
-              name="businessRegNo"
-              className="input w-full text-xs"
-              defaultValue={tenant.businessRegNo ?? ""}
-              disabled={fieldsLocked}
-              autoComplete="off"
-            />
-          </div>
+          <p className="sm:col-span-2 lg:col-span-3 text-xs text-[var(--muted)]">
+            인가번호·사업자등록번호는{" "}
+            <Link href="/dashboard/operating-report" className="text-[var(--accent)] hover:underline">
+              운영상황 보고
+            </Link>
+            에서 수정합니다.
+          </p>
           <div>
             <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
               본사 자본금 (원)

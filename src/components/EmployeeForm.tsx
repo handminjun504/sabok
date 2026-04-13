@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useMemo, useState } from "react";
+import { useActionState, useEffect, useId, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { employeePositionSelectValues } from "@/lib/domain/employee-positions";
 import type { Employee } from "@/types/models";
@@ -10,10 +10,10 @@ import {
   type EmployeeActionState,
 } from "@/app/actions/employee";
 
-const fieldLabelClass = "mb-1 block text-xs font-medium text-[var(--muted)]";
+const fieldLabelClass = "mb-1 block text-xs font-semibold text-[var(--muted)]";
 
-const inputClass =
-  "neu-field w-full min-w-0 px-1.5 py-1 text-xs leading-snug text-[var(--text)]";
+/** 직원 폼 전역: `.input`과 동일 계열(0.8125rem)로 목록·상세 타이포 통일 */
+const inputClass = "input w-full min-w-0 text-[0.8125rem] leading-normal text-[var(--text)]";
 
 function formatWonInput(n: number): string {
   return n.toLocaleString("ko-KR");
@@ -140,7 +140,7 @@ function SalaryPairFields({
 
   return (
     <div className="w-full min-w-0 space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-hover)]/60 p-3">
-      <p className="text-xs font-semibold text-[var(--text)]">기존연봉 · 조정급여</p>
+      <p className="text-xs font-semibold text-[var(--muted)]">기존연봉 · 조정급여 (원)</p>
       <p className="text-xs text-[var(--muted)]">
         조정급여는 기존의 <strong className="text-[var(--text)]">80~100%</strong>만 가능.
       </p>
@@ -210,17 +210,25 @@ function Cell({
   defaultValue,
   type = "text",
   className = "",
+  required = false,
 }: {
   label: string;
   name: string;
   defaultValue?: string | number | null;
   type?: string;
   className?: string;
+  required?: boolean;
 }) {
   return (
     <div className={`min-w-0 ${className}`}>
       <label className={fieldLabelClass}>{label}</label>
-      <input className={inputClass} name={name} type={type} defaultValue={defaultValue ?? ""} />
+      <input
+        className={inputClass}
+        name={name}
+        type={type}
+        defaultValue={defaultValue ?? ""}
+        required={required}
+      />
     </div>
   );
 }
@@ -249,6 +257,22 @@ export function EmployeeForm({
   }, [delState?.성공, router]);
   const yy = String(activeYear).slice(-2);
   const isNew = !employee;
+  const hasAnyThreeFlag = useMemo(
+    () =>
+      Boolean(employee?.flagRepReturn) ||
+      Boolean(employee?.flagSpouseReceipt) ||
+      Boolean(employee?.flagWorkerNet),
+    [employee?.flagRepReturn, employee?.flagSpouseReceipt, employee?.flagWorkerNet],
+  );
+  const [threeFlagsOpen, setThreeFlagsOpen] = useState(() => isNew || hasAnyThreeFlag);
+  useEffect(() => {
+    if (isNew) {
+      setThreeFlagsOpen(true);
+      return;
+    }
+    setThreeFlagsOpen(hasAnyThreeFlag);
+  }, [isNew, hasAnyThreeFlag, employee?.id]);
+  const openThreeFlags = useCallback(() => setThreeFlagsOpen(true), []);
   const positionOptions = employeePositionSelectValues(employee?.position);
   const positionDefault = (employee?.position ?? "").trim();
   const positionNeedsPlaceholder = !positionDefault;
@@ -280,24 +304,24 @@ export function EmployeeForm({
         </p>
         <p className="mt-2 text-sm text-[var(--muted)]">창립월 {foundingMonth}월.</p>
 
-        <div className="mt-5 space-y-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-            직원 행 — CODE → 급여일 순서
-          </p>
-
-          <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-start">
-            <div className="w-full min-w-0 max-w-xl rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
-              <p className="text-xs font-semibold text-[var(--text)]">CODE</p>
-              {isNew ? (
-                <p className="mt-2 text-xs text-[var(--muted)]">저장 시 자동. 대표이사는 코드 0.</p>
-              ) : (
-                <p className="mt-2 font-mono text-sm text-[var(--text)]">{employee!.employeeCode}</p>
-              )}
-            </div>
-
-            <div className="grid min-w-0 flex-1 grid-cols-2 gap-3 sm:grid-cols-3 lg:max-w-2xl">
-              <Cell label="이름" name="name" defaultValue={employee?.name} />
-              <div className="min-w-0">
+        <div className="mt-5 space-y-8 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5">
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--accent)]">기본 정보</h3>
+            <div className="divide-y divide-[var(--border)] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+              <div className="flex flex-col gap-1.5 px-3 py-3 sm:flex-row sm:items-baseline sm:gap-6">
+                <span className="shrink-0 text-xs font-semibold text-[var(--muted)] sm:w-24">코드</span>
+                <div className="min-w-0 text-[0.8125rem] leading-normal text-[var(--text)]">
+                  {isNew ? (
+                    <span className="text-[var(--muted)]">저장 시 자동 부여. 대표이사는 코드 0.</span>
+                  ) : (
+                    <span className="font-semibold tabular-nums">{employee!.employeeCode}</span>
+                  )}
+                </div>
+              </div>
+              <div className="px-3 py-3">
+                <Cell label="이름" name="name" defaultValue={employee?.name} className="max-w-xl" required />
+              </div>
+              <div className="px-3 py-3">
                 <label className={fieldLabelClass}>직급</label>
                 <select
                   name="position"
@@ -317,8 +341,8 @@ export function EmployeeForm({
                   ))}
                 </select>
               </div>
-              <div className="min-w-0">
-                <label className={fieldLabelClass}>레벨(1~5)</label>
+              <div className="px-3 py-3 sm:max-w-[14rem]">
+                <label className={fieldLabelClass}>레벨 (1~5)</label>
                 <input
                   className={inputClass}
                   name="level"
@@ -330,16 +354,21 @@ export function EmployeeForm({
                 />
               </div>
             </div>
-          </div>
+          </section>
 
-          <SalaryPairFields
-            defaultBase={employee?.baseSalary}
-            defaultAdjusted={employee?.adjustedSalary}
-            minimumAnnualSalaryWon={minimumAnnualSalaryWon}
-            onSalaryRangeValid={setSalaryRangeOk}
-          />
+          <section className="space-y-3 border-t border-[var(--border)] pt-6">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--accent)]">기존·조정 연봉</h3>
+            <SalaryPairFields
+              defaultBase={employee?.baseSalary}
+              defaultAdjusted={employee?.adjustedSalary}
+              minimumAnnualSalaryWon={minimumAnnualSalaryWon}
+              onSalaryRangeValid={setSalaryRangeOk}
+            />
+          </section>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          <section className="space-y-3 border-t border-[var(--border)] pt-6">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--accent)]">복지·금액</h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             <CommaNumberInput
               className="sm:col-span-2"
               label="사복지급분"
@@ -353,7 +382,7 @@ export function EmployeeForm({
                 defaultValue={employee?.incentiveAmount ?? undefined}
                 optional
               />
-              <p className="mt-1 text-[10px] leading-snug text-[var(--muted)]">
+              <p className="mt-1 text-xs leading-snug text-[var(--muted)]">
                 입력 시 급여포함신고·스케줄의 연간 상한으로 씁니다. 비우면 사복지급분이 상한입니다. 실지급이 상한을 넘으면 초과분은 급여에 포함해 신고합니다.
               </p>
             </div>
@@ -376,28 +405,43 @@ export function EmployeeForm({
               defaultValue={employee?.quarterlyPayAmount ?? undefined}
               optional
             />
-          </div>
+            </div>
 
-          <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-[var(--border)] pt-4 text-sm">
-            <label className="flex cursor-pointer items-center gap-2">
-              <input type="checkbox" name="flagAutoAmount" defaultChecked={employee?.flagAutoAmount} />
-              <span className="text-sm">알아서 금액(자동)</span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input type="checkbox" name="flagRepReturn" defaultChecked={employee?.flagRepReturn} />
-              <span className="text-sm">대표반환</span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input type="checkbox" name="flagSpouseReceipt" defaultChecked={employee?.flagSpouseReceipt} />
-              <span className="text-sm">배우자수령</span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input type="checkbox" name="flagWorkerNet" defaultChecked={employee?.flagWorkerNet} />
-              <span className="text-sm">근로자 실질 수령</span>
-            </label>
-          </div>
+            <div className="space-y-3 border-t border-[var(--border)] pt-4 text-[0.8125rem] leading-normal">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" name="flagAutoAmount" defaultChecked={employee?.flagAutoAmount} />
+                <span className="text-[var(--text)]">알아서 금액(자동)</span>
+              </label>
+              {threeFlagsOpen ? (
+                <div className="flex flex-wrap gap-x-6 gap-y-2">
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input type="checkbox" name="flagRepReturn" defaultChecked={employee?.flagRepReturn} />
+                    <span className="text-[var(--text)]">대표반환</span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input type="checkbox" name="flagSpouseReceipt" defaultChecked={employee?.flagSpouseReceipt} />
+                    <span className="text-[var(--text)]">배우자수령</span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input type="checkbox" name="flagWorkerNet" defaultChecked={employee?.flagWorkerNet} />
+                    <span className="text-[var(--text)]">근로자 실질 수령</span>
+                  </label>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openThreeFlags}
+                  className="text-left text-[0.8125rem] text-[var(--accent)] underline-offset-2 hover:underline"
+                >
+                  조사표 표시 옵션 추가 — 대표반환 · 배우자수령 · 근로자 실질 수령
+                </button>
+              )}
+            </div>
+          </section>
 
-          <div className="grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <section className="space-y-3 border-t border-[var(--border)] pt-6">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--accent)]">일정·가족·보험</h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             <Cell label="입사 월" name="hireMonth" type="number" defaultValue={employee?.hireMonth ?? ""} />
             <Cell label="퇴사 월" name="resignMonth" type="number" defaultValue={employee?.resignMonth ?? ""} />
             <Cell label="생일 월" name="birthMonth" type="number" defaultValue={employee?.birthMonth ?? ""} />
@@ -435,7 +479,8 @@ export function EmployeeForm({
               name="loanInterest"
               defaultValue={employee?.loanInterest}
             />
-          </div>
+            </div>
+          </section>
         </div>
       </div>
 

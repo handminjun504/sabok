@@ -187,6 +187,36 @@ export function sumByPaidMonth(all: MonthBreakdown[]): Map<number, number> {
   return map;
 }
 
+/**
+ * 월별 스케줄 표(1~12월 열)용 금액 — 참고 시트 「월별지급스케줄」처럼 정기는 **귀속월**,
+ * 분기 지원은 설정한 **지급월**에 나눠 담습니다. (당월 귀속·익월 지급이어도 정기는 귀속 달 열에 표시)
+ * 선택 복지 노트는 `month`를 지급월로 보고 같은 열에 합산합니다.
+ * 열 합계는 `yearlyWelfareTotal(br) + 노트 추가액`과 일치합니다.
+ */
+export function welfareByScheduleDisplayMonth(
+  br: MonthBreakdown[],
+  noteExtrasByPaidMonth?: ReadonlyMap<number, number>
+): Map<number, number> {
+  const map = new Map<number, number>();
+  for (const row of br) {
+    const reg = row.regularEvents.reduce((s, e) => s + e.amount, 0);
+    if (reg !== 0) {
+      map.set(row.accrualMonth, (map.get(row.accrualMonth) ?? 0) + reg);
+    }
+    const q = row.quarterly.reduce((s, e) => s + e.amount, 0);
+    if (q !== 0) {
+      map.set(row.paidMonth, (map.get(row.paidMonth) ?? 0) + q);
+    }
+  }
+  if (noteExtrasByPaidMonth) {
+    for (const [m, amt] of noteExtrasByPaidMonth) {
+      if (amt === 0 || m < 1 || m > 12) continue;
+      map.set(m, (map.get(m) ?? 0) + amt);
+    }
+  }
+  return map;
+}
+
 export function yearlyWelfareTotal(rows: MonthBreakdown[]): number {
   return rows.reduce((s, r) => s + r.totalWelfareMonth, 0);
 }

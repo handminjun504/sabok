@@ -91,5 +91,6 @@ export async function updateTenantProfileAction(
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/select-tenant");
   revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard/operating-report");
   return { 성공: true };
 }

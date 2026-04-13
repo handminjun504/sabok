@@ -3,12 +3,19 @@
  * 실행: npm run sheet:parity
  */
 import assert from "node:assert/strict";
-import type { Employee, MonthlyEmployeeNote } from "../src/types/models";
+import type { Employee, LevelPaymentRule, MonthlyEmployeeNote, QuarterlyEmployeeConfig } from "../src/types/models";
 import {
+  buildMonthlyBreakdown,
   computeIncentiveWelfareSalaryInclusionYtd,
   resolveSalaryInclusionCap,
+  welfareByScheduleDisplayMonth,
+  yearlyWelfareTotal,
 } from "../src/lib/domain/schedule";
 import { computeTenantOperatingSummary } from "../src/lib/domain/sheet-aggregate";
+import {
+  aggregateWelfareSpendBySource,
+  allocateYearlyWelfareToLegalCategories,
+} from "../src/lib/domain/operating-welfare-legal-categories";
 
 function minimalEmployee(over: Partial<Employee> = {}): Employee {
   return {
@@ -79,5 +86,37 @@ assert.equal(oneSummary.byLevel[0].level, 1);
 assert.equal(oneSummary.byLevel[0].count, 0);
 assert.equal(oneSummary.byLevel[1].level, 2);
 assert.equal(oneSummary.byLevel[1].count, 1);
+
+// 월별 스케줄 표: 정기=귀속월·분기=지급월 분리 시 열 합 = 연간 스케줄 합(+노트)
+const febRule: LevelPaymentRule = {
+  id: "r1",
+  tenantId: "t1",
+  year: 2026,
+  level: 3,
+  eventKey: "NEW_YEAR_FEB",
+  amount: 50_000,
+};
+const empGrid = minimalEmployee({ level: 3 });
+const qRow: QuarterlyEmployeeConfig = {
+  id: "q1",
+  employeeId: "e1",
+  year: 2026,
+  itemKey: "INFANT_SCHOLARSHIP",
+  paymentMonth: 6,
+  amount: 30_000,
+};
+const brGrid = buildMonthlyBreakdown(empGrid, 2026, 1, [febRule], [], [qRow], true, []);
+const noteMap = new Map<number, number>([[4, 7_000]]);
+const grid = welfareByScheduleDisplayMonth(brGrid, noteMap);
+let sumCols = 0;
+for (let m = 1; m <= 12; m++) sumCols += grid.get(m) ?? 0;
+assert.equal(sumCols, yearlyWelfareTotal(brGrid) + 7_000);
+assert.equal(grid.get(2), 50_000, "2월 귀속 정기는 2월 열");
+assert.equal(grid.get(6), 30_000, "분기는 지급월 6열");
+assert.equal(grid.get(4), 7_000, "노트는 지급월 열");
+
+const spend0 = aggregateWelfareSpendBySource([], 2026, 1, false, [], [], [], [], []);
+const legal0 = allocateYearlyWelfareToLegalCategories(spend0, 0);
+assert.equal([...legal0.values()].reduce((a, b) => a + b, 0), 0);
 
 console.log("sheet-parity: OK");

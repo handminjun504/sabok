@@ -15,6 +15,9 @@ export default async function EmployeesPage() {
   const activeYear = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
   const yy = String(activeYear).slice(-2);
+  const colRepReturn = list.some((e) => e.flagRepReturn);
+  const colSpouseReceipt = list.some((e) => e.flagSpouseReceipt);
+  const colWorkerNet = list.some((e) => e.flagWorkerNet);
 
   return (
     <div className="space-y-6">
@@ -46,70 +49,98 @@ export default async function EmployeesPage() {
       </div>
 
       <div className="surface overflow-x-auto p-0">
-        <table className="w-max min-w-full border-collapse text-left text-xs">
+        <table className="employee-directory-table w-max min-w-full border-collapse text-left">
           <thead>
-            <tr className="border-b-2 border-[var(--border-strong)] bg-[var(--surface-hover)]/40 text-[10px] font-semibold uppercase text-[var(--muted)]">
-              <th className="sticky left-0 z-10 border-r border-[var(--border)] bg-[var(--bg)] px-2 py-2">CODE</th>
-              <th className="sticky left-[3.25rem] z-10 border-r border-[var(--border)] bg-[var(--bg)] px-2 py-2">
+            <tr className="border-b-2 border-[var(--border-strong)] bg-[var(--surface-hover)]/40 text-[var(--muted)]">
+              <th
+                colSpan={3}
+                className="sticky left-0 z-10 border-r-2 border-[var(--border-strong)] bg-[var(--surface-hover)] px-3 py-2 text-left text-xs font-bold text-[var(--text)]"
+              >
+                기본 정보
+              </th>
+              <th
+                colSpan={
+                  17 +
+                  (colRepReturn ? 1 : 0) +
+                  (colSpouseReceipt ? 1 : 0) +
+                  (colWorkerNet ? 1 : 0)
+                }
+                className="px-3 py-2 text-left text-xs font-bold text-[var(--text)]"
+              >
+                급여·복지·가족
+              </th>
+              <th className="sticky right-0 z-10 w-14 min-w-[3.5rem] border-l border-[var(--border)] bg-[var(--surface-hover)] px-2 py-2" />
+            </tr>
+            <tr className="border-b border-[var(--border)] bg-[var(--surface-hover)]/40 text-xs font-semibold text-[var(--muted)]">
+              <th className="sticky left-0 z-10 min-w-[4.5rem] border-r border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-left">
+                코드
+              </th>
+              <th className="sticky left-[4.5rem] z-10 min-w-[7.5rem] border-r border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-left">
                 이름
               </th>
-              <th className="px-2 py-2">직급</th>
-              <th className="whitespace-nowrap px-2 py-2 text-right">기존연봉</th>
-              <th className="whitespace-nowrap px-2 py-2 text-right">조정급여</th>
-              <th className="whitespace-nowrap px-2 py-2 text-right">사복지급분</th>
-              <th className="whitespace-nowrap px-2 py-2 text-right">알아서금액</th>
-              <th className="px-2 py-2 text-center">대표반환</th>
-              <th className="px-2 py-2 text-center">배우자수령</th>
-              <th className="max-w-[5.5rem] whitespace-normal px-2 py-2 text-center leading-tight">
-                근로자 실질 수령(반환분 제외)
+              <th className="min-w-[6.5rem] max-w-[10rem] border-r-2 border-[var(--border-strong)] bg-[var(--bg)] px-3 py-2 text-left">
+                직급
               </th>
-              <th className="px-2 py-2 text-center">입사 월</th>
-              <th className="px-2 py-2 text-center">생일 월만입력</th>
-              <th className="px-2 py-2 text-center">결혼기념월(예정월)</th>
-              <th className="px-2 py-2 text-center">영유아</th>
-              <th className="px-2 py-2 text-center">미취학아동</th>
-              <th className="px-2 py-2 text-center">청소년</th>
-              <th className="px-2 py-2 text-center">부모님</th>
-              <th className="px-2 py-2 text-center">시부모님</th>
-              <th className="whitespace-nowrap px-2 py-2 text-right">보험료</th>
-              <th className="whitespace-nowrap px-2 py-2 text-right">대출이자</th>
-              <th className="px-2 py-2 text-center">급여일</th>
-              <th className="px-2 py-2 text-center">레벨</th>
-              <th className="whitespace-nowrap px-2 py-2 text-right">예상 인센</th>
+              <th className="whitespace-nowrap px-3 py-2 text-right">기존연봉</th>
+              <th className="whitespace-nowrap px-3 py-2 text-right">조정급여</th>
+              <th className="whitespace-nowrap px-3 py-2 text-right">사복지급분</th>
+              <th className="whitespace-nowrap px-3 py-2 text-right">알아서금액</th>
+              {colRepReturn ? <th className="px-3 py-2 text-center">대표반환</th> : null}
+              {colSpouseReceipt ? <th className="px-3 py-2 text-center">배우자수령</th> : null}
+              {colWorkerNet ? (
+                <th className="max-w-[5.5rem] whitespace-normal px-3 py-2 text-center leading-tight">
+                  근로자 실질 수령(반환분 제외)
+                </th>
+              ) : null}
+              <th className="px-3 py-2 text-center">입사 월</th>
+              <th className="px-3 py-2 text-center">생일 월</th>
+              <th className="px-3 py-2 text-center">결혼기념월</th>
+              <th className="px-3 py-2 text-center">영유아</th>
+              <th className="px-3 py-2 text-center">미취학</th>
+              <th className="px-3 py-2 text-center">청소년</th>
+              <th className="px-3 py-2 text-center">부모님</th>
+              <th className="px-3 py-2 text-center">시부모님</th>
+              <th className="whitespace-nowrap px-3 py-2 text-right">보험료</th>
+              <th className="whitespace-nowrap px-3 py-2 text-right">대출이자</th>
+              <th className="px-3 py-2 text-center">급여일</th>
+              <th className="px-3 py-2 text-center">레벨</th>
+              <th className="whitespace-nowrap px-3 py-2 text-right">예상 인센</th>
               <th className="sticky right-0 z-10 border-l border-[var(--border)] bg-[var(--bg)] px-2 py-2"> </th>
             </tr>
           </thead>
           <tbody>
             {list.map((e) => (
               <tr key={e.id} className="group border-b border-[var(--border)] hover:bg-[var(--bg)]">
-                <td className="sticky left-0 z-[1] border-r border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 font-mono group-hover:bg-[var(--bg)]">
+                <td className="sticky left-0 z-[1] border-r border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 tabular-nums text-[var(--text)] group-hover:bg-[var(--bg)]">
                   {e.employeeCode}
                 </td>
-                <td className="sticky left-[3.25rem] z-[1] max-w-[6rem] truncate border-r border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 font-medium group-hover:bg-[var(--bg)]">
-                  {e.name}
+                <td className="sticky left-[4.5rem] z-[1] border-r border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-medium text-[var(--text)] group-hover:bg-[var(--bg)]">
+                  <span className="block max-w-[9rem] break-words leading-snug">{e.name}</span>
                 </td>
-                <td className="max-w-[4rem] truncate px-2 py-1.5">{e.position}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono">{formatWon(e.baseSalary)}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono">{formatWon(e.adjustedSalary)}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono">{formatWon(e.welfareAllocation)}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono">{formatWon(e.discretionaryAmount)}</td>
-                <td className="px-2 py-1.5 text-center">{yn(e.flagRepReturn)}</td>
-                <td className="px-2 py-1.5 text-center">{yn(e.flagSpouseReceipt)}</td>
-                <td className="px-2 py-1.5 text-center">{yn(e.flagWorkerNet)}</td>
-                <td className="px-2 py-1.5 text-center text-[var(--muted)]">{e.hireMonth ?? "—"}</td>
-                <td className="px-2 py-1.5 text-center text-[var(--muted)]">{e.birthMonth ?? "—"}</td>
-                <td className="px-2 py-1.5 text-center text-[var(--muted)]">{e.weddingMonth ?? "—"}</td>
-                <td className="px-2 py-1.5 text-center">{e.childrenInfant}</td>
-                <td className="px-2 py-1.5 text-center">{e.childrenPreschool}</td>
-                <td className="px-2 py-1.5 text-center">{e.childrenTeen}</td>
-                <td className="px-2 py-1.5 text-center">{e.parentsCount}</td>
-                <td className="px-2 py-1.5 text-center">{e.parentsInLawCount}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono">{formatWon(e.insurancePremium)}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono">{formatWon(e.loanInterest)}</td>
-                <td className="px-2 py-1.5 text-center">{e.payDay ?? "—"}</td>
-                <td className="px-2 py-1.5 text-center">{e.level}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono">{formatWon(e.incentiveAmount)}</td>
-                <td className="sticky right-0 z-[1] border-l border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 group-hover:bg-[var(--bg)]">
+                <td className="max-w-[10rem] border-r-2 border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2.5 text-[var(--text)] group-hover:bg-[var(--bg)]">
+                  <span className="block break-words leading-snug">{e.position}</span>
+                </td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.baseSalary)}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.adjustedSalary)}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.welfareAllocation)}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.discretionaryAmount)}</td>
+                {colRepReturn ? <td className="px-3 py-2.5 text-center tabular-nums">{yn(e.flagRepReturn)}</td> : null}
+                {colSpouseReceipt ? <td className="px-3 py-2.5 text-center tabular-nums">{yn(e.flagSpouseReceipt)}</td> : null}
+                {colWorkerNet ? <td className="px-3 py-2.5 text-center tabular-nums">{yn(e.flagWorkerNet)}</td> : null}
+                <td className="px-3 py-2.5 text-center tabular-nums text-[var(--muted)]">{e.hireMonth ?? "—"}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums text-[var(--muted)]">{e.birthMonth ?? "—"}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums text-[var(--muted)]">{e.weddingMonth ?? "—"}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums">{e.childrenInfant}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums">{e.childrenPreschool}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums">{e.childrenTeen}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums">{e.parentsCount}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums">{e.parentsInLawCount}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.insurancePremium)}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.loanInterest)}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums">{e.payDay ?? "—"}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums">{e.level}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.incentiveAmount)}</td>
+                <td className="sticky right-0 z-[1] border-l border-[var(--border)] bg-[var(--surface)] px-2 py-2.5 text-sm group-hover:bg-[var(--bg)]">
                   <Link href={`/dashboard/employees/${e.id}`} className="text-[var(--accent)] hover:underline">
                     상세
                   </Link>

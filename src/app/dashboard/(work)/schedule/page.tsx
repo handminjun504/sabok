@@ -16,6 +16,7 @@ import {
   computeActualYearlyWelfareForEmployee,
   computeSalaryInclusionVsActual,
   monthlySalaryPortion,
+  welfareByScheduleDisplayMonth,
 } from "@/lib/domain/schedule";
 import { saveMonthlyNoteFormAction } from "@/app/actions/quarterly";
 import { CommaWonInput } from "@/components/CommaWonInput";
@@ -47,7 +48,8 @@ export default async function SchedulePage() {
 
   type Row = {
     emp: Employee;
-    byPaidMonth: Map<number, number>;
+    /** 1~12월 열: 정기=귀속월, 분기·선택 복지=지급월 */
+    welfareByMonth: Map<number, number>;
     yearlyWelfare: number;
     salaryMonth: number;
     capVs: ReturnType<typeof computeSalaryInclusionVsActual>;
@@ -60,15 +62,13 @@ export default async function SchedulePage() {
     const qcfg = quarterly.filter((x) => x.employeeId === emp.id);
     const empNotes = notes.filter((n) => n.employeeId === emp.id);
     const br = buildMonthlyBreakdown(emp, year, foundingMonth, rules, ovr, qcfg, accrual, customSchedule);
-    const byPaidMonth = new Map<number, number>();
-    for (const r of br) {
-      byPaidMonth.set(r.paidMonth, (byPaidMonth.get(r.paidMonth) ?? 0) + r.totalWelfareMonth);
-    }
+    const noteByMonth = new Map<number, number>();
     for (const n of empNotes) {
       const extra = n.optionalExtraAmount != null ? Number(n.optionalExtraAmount) : 0;
       if (extra === 0) continue;
-      byPaidMonth.set(n.month, (byPaidMonth.get(n.month) ?? 0) + extra);
+      noteByMonth.set(n.month, (noteByMonth.get(n.month) ?? 0) + extra);
     }
+    const welfareByMonth = welfareByScheduleDisplayMonth(br, noteByMonth);
 
     const yearlyWelfare = computeActualYearlyWelfareForEmployee(
       emp,
@@ -83,7 +83,7 @@ export default async function SchedulePage() {
     );
     const capVs = computeSalaryInclusionVsActual(emp, yearlyWelfare);
 
-    return { emp, byPaidMonth, yearlyWelfare, salaryMonth: monthlySalaryPortion(emp), capVs };
+    return { emp, welfareByMonth, yearlyWelfare, salaryMonth: monthlySalaryPortion(emp), capVs };
   });
 
   const levelAgg = new Map<number, { cnt: number; sum: number; target: number }>();
@@ -130,7 +130,11 @@ export default async function SchedulePage() {
               <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">이름</th>
               <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">레벨</th>
               {months.map((m) => (
-                <th key={m} className="px-1.5 py-2.5 text-[10px] font-semibold tracking-wide text-[var(--muted)]">
+                <th
+                  key={m}
+                  className="max-w-[4.5rem] px-1.5 py-2.5 text-[10px] font-semibold leading-tight tracking-wide text-[var(--muted)]"
+                  title="정기 행사는 귀속월, 분기·선택 복지는 지급월"
+                >
                   {m}월
                 </th>
               ))}
@@ -152,7 +156,7 @@ export default async function SchedulePage() {
                   <td className="px-3 py-2 text-center">{r.emp.level}</td>
                   {months.map((m) => (
                     <td key={m} className="px-1.5 py-2 text-right tabular-nums">
-                      {format(r.byPaidMonth.get(m) ?? 0)}
+                      {format(r.welfareByMonth.get(m) ?? 0)}
                     </td>
                   ))}
                   <td className="px-3 py-2 text-right tabular-nums">{format(r.salaryMonth)}</td>
@@ -234,8 +238,9 @@ export default async function SchedulePage() {
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          기준 연도 <strong>{year}</strong> · 지급월 합계(정기+분기+선택 복지).{" "}
-          {accrual ? "정기는 당월 귀속·익월 지급." : "정기는 귀속·지급 동월."} 연간 기금 합계 대비 상한은{" "}
+          기준 연도 <strong>{year}</strong> · 월 열: <strong>정기는 귀속월</strong>,{" "}
+          <strong>분기·선택 복지는 지급월</strong> 기준(12열 합 = 연간 기금과 동일).{" "}
+          {accrual ? "정기는 당월 귀속·익월 지급이어도 금액은 귀속 달 열에 표시." : "정기는 귀속·지급 동월."} 연간 기금 합계 대비 상한은{" "}
           <strong className="text-[var(--text)]">예상 인센</strong>(입력 시) 또는 <strong className="text-[var(--text)]">사복지급분</strong>입니다.
         </p>
       </div>

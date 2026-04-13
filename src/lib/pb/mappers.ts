@@ -24,6 +24,13 @@ function numNull(v: unknown): number | null {
 }
 
 function bool(v: unknown): boolean {
+  if (v === true || v === 1) return true;
+  if (v === false || v === null || v === undefined) return false;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (s === "" || s === "false" || s === "0" || s === "n" || s === "no") return false;
+    if (s === "true" || s === "1" || s === "y" || s === "yes") return true;
+  }
   return Boolean(v);
 }
 
