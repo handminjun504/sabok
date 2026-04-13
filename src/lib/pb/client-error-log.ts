@@ -41,5 +41,8 @@ export function pocketBaseNonemptyBlankHint(detail: string): string {
   if (!detail.includes("Cannot be blank") && !detail.includes("Missing required value")) {
     return "";
   }
-  return " · PocketBase 관리자에서 `sabok_employees` 의 number·bool 필드 **Nonempty(필수)를 끄세요.** Nonempty가 켜져 있으면 0과 false를 저장할 수 없습니다. (docs/pb-collections.md 참고)";
+  return (
+    " · Nonempty: number·bool에 required=true이면 0·false가 거절됩니다. `npm run pb:fix-employees-schema`로 이미 required=false인데도 동일하면 " +
+    "앱과 스크립트의 POCKETBASE_URL이 같은 PB인지, create/update 규칙·훅, number 필드 null 전송을 확인하세요. (저장 실패 시 서버 로그에 PB 응답 전체가 기록됩니다.)"
+  );
 }

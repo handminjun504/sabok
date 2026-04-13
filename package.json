@@ -15,7 +15,9 @@
     "lint": "next lint",
     "pb:seed": "tsx scripts/pb-seed.ts",
     "pb:create-user": "tsx scripts/pb-create-user.ts",
-    "pb:fix-employees-schema": "node scripts/pb-fix-employees-schema.mjs"
+    "pb:fix-employees-schema": "node scripts/pb-fix-employees-schema.mjs",
+    "pb:fix-employees-schema:verbose": "cross-env PB_VERBOSE=1 node scripts/pb-fix-employees-schema.mjs",
+    "pb:fix-employees-schema:dry": "cross-env DRY_RUN=1 node scripts/pb-fix-employees-schema.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.3",
@@ -36,6 +38,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "electron": "^35.1.2",
+    "cross-env": "^7.0.3",
     "eslint": "^9.24.0",
     "eslint-config-next": "^15.2.4",
     "typescript": "^5.8.3"

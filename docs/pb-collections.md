@@ -78,7 +78,11 @@ Prisma 스키마와 동일한 의미의 필드 (숫자 금액은 **number**).
 > 앱은 아래 숫자·불리언 필드에 **0·false** 를 정상 값으로 보냅니다(예: 조정급여 미입력=0, 자녀 0명, 플래그 해제=false).  
 > PocketBase에서 해당 필드에 **Nonempty** 를 켜 두면 `0`·`false` 가 “비어 있음”으로 거절되어 `Cannot be blank` / `Missing required value` 가 납니다.  
 > **해결:** 이 컬렉션의 `number`·`bool` 필드(급여·자녀·부모 수·보험/이자·플래그 등)에서는 **Nonempty를 끄고**, 숫자 범위만 필요하면 Min/Max를 쓰세요.  
-> **일괄 보정(권장):** 배포 서버에서 Admin 자격으로 `npm run pb:fix-employees-schema` 실행(`scripts/pb-fix-employees-schema.mjs`). 미리보기: `DRY_RUN=1 npm run pb:fix-employees-schema`.  
+> **일괄 보정(권장):** 배포 서버에서 Admin 자격으로 `npm run pb:fix-employees-schema` 실행(`scripts/pb-fix-employees-schema.mjs`).  
+> **verbose / dry-run (macOS·Linux·Windows 공통):** `npm run pb:fix-employees-schema:verbose`, `npm run pb:fix-employees-schema:dry`  
+> **verbose 환경변수:** `PB_VERBOSE` 또는 **동일 의미의 `PB_FIX_VERBOSE`**.  
+> **Windows만 (환경변수 문법):** CMD — `set PB_VERBOSE=1 && npm run pb:fix-employees-schema` · PowerShell — `$env:PB_VERBOSE='1'; npm run pb:fix-employees-schema`  
+> 스크립트는 **`process.exit()`를 쓰지 않고** 종료해 Windows에서 libuv `UV_HANDLE_CLOSING` 단언 오류를 줄입니다.  
 > (공식 설명: [Required Number and Boolean Fields](https://github.com/pocketbase/pocketbase/issues/526) — “Required/Nonempty”는 Go 제로값 기준으로 `0`·`false` 를 허용하지 않음.)
 
 | 필드                  | 타입   | 앱에서 항상 전송 | 비고 |

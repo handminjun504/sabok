@@ -15,7 +15,11 @@ import { canEditEmployees } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
 import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
-import { pocketBaseNonemptyBlankHint, pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
+import {
+  logPbClientError,
+  pocketBaseNonemptyBlankHint,
+  pocketBaseRecordErrorMessage,
+} from "@/lib/pb/client-error-log";
 
 function d(v: FormDataEntryValue | null): number {
   const s = v == null || v === "" ? "0" : String(v).replace(/,/g, "");
@@ -122,7 +126,6 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     flagRepReturn: chk(formData, "flagRepReturn"),
     flagSpouseReceipt: chk(formData, "flagSpouseReceipt"),
     flagWorkerNet: chk(formData, "flagWorkerNet"),
-    optionalWelfareAmount: null,
   };
 
   /** 신규 생성 시 선택 필드가 null이면 키 자체를 빼서 PB 검증 오류를 줄임 */
@@ -175,8 +178,8 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
       });
     }
   } catch (e) {
-    console.error(e);
     if (e instanceof ClientResponseError) {
+      logPbClientError("saveEmployeeAction", e);
       const detail = pocketBaseRecordErrorMessage(e);
       const hint = pocketBaseNonemptyBlankHint(detail);
       return {
@@ -186,6 +189,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
             : `저장 실패. ${detail}${hint}`,
       };
     }
+    console.error(e);
     return { 오류: "저장에 실패했습니다. 서버 로그를 확인하세요." };
   }
 
