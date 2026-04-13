@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { tenantListAllByCodeAscWithCounts } from "@/lib/pb/repository";
 import { requireSession } from "@/lib/auth-context";
 import { setTenantActiveFormAction } from "@/app/actions/tenant-admin";
+import { TenantDeleteForm } from "@/components/TenantDeleteForm";
 import { isSingleTenantMode } from "@/lib/single-tenant";
 import { tenantClientEntityLabel, tenantOperationModeLabel } from "@/lib/domain/tenant-profile";
 
@@ -17,12 +18,15 @@ export default async function TenantsAdminPage() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="neu-title-gradient text-2xl font-bold">거래처 관리</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">목록·활성 전환. 신규는 거래처 선택 화면 <strong>+</strong>.</p>
+        <p className="page-eyebrow">플랫폼</p>
+        <h1 className="page-hero-title mt-2 neu-title-gradient">거래처 관리</h1>
+        <p className="page-hero-sub text-sm sm:text-base">
+          목록·활성 전환·삭제(코드 확인). 신규 등록은 거래처 선택 화면의 <strong>+</strong> 입니다.
+        </p>
       </div>
 
-      <div className="surface overflow-x-auto p-4">
-        <h2 className="mb-3 text-sm font-semibold">거래처 목록</h2>
+      <div className="surface-prominent overflow-x-auto p-5 sm:p-6">
+        <h2 className="mb-4 text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">거래처 목록</h2>
         <table className="min-w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-[var(--muted)]">
@@ -44,7 +48,7 @@ export default async function TenantsAdminPage() {
                 <td className="max-w-[12rem] py-2 text-xs leading-snug">{tenantOperationModeLabel(t.operationMode)}</td>
                 <td className="py-2">{t.active ? "예" : "아니오"}</td>
                 <td className="py-2">{t._count.employees}</td>
-                <td className="py-2">
+                <td className="max-w-[11rem] py-2 align-top">
                   <form action={setTenantActiveFormAction}>
                     <input type="hidden" name="tenantId" value={t.id} />
                     <input type="hidden" name="active" value={t.active ? "false" : "true"} />
@@ -52,6 +56,7 @@ export default async function TenantsAdminPage() {
                       {t.active ? "비활성화" : "활성화"}
                     </button>
                   </form>
+                  <TenantDeleteForm tenantId={t.id} tenantCode={t.code} />
                 </td>
               </tr>
             ))}

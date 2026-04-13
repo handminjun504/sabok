@@ -92,7 +92,7 @@ Prisma 스키마와 동일한 의미의 필드 (숫자 금액은 **number**).
 | name, position        | text   | yes  |      |
 | baseSalary, adjustedSalary, welfareAllocation | number | yes | PB에서는 **Nonempty 끄기** (조정급여 0 = 기존연봉만 사용) |
 | incentiveAmount, discretionaryAmount, optionalWelfareAmount, monthlyPayAmount, quarterlyPayAmount | number | 선택 | `optionalWelfareAmount`는 UI·저장에서 사용하지 않음(항상 null). 선택적 복지는 `sabok_monthly_employee_notes.optionalExtraAmount`로 월별 입력 |
-| birthMonth, hireMonth, weddingMonth, payDay | number | 선택 | |
+| birthMonth, hireMonth, resignMonth, weddingMonth, payDay | number | 선택 | `resignMonth`: 퇴사월(1~12), 미입력=재직 중. **기존 DB**: Admin에서 `resignMonth` number 필드 추가(Nonempty 끔) |
 | childrenInfant, childrenPreschool, childrenTeen, parentsCount, parentsInLawCount | number | yes | 0 허용 → PB **Nonempty 끄기** |
 | insurancePremium, loanInterest | number | yes | 0 허용 → PB **Nonempty 끄기** |
 | level                 | number | yes  | |

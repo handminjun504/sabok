@@ -7,12 +7,15 @@ import { writeAudit } from "@/lib/audit";
 import {
   companySettingsCreateForTenant,
   tenantCreate,
+  tenantDeleteCascade,
   tenantFindByCode,
+  tenantGetById,
   tenantUpdateActive,
 } from "@/lib/pb/repository";
-import { isSingleTenantMode } from "@/lib/single-tenant";
+import { isSingleTenantMode, singleTenantIdFromEnv } from "@/lib/single-tenant";
 
 export type TenantActionState = { 오류?: string; 성공?: boolean } | null;
+export type TenantDeleteState = { 오류?: string; 성공?: boolean } | null;
 
 const tenantCreateSchema = z.object({
   code: z.string().min(1, "업체 코드를 입력하세요."),
@@ -84,6 +87,49 @@ export async function createTenantAction(
     };
   }
 
+  revalidatePath("/dashboard/tenants");
+  revalidatePath("/dashboard/select-tenant");
+  return { 성공: true };
+}
+
+/** 플랫폼 관리자: 거래처 및 소속 데이터 전부 삭제. 확인란에 업체 코드와 동일하게 입력해야 함. */
+export async function deleteTenantAction(
+  _prev: TenantDeleteState,
+  formData: FormData
+): Promise<TenantDeleteState> {
+  if (isSingleTenantMode()) {
+    return { 오류: "단일 업체 모드에서는 거래처를 삭제할 수 없습니다." };
+  }
+  const session = await getSession();
+  if (!session?.isPlatformAdmin) {
+    return { 오류: "플랫폼 관리자만 거래처를 삭제할 수 있습니다." };
+  }
+  const tenantId = String(formData.get("tenantId") ?? "").trim();
+  const confirmCode = String(formData.get("confirmCode") ?? "").trim();
+  if (!tenantId) return { 오류: "업체가 지정되지 않았습니다." };
+  const fixedId = singleTenantIdFromEnv();
+  if (fixedId && tenantId === fixedId) {
+    return { 오류: "환경 변수로 고정된 단일 업체는 삭제할 수 없습니다." };
+  }
+  const tenant = await tenantGetById(tenantId);
+  if (!tenant) return { 오류: "거래처를 찾을 수 없습니다." };
+  if (confirmCode !== tenant.code) {
+    return { 오류: `삭제 확인: 업체 코드 "${tenant.code}"를 정확히 입력하세요.` };
+  }
+  try {
+    await tenantDeleteCascade(tenantId);
+  } catch (e) {
+    console.error("[deleteTenantAction]", e);
+    return { 오류: "삭제에 실패했습니다. PocketBase 로그·관계 제약을 확인하세요." };
+  }
+  await writeAudit({
+    userId: session.sub,
+    tenantId,
+    action: "DELETE_TENANT",
+    entity: "Tenant",
+    entityId: tenantId,
+    payload: { code: tenant.code, name: tenant.name },
+  });
   revalidatePath("/dashboard/tenants");
   revalidatePath("/dashboard/select-tenant");
   return { 성공: true };

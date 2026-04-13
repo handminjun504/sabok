@@ -42,8 +42,11 @@ export default async function SelectTenantPage() {
         <div className="mx-auto max-w-2xl space-y-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <h1 className="neu-title-gradient text-2xl font-bold">거래처 선택</h1>
-              <p className="mt-1 text-sm text-[var(--muted)]">거래처 없음. 아래에서 추가하거나 <strong>+</strong> 로 이동.</p>
+              <p className="page-eyebrow">시작하기</p>
+              <h1 className="page-hero-title mt-2 neu-title-gradient">거래처 선택</h1>
+              <p className="page-hero-sub text-sm sm:text-base">
+                등록된 거래처가 없습니다. 아래에서 추가하거나 <strong>+</strong> 로 폼으로 이동하세요.
+              </p>
             </div>
             <NewVendorAnchor />
           </div>
@@ -65,24 +68,30 @@ export default async function SelectTenantPage() {
     <div className="mx-auto max-w-2xl space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="neu-title-gradient text-2xl font-bold">거래처 선택</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">들어갈 거래처를 고르세요. 관리자는 <strong>+</strong> 로 추가.</p>
+          <p className="page-eyebrow">업체 전환</p>
+          <h1 className="page-hero-title mt-2 neu-title-gradient">거래처 선택</h1>
+          <p className="page-hero-sub text-sm sm:text-base">
+            들어갈 거래처를 고르세요. 플랫폼 관리자는 <strong>+</strong> 로 신규 거래처를 등록할 수 있습니다.
+          </p>
         </div>
         {session.isPlatformAdmin ? <NewVendorAnchor /> : null}
       </div>
-      <ul className="space-y-3">
+      <ul className="space-y-4">
         {tenants.map((t) => (
-          <li key={t.id} className="surface flex items-center justify-between gap-4 p-4">
+          <li
+            key={t.id}
+            className="surface-prominent flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"
+          >
             <div className="min-w-0">
-              <p className="font-semibold">{t.name}</p>
-              <p className="text-sm text-[var(--muted)]">코드: {t.code}</p>
-              <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+              <p className="text-base font-bold text-[var(--text)]">{t.name}</p>
+              <p className="mt-0.5 font-mono text-sm text-[var(--muted)]">코드 {t.code}</p>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
                 {tenantClientEntityLabel(t.clientEntityType)} · {tenantOperationModeLabel(t.operationMode)}
               </p>
             </div>
-            <form action={switchTenantFormAction}>
+            <form action={switchTenantFormAction} className="shrink-0">
               <input type="hidden" name="tenantId" value={t.id} />
-              <button type="submit" className="btn btn-primary shrink-0 px-4 py-2 text-sm">
+              <button type="submit" className="btn btn-primary w-full px-5 py-2.5 text-sm sm:w-auto">
                 이 거래처로 들어가기
               </button>
             </form>
@@ -90,7 +99,7 @@ export default async function SelectTenantPage() {
         ))}
       </ul>
       {session.isPlatformAdmin ? (
-        <div id="new-vendor-form" className="scroll-mt-24 border-t border-[var(--border)] pt-8">
+        <div id="new-vendor-form" className="scroll-mt-24 border-t border-[var(--border)] pt-10">
           <TenantCreateForm variant="select" />
         </div>
       ) : null}

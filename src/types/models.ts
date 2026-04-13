@@ -19,6 +19,7 @@ export type Employee = {
   quarterlyPayAmount: number | null;
   birthMonth: number | null;
   hireMonth: number | null;
+  resignMonth: number | null;
   weddingMonth: number | null;
   childrenInfant: number;
   childrenPreschool: number;

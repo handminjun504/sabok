@@ -34,50 +34,88 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="neu-title-gradient text-3xl font-bold tracking-tight">사내근로복지기금</h1>
-          <p className="mt-2 text-base text-[var(--muted)]">관리 시스템</p>
+    <main className="flex min-h-screen flex-col lg:flex-row">
+      <section className="relative flex flex-1 flex-col justify-center px-6 py-12 lg:px-12 xl:px-16">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.55] lg:rounded-br-[3rem]"
+          style={{
+            background:
+              "radial-gradient(ellipse 120% 80% at 20% 20%, rgba(20, 184, 166, 0.2) 0%, transparent 55%), radial-gradient(ellipse 90% 60% at 80% 60%, rgba(13, 92, 86, 0.12) 0%, transparent 50%)",
+          }}
+        />
+        <div className="relative max-w-lg">
+          <p className="page-eyebrow">Fund management</p>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--text)] sm:text-4xl">
+            사내근로복지기금
+            <span className="mt-1 block text-2xl font-bold text-[var(--muted)] sm:text-3xl">운영을 한곳에서</span>
+          </h1>
+          <p className="page-hero-sub mt-5">
+            직원·정기지급·분기 지원·스케줄까지, 복지기금 업무를 단계별로 정리해 두었습니다. 로그인 후 거래처를 선택하면 업무 메뉴가 열립니다.
+          </p>
+          <ul className="mt-8 space-y-3 text-sm font-medium text-[var(--muted)]">
+            <li className="flex gap-2">
+              <span className="text-[var(--accent)]" aria-hidden>
+                ✓
+              </span>
+              업체별 데이터 분리 · 권한에 맞는 메뉴
+            </li>
+            <li className="flex gap-2">
+              <span className="text-[var(--accent)]" aria-hidden>
+                ✓
+              </span>
+              레벨·분기·월별 지급 흐름을 한 화면에서
+            </li>
+          </ul>
         </div>
-        <div className="login-card">
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">이메일</label>
-              <input
-                className="input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="username"
-                type="email"
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">비밀번호</label>
-              <input
-                className="input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                type="password"
-                required
-              />
-            </div>
-            {error && (
-              <p className="neu-field rounded-xl px-3 py-2.5 text-[0.9375rem] leading-relaxed text-[var(--danger)] ring-2 ring-red-200/40">
-                {error}
-              </p>
-            )}
-            <button type="submit" disabled={loading} className="btn btn-primary mt-2 w-full">
-              {loading ? "확인 중…" : "로그인"}
-            </button>
-          </form>
+      </section>
+
+      <section className="flex flex-1 items-center justify-center px-4 py-10 lg:border-l lg:border-[var(--border)] lg:bg-[var(--surface)] lg:py-16">
+        <div className="w-full max-w-md">
+          <div className="mb-6 lg:hidden">
+            <p className="page-eyebrow">Sign in</p>
+            <h2 className="mt-2 neu-title-gradient text-2xl font-bold tracking-tight">사내근로복지기금</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">관리 시스템</p>
+          </div>
+          <div className="login-card">
+            <p className="mb-5 hidden text-sm font-semibold text-[var(--text)] lg:block">로그인</p>
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">이메일</label>
+                <input
+                  className="input"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
+                  type="email"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">비밀번호</label>
+                <input
+                  className="input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  type="password"
+                  required
+                />
+              </div>
+              {error && (
+                <p className="neu-field rounded-xl px-3 py-2.5 text-[0.9375rem] leading-relaxed text-[var(--danger)] ring-2 ring-red-200/40">
+                  {error}
+                </p>
+              )}
+              <button type="submit" disabled={loading} className="btn btn-primary mt-2 w-full py-3 text-base">
+                {loading ? "확인 중…" : "로그인"}
+              </button>
+            </form>
+          </div>
+          <p className="mt-6 text-center text-xs leading-relaxed text-[var(--muted)] sm:text-sm">
+            데모: admin@sabok.local · senior@sabok.local · junior@sabok.local
+          </p>
         </div>
-        <p className="mt-5 text-center text-sm leading-relaxed text-[var(--muted)]">
-          초기 계정: admin@sabok.local / senior@sabok.local / junior@sabok.local
-        </p>
-      </div>
+      </section>
     </main>
   );
 }

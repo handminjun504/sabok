@@ -1,9 +1,14 @@
 "use client";
 
 import { useActionState, useEffect, useId, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { employeePositionSelectValues } from "@/lib/domain/employee-positions";
 import type { Employee } from "@/types/models";
-import { saveEmployeeAction, type EmployeeActionState } from "@/app/actions/employee";
+import {
+  deleteEmployeeFormAction,
+  saveEmployeeAction,
+  type EmployeeActionState,
+} from "@/app/actions/employee";
 
 const fieldLabelClass = "mb-1 block text-xs font-medium text-[var(--muted)]";
 
@@ -232,7 +237,16 @@ export function EmployeeForm({
   minimumAnnualSalaryWon: number;
 }) {
   const [state, formAction] = useActionState<EmployeeActionState, FormData>(saveEmployeeAction, null);
+  const [delState, delFormAction, delPending] = useActionState<EmployeeActionState, FormData>(
+    deleteEmployeeFormAction,
+    null,
+  );
+  const router = useRouter();
   const [salaryRangeOk, setSalaryRangeOk] = useState(true);
+
+  useEffect(() => {
+    if (delState?.성공) router.push("/dashboard/employees");
+  }, [delState?.성공, router]);
   const yy = String(activeYear).slice(-2);
   const isNew = !employee;
   const positionOptions = employeePositionSelectValues(employee?.position);
@@ -240,6 +254,7 @@ export function EmployeeForm({
   const positionNeedsPlaceholder = !positionDefault;
 
   return (
+    <div className="space-y-4">
     <form action={formAction} className="space-y-4">
       {employee && <input type="hidden" name="id" value={employee.id} />}
       {state?.오류 && (
@@ -379,6 +394,7 @@ export function EmployeeForm({
 
           <div className="grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             <Cell label="입사 월" name="hireMonth" type="number" defaultValue={employee?.hireMonth ?? ""} />
+            <Cell label="퇴사 월" name="resignMonth" type="number" defaultValue={employee?.resignMonth ?? ""} />
             <Cell label="생일 월" name="birthMonth" type="number" defaultValue={employee?.birthMonth ?? ""} />
             <Cell
               label="결혼기념월(예정)"
@@ -427,5 +443,32 @@ export function EmployeeForm({
         </p>
       ) : null}
     </form>
+
+    {employee ? (
+      <form
+        action={delFormAction}
+        className="flex flex-wrap items-center gap-4"
+        onSubmit={(e) => {
+          if (
+            !confirm(
+              "이 직원을 삭제할까요? 레벨5 오버라이드·분기 설정·월별 노트도 함께 삭제되며 되돌릴 수 없습니다.",
+            )
+          ) {
+            e.preventDefault();
+          }
+        }}
+      >
+        <input type="hidden" name="employeeId" value={employee.id} />
+        <button
+          type="submit"
+          disabled={delPending}
+          className="rounded-lg border border-[var(--danger)]/50 bg-transparent px-4 py-2.5 text-sm text-[var(--danger)] hover:bg-[var(--danger)]/10 disabled:opacity-50"
+        >
+          {delPending ? "삭제 중…" : "직원 삭제"}
+        </button>
+      </form>
+    ) : null}
+    {delState?.오류 ? <p className="text-sm text-[var(--danger)]">{delState.오류}</p> : null}
+    </div>
   );
 }

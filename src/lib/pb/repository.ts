@@ -57,6 +57,18 @@ async function firstByFilter(collection: string, filter: string): Promise<Record
   }
 }
 
+/** filter 일치 레코드 배치 삭제 (종속 데이터 정리) */
+async function deleteAllByFilter(collection: string, filter: string): Promise<void> {
+  const pb = await getAdminPb();
+  for (;;) {
+    const { items } = await pb.collection(collection).getList(1, 500, { filter });
+    if (!items.length) break;
+    for (const item of items) {
+      await pb.collection(collection).delete(item.id);
+    }
+  }
+}
+
 function parseBusinessType(v: unknown): VendorBusinessType {
   return String(v) === "CORPORATE" ? "CORPORATE" : "INDIVIDUAL";
 }
@@ -437,7 +449,31 @@ export async function employeeUpdate(id: string, data: Record<string, unknown>):
 
 export async function employeeDelete(id: string): Promise<void> {
   const pb = await getAdminPb();
+  await deleteAllByFilter(C.level5Overrides, `employeeId="${esc(id)}"`);
+  await deleteAllByFilter(C.quarterlyEmployeeConfigs, `employeeId="${esc(id)}"`);
+  await deleteAllByFilter(C.monthlyEmployeeNotes, `employeeId="${esc(id)}"`);
   await pb.collection(C.employees).delete(id);
+}
+
+/** 거래처·종속 데이터 전부 삭제. 플랫폼 관리자 전용. */
+export async function tenantDeleteCascade(tenantId: string): Promise<void> {
+  const pb = await getAdminPb();
+  const empRows = await pb.collection(C.employees).getFullList({
+    filter: `tenantId="${esc(tenantId)}"`,
+  });
+  for (const row of empRows) {
+    await employeeDelete(String(asRecord(row).id));
+  }
+  await deleteAllByFilter(C.vendorContributions, `tenantId="${esc(tenantId)}"`);
+  await deleteAllByFilter(C.vendors, `tenantId="${esc(tenantId)}"`);
+  await deleteAllByFilter(C.levelPaymentRules, `tenantId="${esc(tenantId)}"`);
+  await deleteAllByFilter(C.levelTargets, `tenantId="${esc(tenantId)}"`);
+  await deleteAllByFilter(C.quarterlyRates, `tenantId="${esc(tenantId)}"`);
+  await deleteAllByFilter(C.companySettings, `tenantId="${esc(tenantId)}"`);
+  await deleteAllByFilter(C.userTenants, `tenantId="${esc(tenantId)}"`);
+  await deleteAllByFilter(C.auditLogs, `tenantId="${esc(tenantId)}"`);
+  await deleteAllByFilter(C.glSyncJobs, `tenantId="${esc(tenantId)}"`);
+  await pb.collection(C.tenants).delete(tenantId);
 }
 
 export async function employeeUpsertByTenantCode(

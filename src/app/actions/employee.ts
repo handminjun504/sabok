@@ -113,6 +113,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     quarterlyPayAmount: optDec(formData.get("quarterlyPayAmount")),
     birthMonth: intOpt(formData.get("birthMonth")),
     hireMonth: intOpt(formData.get("hireMonth")),
+    resignMonth: intOpt(formData.get("resignMonth")),
     weddingMonth: intOpt(formData.get("weddingMonth")),
     childrenInfant: int0(formData.get("childrenInfant")),
     childrenPreschool: int0(formData.get("childrenPreschool")),
@@ -138,6 +139,26 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
       "quarterlyPayAmount",
       "birthMonth",
       "hireMonth",
+      "resignMonth",
+      "weddingMonth",
+      "payDay",
+    ] as const;
+    for (const k of dropIfNull) {
+      if (o[k] === null) delete o[k];
+    }
+    return o;
+  }
+
+  function bodyForUpdate(employeeCode: string): Record<string, unknown> {
+    const o: Record<string, unknown> = { ...data, employeeCode };
+    const dropIfNull = [
+      "incentiveAmount",
+      "discretionaryAmount",
+      "monthlyPayAmount",
+      "quarterlyPayAmount",
+      "birthMonth",
+      "hireMonth",
+      "resignMonth",
       "weddingMonth",
       "payDay",
     ] as const;
@@ -151,7 +172,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     if (id) {
       const emp = await employeeFindFirst(id, ctx.tenantId);
       if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
-      await employeeUpdate(emp.id, { ...data, employeeCode: emp.employeeCode });
+      await employeeUpdate(emp.id, bodyForUpdate(emp.employeeCode));
       await writeAudit({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
@@ -220,4 +241,13 @@ export async function deleteEmployeeAction(employeeId: string): Promise<Employee
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard/schedule");
   return { 성공: true };
+}
+
+export async function deleteEmployeeFormAction(
+  _prev: EmployeeActionState | null,
+  formData: FormData
+): Promise<EmployeeActionState> {
+  const id = String(formData.get("employeeId") ?? "").trim();
+  if (!id) return { 오류: "직원 정보가 없습니다." };
+  return deleteEmployeeAction(id);
 }

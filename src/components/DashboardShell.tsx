@@ -37,7 +37,7 @@ function NavBody({
     <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
       {groups.map((g) => (
         <div key={g.title}>
-          <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+          <p className="mb-2 px-2 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
             {g.title}
           </p>
           <ul className="flex flex-col gap-0.5">
@@ -90,8 +90,9 @@ export function DashboardShell({
       <div className="min-h-screen bg-transparent">
         <header className="neu-topbar sticky top-0 z-30 mx-auto flex w-full max-w-[var(--content-max)] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div className="min-w-0">
-            <p className="neu-title-gradient text-base font-bold tracking-tight">사내근로복지기금</p>
-            <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">거래처를 선택하면 직원·업무 메뉴가 표시됩니다.</p>
+            <p className="text-[0.625rem] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">거래처 선택</p>
+            <p className="neu-title-gradient mt-1 text-base font-bold tracking-tight">사내근로복지기금</p>
+            <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">업체를 고르면 직원·지급·설정 메뉴가 열립니다.</p>
           </div>
           <form action={logoutAction}>
             <button
@@ -102,7 +103,7 @@ export function DashboardShell({
             </button>
           </form>
         </header>
-        <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-4 py-10 sm:px-6 sm:py-12 lg:px-10">{children}</main>
       </div>
     );
   }
@@ -112,14 +113,15 @@ export function DashboardShell({
       {/* 데스크톱 사이드바 */}
       <aside className="neu-sidebar sticky top-3 z-20 mx-3 hidden h-[calc(100vh-1.5rem)] w-[var(--sidebar-w)] shrink-0 flex-col md:flex">
         <div className="px-4 py-4">
-          <p className="neu-title-gradient text-base font-bold tracking-tight">사내근로복지기금</p>
+          <p className="text-[0.625rem] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">SABOK</p>
+          <p className="neu-title-gradient mt-1 text-base font-bold tracking-tight">사내근로복지기금</p>
           {tenantLine ? (
-            <div className="mt-2 space-y-2">
-              <p className="line-clamp-2 text-sm leading-snug text-[var(--muted)]">{tenantLine}</p>
+            <div className="mt-3 space-y-2 rounded-xl border border-[var(--accent-soft)] bg-[var(--accent-soft)]/40 px-3 py-2.5">
+              <p className="line-clamp-3 text-xs font-medium leading-snug text-[var(--text)]">{tenantLine}</p>
               {showTenantSwitch ? (
                 <Link
                   href="/dashboard/select-tenant"
-                  className="inline-flex w-full items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-hover)] px-3 py-2.5 text-center text-sm font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--neu-bg-secondary)]"
+                  className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-center text-xs font-semibold text-[var(--accent)] shadow-sm transition-colors hover:bg-[var(--surface-hover)]"
                 >
                   다른 거래처로 전환
                 </Link>
@@ -207,7 +209,7 @@ export function DashboardShell({
           </>
         ) : null}
 
-        <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-4 py-10 sm:px-6 sm:py-12 lg:px-10">
           {children}
         </main>
       </div>
