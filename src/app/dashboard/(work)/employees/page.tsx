@@ -3,6 +3,7 @@ import { companySettingsByTenant, employeeListByTenantCodeAsc } from "@/lib/pb/r
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees } from "@/lib/permissions";
 import { CsvImportClient } from "@/components/CsvImportClient";
+import { EmployeeCsvExportButton } from "@/components/EmployeeCsvExportButton";
 import { formatWon, yn } from "@/lib/spreadsheet-format";
 
 export default async function EmployeesPage() {
@@ -25,13 +26,7 @@ export default async function EmployeesPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <a
-            href="/api/employees/export"
-            download
-            className="btn btn-outline px-4 py-2 text-sm"
-          >
-            조사표 형식 CSV 내려받기
-          </a>
+          <EmployeeCsvExportButton />
           {canEditEmployees(role) && (
             <>
               <Link href="/dashboard/employees/new" className="btn btn-primary px-4 py-2 text-sm">
