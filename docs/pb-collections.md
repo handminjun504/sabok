@@ -172,8 +172,12 @@ Unique: `(employeeId, year, itemKey)`
 | year, month           | number | yes  |
 | optionalWelfareText   | text   | no   |
 | optionalExtraAmount   | number | no   |
+| incentiveAccrualAmount | number | no | 월별 **발생 인센**. 인센→사복 시 급여포함 차액(발생 누적 − 사복지급 누적) 계산에 사용 |
+| incentiveWelfarePaymentAmount | number | no | 그 달 **사복으로 지급하기로 한 인센** 금액 |
 
 Unique: `(employeeId, year, month)`
+
+> **기존 DB:** Admin에서 `incentiveAccrualAmount`, `incentiveWelfarePaymentAmount` number 필드를 추가하세요(Nonempty 끔). 없으면 앱 조회 시 null로 취급되나, **저장(create/update)** 시 PB가 필드를 모르면 400이 납니다.
 
 ## `sabok_audit_logs`
 

@@ -239,6 +239,33 @@ export async function tenantUpdateActive(id: string, active: boolean): Promise<v
   await pb.collection(C.tenants).update(id, { active });
 }
 
+export async function tenantUpdateProfile(
+  id: string,
+  data: {
+    name: string;
+    memo: string | null;
+    clientEntityType: TenantClientEntityType;
+    operationMode: TenantOperationMode;
+    approvalNumber: string | null;
+    businessRegNo: string | null;
+    headOfficeCapital: number | null;
+  }
+): Promise<Tenant> {
+  const pb = await getAdminPb();
+  const r = asRecord(
+    await pb.collection(C.tenants).update(id, {
+      name: data.name.trim(),
+      memo: data.memo ?? null,
+      clientEntityType: data.clientEntityType,
+      operationMode: data.operationMode,
+      approvalNumber: data.approvalNumber,
+      businessRegNo: data.businessRegNo,
+      headOfficeCapital: data.headOfficeCapital,
+    })
+  );
+  return tenantFromPbRecord(r);
+}
+
 /** --- Users --- */
 export async function userFindByEmail(email: string): Promise<UserRow | null> {
   const r = await firstByFilter(C.users, `email="${esc(email)}"`);
@@ -746,6 +773,8 @@ export async function monthlyNoteUpsert(data: {
   month: number;
   optionalWelfareText: string | null;
   optionalExtraAmount: number | null;
+  incentiveAccrualAmount: number | null;
+  incentiveWelfarePaymentAmount: number | null;
 }): Promise<void> {
   const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && month=${data.month}`;
   const existing = await firstByFilter(C.monthlyEmployeeNotes, f);
@@ -754,6 +783,8 @@ export async function monthlyNoteUpsert(data: {
     await pb.collection(C.monthlyEmployeeNotes).update(String(existing.id), {
       optionalWelfareText: data.optionalWelfareText,
       optionalExtraAmount: data.optionalExtraAmount,
+      incentiveAccrualAmount: data.incentiveAccrualAmount,
+      incentiveWelfarePaymentAmount: data.incentiveWelfarePaymentAmount,
     });
   } else {
     await pb.collection(C.monthlyEmployeeNotes).create(data);

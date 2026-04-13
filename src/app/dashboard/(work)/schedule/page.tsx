@@ -14,7 +14,7 @@ import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
 import {
   buildMonthlyBreakdown,
   computeActualYearlyWelfareForEmployee,
-  computeWelfareCapVsActual,
+  computeSalaryInclusionVsActual,
   monthlySalaryPortion,
 } from "@/lib/domain/schedule";
 import { saveMonthlyNoteFormAction } from "@/app/actions/quarterly";
@@ -50,7 +50,7 @@ export default async function SchedulePage() {
     byPaidMonth: Map<number, number>;
     yearlyWelfare: number;
     salaryMonth: number;
-    capVs: ReturnType<typeof computeWelfareCapVsActual>;
+    capVs: ReturnType<typeof computeSalaryInclusionVsActual>;
   };
 
   const customSchedule = customPaymentScheduleRows(settings, year);
@@ -81,7 +81,7 @@ export default async function SchedulePage() {
       empNotes,
       customSchedule
     );
-    const capVs = computeWelfareCapVsActual(emp.welfareAllocation, yearlyWelfare);
+    const capVs = computeSalaryInclusionVsActual(emp, yearlyWelfare);
 
     return { emp, byPaidMonth, yearlyWelfare, salaryMonth: monthlySalaryPortion(emp), capVs };
   });
@@ -182,6 +182,8 @@ export default async function SchedulePage() {
     <div className="surface p-5">
       <p className="mb-4 text-sm text-[var(--muted)]">
         선택 복지는 여기서만 입력 · 해당 월 합계에 더해집니다.
+        인센을 사복으로 지급하는 경우 같은 직원·연도·월에 <strong className="text-[var(--text)]">발생 인센</strong>과{" "}
+        <strong className="text-[var(--text)]">사복으로 지급할 인센</strong>을 넣으면, 급여포함신고 화면에서 누적 차액을 봅니다.
       </p>
       <form action={saveMonthlyNoteFormAction} className="space-y-4">
         <input type="hidden" name="year" value={year} />
@@ -206,6 +208,14 @@ export default async function SchedulePage() {
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">선택적 복지 금액</label>
             <CommaWonInput name="optionalExtraAmount" className="input" placeholder="원 단위" />
           </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">발생 인센 (선택)</label>
+            <CommaWonInput name="incentiveAccrualAmount" className="input" placeholder="그 달 귀속" />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">사복으로 지급할 인센 (선택)</label>
+            <CommaWonInput name="incentiveWelfarePaymentAmount" className="input" placeholder="그 달 사복 지급분" />
+          </div>
           <div className="sm:col-span-2 lg:col-span-4">
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">메모 (선택)</label>
             <input name="optionalWelfareText"
@@ -225,7 +235,8 @@ export default async function SchedulePage() {
         <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           기준 연도 <strong>{year}</strong> · 지급월 합계(정기+분기+선택 복지).{" "}
-          {accrual ? "정기는 당월 귀속·익월 지급." : "정기는 귀속·지급 동월."}
+          {accrual ? "정기는 당월 귀속·익월 지급." : "정기는 귀속·지급 동월."} 연간 기금 합계 대비 상한은{" "}
+          <strong className="text-[var(--text)]">예상 인센</strong>(입력 시) 또는 <strong className="text-[var(--text)]">사복지급분</strong>입니다.
         </p>
       </div>
       <Tabs

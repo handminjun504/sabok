@@ -92,6 +92,10 @@ export type MonthlyEmployeeNote = {
   month: number;
   optionalWelfareText: string | null;
   optionalExtraAmount: number | null;
+  /** 해당 월 발생(귀속) 인센 금액 — 인센을 사복으로 지급하는 경우 급여 포함 차액 계산에 사용 */
+  incentiveAccrualAmount: number | null;
+  /** 그 달 사복으로 지급하기로 한 인센 금액(인센→사복 환류) */
+  incentiveWelfarePaymentAmount: number | null;
 };
 
 /** 연도 문자열 키(예: "2026") → 추가 정기 지급 행사(귀속 월 지정) */

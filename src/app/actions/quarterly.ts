@@ -189,6 +189,10 @@ export async function saveMonthlyNoteAction(_: QState, formData: FormData): Prom
   const optionalWelfareText = String(formData.get("optionalWelfareText") ?? "") || null;
   const extra = String(formData.get("optionalExtraAmount") ?? "").replace(/,/g, "");
   const optionalExtraAmount = extra === "" ? null : Number(extra);
+  const incAcc = String(formData.get("incentiveAccrualAmount") ?? "").replace(/,/g, "");
+  const incentiveAccrualAmount = incAcc === "" ? null : Number(incAcc);
+  const incWelf = String(formData.get("incentiveWelfarePaymentAmount") ?? "").replace(/,/g, "");
+  const incentiveWelfarePaymentAmount = incWelf === "" ? null : Number(incWelf);
 
   if (!employeeId || !Number.isFinite(year) || month < 1 || month > 12) {
     return { 오류: "입력 오류" };
@@ -203,7 +207,14 @@ export async function saveMonthlyNoteAction(_: QState, formData: FormData): Prom
     month,
     optionalWelfareText,
     optionalExtraAmount,
+    incentiveAccrualAmount:
+      incentiveAccrualAmount != null && Number.isFinite(incentiveAccrualAmount) ? incentiveAccrualAmount : null,
+    incentiveWelfarePaymentAmount:
+      incentiveWelfarePaymentAmount != null && Number.isFinite(incentiveWelfarePaymentAmount)
+        ? incentiveWelfarePaymentAmount
+        : null,
   });
   revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/salary-inclusion-report");
   return { 성공: true };
 }

@@ -1,20 +1,24 @@
 import { companySettingsByTenant, employeeCountByTenant, tenantGetById } from "@/lib/pb/repository";
-import { tenantClientEntityLabel, tenantOperationModeLabel } from "@/lib/domain/tenant-profile";
+import { DashboardTenantProfileForm } from "@/components/DashboardTenantProfileForm";
+import { canEditCompanySettings } from "@/lib/permissions";
 import { requireTenantContext } from "@/lib/tenant-context";
+import type { Tenant } from "@/types/models";
 import Link from "next/link";
 
-function dashText(s: string | null | undefined) {
-  const t = s?.trim();
-  return t ? t : "—";
-}
-
-function dashWon(n: number | null | undefined) {
-  if (n == null || !Number.isFinite(n)) return "—";
-  return `${Math.round(n).toLocaleString("ko-KR")}원`;
+function tenantProfileFormKey(t: Tenant): string {
+  return [
+    t.name,
+    t.memo ?? "",
+    t.approvalNumber ?? "",
+    t.businessRegNo ?? "",
+    String(t.headOfficeCapital ?? ""),
+    t.clientEntityType,
+    t.operationMode,
+  ].join("|");
 }
 
 export default async function DashboardHomePage() {
-  const { tenantId } = await requireTenantContext();
+  const { tenantId, role } = await requireTenantContext();
   const [empCount, settings, tenant] = await Promise.all([
     employeeCountByTenant(tenantId),
     companySettingsByTenant(tenantId),
@@ -73,46 +77,11 @@ export default async function DashboardHomePage() {
       </section>
 
       {tenant ? (
-        <section aria-labelledby="tenant-reg-info" className="surface-prominent p-6">
-          <h2 id="tenant-reg-info" className="text-sm font-bold text-[var(--text)]">
-            거래처 등록 정보
-          </h2>
-          <p className="mt-1 text-xs text-[var(--muted)]">SABOK 거래처 등록 시 입력한 값입니다.</p>
-          <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <dt className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">거래처명</dt>
-              <dd className="mt-1 text-sm font-semibold text-[var(--text)]">{tenant.name}</dd>
-            </div>
-            <div>
-              <dt className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">코드</dt>
-              <dd className="mt-1 font-mono text-sm text-[var(--text)]">{tenant.code}</dd>
-            </div>
-            <div>
-              <dt className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">개인·법인 적립</dt>
-              <dd className="mt-1 text-sm text-[var(--text)]">{tenantClientEntityLabel(tenant.clientEntityType)}</dd>
-            </div>
-            <div>
-              <dt className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">기금 운영</dt>
-              <dd className="mt-1 text-sm leading-snug text-[var(--text)]">{tenantOperationModeLabel(tenant.operationMode)}</dd>
-            </div>
-            <div>
-              <dt className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">인가번호</dt>
-              <dd className="mt-1 text-sm text-[var(--text)]">{dashText(tenant.approvalNumber)}</dd>
-            </div>
-            <div>
-              <dt className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">사업자등록번호</dt>
-              <dd className="mt-1 text-sm text-[var(--text)]">{dashText(tenant.businessRegNo)}</dd>
-            </div>
-            <div>
-              <dt className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">본사 자본금</dt>
-              <dd className="mt-1 text-sm tabular-nums text-[var(--text)]">{dashWon(tenant.headOfficeCapital)}</dd>
-            </div>
-            <div className="sm:col-span-2 lg:col-span-3">
-              <dt className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">메모</dt>
-              <dd className="mt-1 whitespace-pre-wrap text-sm text-[var(--text)]">{dashText(tenant.memo ?? undefined)}</dd>
-            </div>
-          </dl>
-        </section>
+        <DashboardTenantProfileForm
+          key={tenantProfileFormKey(tenant)}
+          tenant={tenant}
+          canEdit={canEditCompanySettings(role)}
+        />
       ) : null}
     </div>
   );
