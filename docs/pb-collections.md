@@ -22,10 +22,13 @@ Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사
 | memo               | text | no   |             |
 | clientEntityType   | text | yes  | `INDIVIDUAL` \| `CORPORATE` — 고객사(위탁사) 사업자 유형. **기존 DB**: 마이그레이션 시 일괄 `INDIVIDUAL` 권장 |
 | operationMode      | text | yes  | `GENERAL` \| `SALARY_WELFARE` \| `INCENTIVE_WELFARE` \| `COMBINED` — 일반 / 급여낮추기(고위험) / 인센 기금 / 복합. **기존 DB**: 없으면 `GENERAL`, 저장 시 필드 추가 후 기본값 |
+| approvalNumber     | text | no   | 인가번호 등 위탁·등록 식별 문자열 |
+| businessRegNo      | text | no   | 사업자등록번호(표시·검색용, 형식 자유) |
+| headOfficeCapital  | number | no | 본사 자본금(원). 미입력 시 null |
 
 **도메인**: 테넌트 1건 ≈ 사업장·기금 1단위(기금 1개/사업장). 코드: `fund-site-model.ts`.
 
-앱은 PB에 필드가 없어도 **조회 시** 기본값(개인·일반운영)으로 동작하지만, **신규 업체 등록(create)** 은 위 두 필드가 컬렉션에 있어야 합니다.
+앱은 PB에 필드가 없어도 **조회 시** 기본값(개인·일반운영)으로 동작하지만, **신규 업체 등록(create)** 은 `clientEntityType`, `operationMode`가 컬렉션에 있어야 합니다. 선택 필드 `approvalNumber`, `businessRegNo`, `headOfficeCapital`를 폼에서내려면 Admin에서 동일 이름으로 필드를 추가하세요(없으면 create 시 400).
 
 ## `sabok_users`
 

@@ -102,6 +102,7 @@ function mapVendorContributionRow(r: Record<string, unknown>): VendorContributio
 }
 
 function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
+  const cap = Number(r.headOfficeCapital);
   return {
     id: String(r.id),
     code: String(r.code),
@@ -110,6 +111,9 @@ function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
     memo: r.memo == null || r.memo === "" ? null : String(r.memo),
     clientEntityType: parseTenantClientEntityType(r.clientEntityType),
     operationMode: parseTenantOperationMode(r.operationMode),
+    approvalNumber: r.approvalNumber == null || r.approvalNumber === "" ? null : String(r.approvalNumber),
+    businessRegNo: r.businessRegNo == null || r.businessRegNo === "" ? null : String(r.businessRegNo),
+    headOfficeCapital: Number.isFinite(cap) ? cap : null,
   };
 }
 
@@ -180,6 +184,9 @@ export async function tenantCreate(data: {
   clientEntityType: TenantClientEntityType;
   operationMode: TenantOperationMode;
   memo?: string | null;
+  approvalNumber?: string | null;
+  businessRegNo?: string | null;
+  headOfficeCapital?: number | null;
 }): Promise<Tenant> {
   const pb = await getAdminPb();
   const created = asRecord(
@@ -190,6 +197,9 @@ export async function tenantCreate(data: {
       clientEntityType: data.clientEntityType,
       operationMode: data.operationMode,
       memo: data.memo ?? null,
+      approvalNumber: data.approvalNumber ?? null,
+      businessRegNo: data.businessRegNo ?? null,
+      headOfficeCapital: data.headOfficeCapital ?? null,
     })
   );
   return tenantFromPbRecord(created);

@@ -8,23 +8,42 @@ import { TENANT_OPERATION_MODES } from "@/lib/domain/tenant-profile";
 
 export type TenantCreateFormVariant = "full" | "select";
 
-export function TenantCreateForm({ variant = "full" }: { variant?: TenantCreateFormVariant }) {
+type Props = {
+  variant?: TenantCreateFormVariant;
+  /** 모달 등에서 카드 배경 없이 삽입 */
+  embed?: boolean;
+  /** 등록 성공 시 (예: 모달 닫기) */
+  onSuccessClose?: () => void;
+};
+
+export function TenantCreateForm({
+  variant = "full",
+  embed = false,
+  onSuccessClose,
+}: Props) {
   const router = useRouter();
   const [state, formAction] = useActionState<TenantActionState, FormData>(createTenantAction, null);
   const onSelectScreen = variant === "select";
+  const showIntro = !embed;
 
   useEffect(() => {
-    if (state?.성공) router.refresh();
-  }, [state?.성공, router]);
+    if (!state?.성공) return;
+    onSuccessClose?.();
+    router.refresh();
+  }, [state?.성공, router, onSuccessClose]);
 
   return (
-    <form action={formAction} className="surface space-y-4 p-5 sm:p-6">
-      <h2 className="text-base font-semibold tracking-tight text-[var(--text)]">
-        {onSelectScreen ? "새 거래처(업체) 추가" : "거래처(업체) 등록"}
-      </h2>
-      <p className="text-sm text-[var(--muted)]">
-        {onSelectScreen ? "대시보드에서 쓸 거래처를 만듭니다." : "거래처 유형·기금 운영 방식을 고릅니다."}
-      </p>
+    <form action={formAction} className={embed ? "space-y-4 p-5 sm:p-6" : "surface space-y-4 p-5 sm:p-6"}>
+      {showIntro ? (
+        <>
+          <h2 className="text-base font-semibold tracking-tight text-[var(--text)]">
+            {onSelectScreen ? "새 거래처(업체) 추가" : "거래처(업체) 등록"}
+          </h2>
+          <p className="text-sm text-[var(--muted)]">
+            {onSelectScreen ? "대시보드에서 쓸 거래처를 만듭니다." : "거래처 유형·기금 운영 방식을 고릅니다."}
+          </p>
+        </>
+      ) : null}
       {state?.오류 && <p className="text-[0.9375rem] leading-relaxed text-[var(--danger)]">{state.오류}</p>}
       {state?.성공 && (
         <p className="text-[0.9375rem] text-[var(--success)]">
@@ -41,6 +60,30 @@ export function TenantCreateForm({ variant = "full" }: { variant?: TenantCreateF
         <div>
           <label className="mb-1 block text-sm font-medium text-[var(--muted)]">거래처명</label>
           <input name="name" required className="input w-full" />
+        </div>
+
+        <div className="sm:col-span-2">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">사업자·등록 정보 (선택)</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">인가번호</label>
+              <input name="approvalNumber" className="input w-full" placeholder="예: 위탁 인가 번호" autoComplete="off" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">사업자등록번호</label>
+              <input name="businessRegNo" className="input w-full" placeholder="하이픈 포함·생략 모두 가능" autoComplete="off" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">본사 자본금 (원)</label>
+              <input
+                name="headOfficeCapital"
+                className="input w-full"
+                inputMode="numeric"
+                placeholder="예: 100000000 (콤마 가능)"
+                autoComplete="off"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="sm:col-span-2">

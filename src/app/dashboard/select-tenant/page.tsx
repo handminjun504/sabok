@@ -2,22 +2,20 @@ import { redirect } from "next/navigation";
 import type { Tenant } from "@/types/models";
 import { tenantListActiveByCodeAsc, userTenantListWithTenantsForUser } from "@/lib/pb/repository";
 import { requireSession } from "@/lib/auth-context";
-import { switchTenantFormAction } from "@/app/actions/tenant-switch";
 import { canAccessAnyTenant } from "@/lib/session";
 import { isSingleTenantMode } from "@/lib/single-tenant";
 import { reissueSessionForSingleTenantMode } from "@/lib/reissue-session-tenant";
-import { TenantCreateForm } from "@/components/TenantCreateForm";
-import { tenantClientEntityLabel, tenantOperationModeLabel } from "@/lib/domain/tenant-profile";
+import { SelectTenantClient } from "@/components/SelectTenantClient";
 
-const addBtnClass =
-  "btn btn-primary flex size-12 shrink-0 items-center justify-center rounded-full p-0 text-2xl font-light leading-none shadow-md";
-
-function NewVendorAnchor() {
-  return (
-    <a href="#new-vendor-form" className={addBtnClass} aria-label="새 거래처 추가" title="새 거래처 추가">
-      +
-    </a>
-  );
+function mapToCards(tenants: Tenant[]) {
+  return tenants.map((t) => ({
+    id: t.id,
+    code: t.code,
+    name: t.name,
+    clientEntityType: t.clientEntityType,
+    operationMode: t.operationMode,
+    businessRegNo: t.businessRegNo,
+  }));
 }
 
 export default async function SelectTenantPage() {
@@ -39,20 +37,15 @@ export default async function SelectTenantPage() {
   if (tenants.length === 0) {
     if (session.isPlatformAdmin) {
       return (
-        <div className="mx-auto max-w-2xl space-y-8">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="page-eyebrow">시작하기</p>
-              <h1 className="page-hero-title mt-2 neu-title-gradient">거래처 선택</h1>
-              <p className="page-hero-sub text-sm sm:text-base">
-                등록된 거래처가 없습니다. 아래에서 추가하거나 <strong>+</strong> 로 폼으로 이동하세요.
-              </p>
-            </div>
-            <NewVendorAnchor />
+        <div className="mx-auto max-w-5xl space-y-8">
+          <div className="min-w-0">
+            <p className="page-eyebrow">시작하기</p>
+            <h1 className="page-hero-title mt-2 neu-title-gradient">거래처 선택</h1>
+            <p className="page-hero-sub text-sm sm:text-base">
+              등록된 거래처가 없습니다. <strong>거래처 추가</strong>로 신규 업체를 등록한 뒤 카드에서 들어가세요.
+            </p>
           </div>
-          <div id="new-vendor-form" className="scroll-mt-24">
-            <TenantCreateForm variant="select" />
-          </div>
+          <SelectTenantClient tenants={[]} isPlatformAdmin />
         </div>
       );
     }
@@ -65,44 +58,15 @@ export default async function SelectTenantPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <p className="page-eyebrow">업체 전환</p>
-          <h1 className="page-hero-title mt-2 neu-title-gradient">거래처 선택</h1>
-          <p className="page-hero-sub text-sm sm:text-base">
-            들어갈 거래처를 고르세요. 플랫폼 관리자는 <strong>+</strong> 로 신규 거래처를 등록할 수 있습니다.
-          </p>
-        </div>
-        {session.isPlatformAdmin ? <NewVendorAnchor /> : null}
+    <div className="mx-auto max-w-5xl space-y-8">
+      <div className="min-w-0">
+        <p className="page-eyebrow">업체 전환</p>
+        <h1 className="page-hero-title mt-2 neu-title-gradient">거래처 선택</h1>
+        <p className="page-hero-sub text-sm sm:text-base">
+          카드에서 들어갈 거래처를 고르세요. 플랫폼 관리자는 우측 <strong>+</strong> 로 신규 거래처를 등록할 수 있습니다.
+        </p>
       </div>
-      <ul className="space-y-4">
-        {tenants.map((t) => (
-          <li
-            key={t.id}
-            className="surface-prominent flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0">
-              <p className="text-base font-bold text-[var(--text)]">{t.name}</p>
-              <p className="mt-0.5 font-mono text-sm text-[var(--muted)]">코드 {t.code}</p>
-              <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-                {tenantClientEntityLabel(t.clientEntityType)} · {tenantOperationModeLabel(t.operationMode)}
-              </p>
-            </div>
-            <form action={switchTenantFormAction} className="shrink-0">
-              <input type="hidden" name="tenantId" value={t.id} />
-              <button type="submit" className="btn btn-primary w-full px-5 py-2.5 text-sm sm:w-auto">
-                이 거래처로 들어가기
-              </button>
-            </form>
-          </li>
-        ))}
-      </ul>
-      {session.isPlatformAdmin ? (
-        <div id="new-vendor-form" className="scroll-mt-24 border-t border-[var(--border)] pt-10">
-          <TenantCreateForm variant="select" />
-        </div>
-      ) : null}
+      <SelectTenantClient tenants={mapToCards(tenants)} isPlatformAdmin={session.isPlatformAdmin} />
     </div>
   );
 }

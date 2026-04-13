@@ -124,6 +124,12 @@ export type Tenant = {
   clientEntityType: TenantClientEntityType;
   /** 사내근로복지기금 운용 방식 — PB `operationMode` (급여낮추기·인센티브 지급 등) */
   operationMode: TenantOperationMode;
+  /** PB `approvalNumber` — 없으면 null */
+  approvalNumber: string | null;
+  /** PB `businessRegNo` — 없으면 null */
+  businessRegNo: string | null;
+  /** PB `headOfficeCapital` (원) — 없으면 null */
+  headOfficeCapital: number | null;
 };
 
 export type UserRow = {
