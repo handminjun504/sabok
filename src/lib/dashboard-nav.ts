@@ -18,15 +18,14 @@ export function getDashboardNav(opts: {
   const single = isSingleTenantMode();
   const groups: NavGroup[] = [];
 
-  /** 활성 업체 없음: 일반 사용자는 네비 없음(레이아웃에서 업체 선택 화면만). 플랫폼 관리자만 최소 메뉴. */
+  /** 활성 업체 없음: 일반 사용자는 네비 없음. 플랫폼 관리자만 최소 메뉴(거래처 추가·삭제는 선택 화면에서). */
   if (!hasActiveTenant) {
     if (isPlatformAdmin && !single) {
       return [
-        { title: "거래처", items: [{ href: "/dashboard/select-tenant", label: "거래처 선택" }] },
         {
-          title: "플랫폼",
+          title: "시작",
           items: [
-            { href: "/dashboard/tenants", label: "거래처 관리" },
+            { href: "/dashboard/select-tenant", label: "거래처 선택" },
             { href: "/dashboard/audit", label: "감사 로그" },
           ],
         },
@@ -35,18 +34,12 @@ export function getDashboardNav(opts: {
     return [];
   }
 
-  const startItems: NavItem[] = [{ href: "/dashboard", label: "대시보드" }];
-  if (!single) {
-    startItems.push({ href: "/dashboard/select-tenant", label: "거래처 전환" });
-  }
+  /** 업체 입장 후: 사이드바에는 대시보드만(다른 거래처는 상단「다른 거래처로 전환」). */
+  const startItems: NavItem[] = [
+    { href: "/dashboard", label: "대시보드" },
+    { href: "/dashboard/operating-report", label: "운영상황 보고" },
+  ];
   groups.push({ title: "시작", items: startItems });
-
-  if (isPlatformAdmin && !single) {
-    groups.push({
-      title: "플랫폼",
-      items: [{ href: "/dashboard/tenants", label: "거래처 관리" }],
-    });
-  }
 
   const work: NavItem[] = [{ href: "/dashboard/employees", label: "직원" }];
   if (canEditLevelRules(role)) {

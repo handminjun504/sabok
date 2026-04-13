@@ -113,7 +113,6 @@ export async function createTenantAction(
     };
   }
 
-  revalidatePath("/dashboard/tenants");
   revalidatePath("/dashboard/select-tenant");
   return { 성공: true };
 }
@@ -156,7 +155,6 @@ export async function deleteTenantAction(
     entityId: tenantId,
     payload: { code: tenant.code, name: tenant.name },
   });
-  revalidatePath("/dashboard/tenants");
   revalidatePath("/dashboard/select-tenant");
   return { 성공: true };
 }
@@ -180,5 +178,5 @@ export async function setTenantActiveFormAction(formData: FormData): Promise<voi
     entity: "Tenant",
     entityId: tenantId,
   });
-  revalidatePath("/dashboard/tenants");
+  revalidatePath("/dashboard/select-tenant");
 }

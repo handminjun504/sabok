@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { setTenantActiveFormAction } from "@/app/actions/tenant-admin";
 import { switchTenantFormAction } from "@/app/actions/tenant-switch";
 import { TenantCreateForm } from "@/components/TenantCreateForm";
+import { TenantDeleteForm } from "@/components/TenantDeleteForm";
 import {
   tenantClientEntityLabel,
   tenantOperationModeLabel,
@@ -16,6 +18,8 @@ export type SelectTenantCard = {
   clientEntityType: TenantClientEntityType;
   operationMode: TenantOperationMode;
   businessRegNo: string | null;
+  active: boolean;
+  employeeCount?: number;
 };
 
 type Props = {
@@ -71,24 +75,67 @@ export function SelectTenantClient({ tenants, isPlatformAdmin }: Props) {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {tenants.map((t) => (
-            <form
+            <div
               key={t.id}
-              action={switchTenantFormAction}
-              className="surface-prominent surface-hoverable group flex h-full flex-col p-5 text-left"
+              className={
+                "surface-prominent flex h-full flex-col p-5 text-left " +
+                (t.active ? "surface-hoverable group" : "opacity-90")
+              }
             >
-              <input type="hidden" name="tenantId" value={t.id} />
-              <p className="text-base font-bold text-[var(--text)] group-hover:text-[var(--accent)]">{t.name}</p>
-              <p className="mt-1 font-mono text-xs text-[var(--muted)]">코드 {t.code}</p>
-              {t.businessRegNo ? (
-                <p className="mt-1 text-xs text-[var(--muted)]">사업자번호 {t.businessRegNo}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p
+                    className={
+                      "text-base font-bold text-[var(--text)] " + (t.active ? "group-hover:text-[var(--accent)]" : "")
+                    }
+                  >
+                    {t.name}
+                  </p>
+                  {isPlatformAdmin && !t.active ? (
+                    <span className="shrink-0 rounded-md bg-[var(--surface-hover)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                      비활성
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-1 font-mono text-xs text-[var(--muted)]">코드 {t.code}</p>
+                {t.businessRegNo ? (
+                  <p className="mt-1 text-xs text-[var(--muted)]">사업자번호 {t.businessRegNo}</p>
+                ) : null}
+                {isPlatformAdmin && t.employeeCount != null ? (
+                  <p className="mt-1 text-xs text-[var(--muted)]">직원 {t.employeeCount}명</p>
+                ) : null}
+                <p className="mt-3 text-xs leading-relaxed text-[var(--muted)]">
+                  {tenantClientEntityLabel(t.clientEntityType)} · {tenantOperationModeLabel(t.operationMode)}
+                </p>
+              </div>
+
+              {t.active ? (
+                <form action={switchTenantFormAction} className="mt-4">
+                  <input type="hidden" name="tenantId" value={t.id} />
+                  <button type="submit" className="btn btn-primary w-full py-2.5 text-sm">
+                    이 거래처로 들어가기
+                  </button>
+                </form>
+              ) : (
+                <p className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface-hover)] px-3 py-2 text-center text-xs text-[var(--muted)]">
+                  비활성 상태입니다. 아래에서 활성화하면 입장할 수 있습니다.
+                </p>
+              )}
+
+              {isPlatformAdmin ? (
+                <div className="mt-4 border-t border-[var(--border)] pt-3">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">관리</p>
+                  <form action={setTenantActiveFormAction}>
+                    <input type="hidden" name="tenantId" value={t.id} />
+                    <input type="hidden" name="active" value={t.active ? "false" : "true"} />
+                    <button type="submit" className="text-xs font-medium text-[var(--accent)] hover:underline">
+                      {t.active ? "비활성화" : "활성화"}
+                    </button>
+                  </form>
+                  <TenantDeleteForm tenantId={t.id} tenantCode={t.code} />
+                </div>
               ) : null}
-              <p className="mt-3 flex-1 text-xs leading-relaxed text-[var(--muted)]">
-                {tenantClientEntityLabel(t.clientEntityType)} · {tenantOperationModeLabel(t.operationMode)}
-              </p>
-              <button type="submit" className="btn btn-primary mt-4 w-full py-2.5 text-sm">
-                이 거래처로 들어가기
-              </button>
-            </form>
+            </div>
           ))}
         </div>
       )}

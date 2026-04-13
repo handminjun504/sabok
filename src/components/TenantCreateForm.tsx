@@ -49,7 +49,7 @@ export function TenantCreateForm({
         <p className="text-[0.9375rem] text-[var(--success)]">
           {onSelectScreen
             ? "등록되었습니다. 목록에서 해당 거래처를 선택해 들어가세요."
-            : "등록되었습니다. 거래처 관리·거래처 선택에서 확인할 수 있습니다."}
+            : "등록되었습니다. 거래처 선택 화면에서 확인할 수 있습니다."}
         </p>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
