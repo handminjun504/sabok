@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
+import { pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
 import { getSession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
 import {
@@ -107,9 +109,14 @@ export async function createTenantAction(
     });
   } catch (e) {
     console.error("[createTenantAction]", e);
+    const detail =
+      e instanceof ClientResponseError
+        ? pocketBaseRecordErrorMessage(e)
+        : e instanceof Error
+          ? e.message
+          : String(e);
     return {
-      오류:
-        "생성 실패. 코드 중복·PB 연결·sabok_tenants 필드(clientEntityType, operationMode, approvalNumber, businessRegNo, headOfficeCapital) 확인.",
+      오류: `생성 실패. ${detail} · 코드 중복·PB 연결·sabok_tenants 필드(clientEntityType, operationMode 등)을 확인하세요.`,
     };
   }
 

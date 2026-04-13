@@ -189,20 +189,48 @@ export async function tenantCreate(data: {
   headOfficeCapital?: number | null;
 }): Promise<Tenant> {
   const pb = await getAdminPb();
-  const created = asRecord(
-    await pb.collection(C.tenants).create({
-      code: data.code,
-      name: data.name,
-      active: data.active,
-      clientEntityType: data.clientEntityType,
-      operationMode: data.operationMode,
-      memo: data.memo ?? null,
-      approvalNumber: data.approvalNumber ?? null,
-      businessRegNo: data.businessRegNo ?? null,
-      headOfficeCapital: data.headOfficeCapital ?? null,
-    })
-  );
-  return tenantFromPbRecord(created);
+
+  /** PB에 컬럼이 없으면 알 수 없는 필드로 400이 나므로, 값이 있을 때만 키를 넣는다. */
+  const base: Record<string, unknown> = {
+    code: data.code,
+    name: data.name,
+    active: data.active,
+    clientEntityType: data.clientEntityType,
+    operationMode: data.operationMode,
+    memo: data.memo ?? null,
+  };
+
+  const optional: Record<string, unknown> = {};
+  const ap = data.approvalNumber != null ? String(data.approvalNumber).trim() : "";
+  if (ap) optional.approvalNumber = ap;
+  const br = data.businessRegNo != null ? String(data.businessRegNo).trim() : "";
+  if (br) optional.businessRegNo = br;
+  if (data.headOfficeCapital != null && Number.isFinite(data.headOfficeCapital)) {
+    optional.headOfficeCapital = data.headOfficeCapital;
+  }
+
+  const withOptional = { ...base, ...optional };
+
+  try {
+    const created = asRecord(await pb.collection(C.tenants).create(withOptional));
+    return tenantFromPbRecord(created);
+  } catch (e) {
+    if (Object.keys(optional).length === 0) {
+      logPbClientError("tenantCreate", e);
+      throw e;
+    }
+    try {
+      const created = asRecord(await pb.collection(C.tenants).create(base));
+      logPbClientError("tenantCreate (first attempt failed; retried without optional fields)", e);
+      console.warn(
+        "[pb] tenantCreate: 인가번호·사업자번호·본사자본금은 저장되지 않았습니다. sabok_tenants에 해당 필드를 추가한 뒤 다시 등록하세요.",
+      );
+      return tenantFromPbRecord(created);
+    } catch (e2) {
+      logPbClientError("tenantCreate", e2);
+      throw e2;
+    }
+  }
 }
 
 export async function tenantUpdateActive(id: string, active: boolean): Promise<void> {
