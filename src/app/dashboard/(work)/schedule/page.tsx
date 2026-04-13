@@ -179,19 +179,19 @@ export default async function SchedulePage() {
   );
 
   const noteTab = canNote ? (
-    <div className="surface p-5">
-      <p className="mb-4 text-sm text-[var(--muted)]">
+    <div className="surface p-3 sm:p-4">
+      <p className="mb-3 text-xs text-[var(--muted)] sm:text-sm">
         선택 복지는 여기서만 입력 · 해당 월 합계에 더해집니다.
         인센을 사복으로 지급하는 경우 같은 직원·연도·월에 <strong className="text-[var(--text)]">발생 인센</strong>과{" "}
         <strong className="text-[var(--text)]">사복으로 지급할 인센</strong>을 넣으면, 급여포함신고 화면에서 누적 차액을 봅니다.
       </p>
-      <form action={saveMonthlyNoteFormAction} className="space-y-4">
+      <form action={saveMonthlyNoteFormAction} className="space-y-3">
         <input type="hidden" name="year" value={year} />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2">
-            <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">직원</label>
+            <label className="mb-1 block text-xs font-medium text-[var(--text)]">직원</label>
             <select name="employeeId"
-              className="input"
+              className="input w-full max-w-md text-xs"
               required>
               {employees.map((e) => (
                 <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
@@ -199,27 +199,27 @@ export default async function SchedulePage() {
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">월</label>
+            <label className="mb-1 block text-xs font-medium text-[var(--text)]">월</label>
             <input name="month" type="number" min={1} max={12}
-              className="input"
+              className="input w-[4.5rem] text-xs"
               required />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">선택적 복지 금액</label>
-            <CommaWonInput name="optionalExtraAmount" className="input" placeholder="원 단위" />
+            <label className="mb-1 block text-xs font-medium text-[var(--text)]">선택적 복지 금액</label>
+            <CommaWonInput name="optionalExtraAmount" className="input w-full max-w-xs text-xs" placeholder="원 단위" />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">발생 인센 (선택)</label>
-            <CommaWonInput name="incentiveAccrualAmount" className="input" placeholder="그 달 귀속" />
+            <label className="mb-1 block text-xs font-medium text-[var(--text)]">발생 인센 (선택)</label>
+            <CommaWonInput name="incentiveAccrualAmount" className="input w-full max-w-xs text-xs" placeholder="그 달 귀속" />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">사복으로 지급할 인센 (선택)</label>
-            <CommaWonInput name="incentiveWelfarePaymentAmount" className="input" placeholder="그 달 사복 지급분" />
+            <label className="mb-1 block text-xs font-medium text-[var(--text)]">사복으로 지급할 인센 (선택)</label>
+            <CommaWonInput name="incentiveWelfarePaymentAmount" className="input w-full max-w-xs text-xs" placeholder="그 달 사복 지급분" />
           </div>
           <div className="sm:col-span-2 lg:col-span-4">
-            <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">메모 (선택)</label>
+            <label className="mb-1 block text-xs font-medium text-[var(--text)]">메모 (선택)</label>
             <input name="optionalWelfareText"
-              className="input" />
+              className="input w-full text-xs" />
           </div>
         </div>
         <button type="submit" className="btn btn-primary">저장</button>

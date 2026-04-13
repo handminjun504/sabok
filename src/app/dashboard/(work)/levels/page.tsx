@@ -14,7 +14,7 @@ import { canEditLevelRules } from "@/lib/permissions";
 import { requireTenantContext } from "@/lib/tenant-context";
 
 const INPUT_CLS =
-  "min-w-[5.5rem] rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
+  "w-[4.75rem] max-w-[5.25rem] rounded-md border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 text-xs tabular-nums focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-soft)]";
 
 function fmtInt(n: number) {
   return Math.round(n).toLocaleString("ko-KR");
@@ -39,27 +39,27 @@ export default async function LevelsPage() {
   const customEventKeys = eventKeys.filter((ev) => customDefs.some((c) => c.eventKey === ev));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="neu-title-gradient text-2xl font-bold">레벨별 정기 지급 금액</h1>
+        <h1 className="neu-title-gradient text-xl font-bold sm:text-2xl">레벨별 정기 지급 금액</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           기준 연도 <strong>{year}</strong> · 세로 레벨(1~5) · 가로 행사 · 레벨 5는 직원 상세에서 개별 조정
         </p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {!canEdit && (
           <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
         )}
 
-        <div className="surface overflow-x-auto p-4">
+        <div className="surface overflow-x-auto p-2 sm:p-3">
           {/* 중첩 form 금지: 삭제는 form 속성으로 연결된 별도 폼만 사용 */}
-          <form action={canEdit ? saveLevelRulesFormAction : undefined} id="level-rules-save" className="space-y-4">
+          <form action={canEdit ? saveLevelRulesFormAction : undefined} id="level-rules-save" className="space-y-2">
             <input type="hidden" name="year" value={year} />
-            <table className="min-w-max border-collapse text-left text-sm">
+            <table className="min-w-max border-collapse text-left text-xs">
               <thead>
-                <tr className="border-b-2 border-[var(--border)]">
-                  <th className="sticky left z-10 bg-[var(--surface)] py-2 pr-4 pl-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                <tr className="border-b border-[var(--border-strong)]">
+                  <th className="sticky left z-10 bg-[var(--surface)] py-1.5 pr-2 pl-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                     레벨 / 행사
                   </th>
                   {eventKeys.map((ev) => {
@@ -67,9 +67,9 @@ export default async function LevelsPage() {
                     return (
                       <th
                         key={ev}
-                        className="max-w-[10rem] whitespace-normal py-2 px-2 text-center text-xs font-semibold tracking-wide text-[var(--muted)]"
+                        className="max-w-[7.5rem] whitespace-normal px-1 py-1.5 text-center text-[10px] font-semibold leading-tight tracking-wide text-[var(--muted)]"
                       >
-                        <div className="flex flex-col items-center gap-1">
+                        <div className="flex flex-col items-center gap-0.5">
                           <span>{paymentEventLabel(ev, customDefs)}</span>
                           {canEdit && isCustom && (
                             <button
@@ -89,11 +89,11 @@ export default async function LevelsPage() {
               <tbody>
                 {[1, 2, 3, 4, 5].map((lv) => (
                   <tr key={lv} className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]">
-                    <td className="sticky left z-[1] bg-[var(--surface)] py-2 pr-4 pl-1 font-medium whitespace-nowrap">
+                    <td className="sticky left z-[1] bg-[var(--surface)] py-1 pr-2 pl-0.5 text-[11px] font-medium whitespace-nowrap">
                       레벨 {lv}
                     </td>
                     {eventKeys.map((ev) => (
-                      <td key={ev} className="px-1.5 py-1.5 text-center">
+                      <td key={ev} className="px-0.5 py-0.5 text-center">
                         {canEdit ? (
                           <CommaWonInput
                             name={`amt_${lv}_${ev}`}
@@ -101,7 +101,7 @@ export default async function LevelsPage() {
                             className={INPUT_CLS}
                           />
                         ) : (
-                          <span className="inline-block min-w-[5.5rem] font-mono text-sm">
+                          <span className="inline-block w-[4.75rem] font-mono text-xs tabular-nums">
                             {fmtInt(Number(ruleMap.get(`${lv}_${ev}`) ?? 0))}
                           </span>
                         )}
@@ -136,7 +136,7 @@ export default async function LevelsPage() {
         {canEdit && (
           <form
             action={addCustomPaymentEventFormAction}
-            className="surface flex flex-wrap items-end gap-3 p-4"
+            className="surface flex flex-wrap items-end gap-2 p-2 sm:p-3"
           >
             <input type="hidden" name="year" value={year} />
             <div>
@@ -145,7 +145,7 @@ export default async function LevelsPage() {
                 name="label"
                 required
                 placeholder="예: 하계 휴가비"
-                className="w-48 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none"
+                className="input w-44 text-xs"
               />
             </div>
             <div>
@@ -153,7 +153,7 @@ export default async function LevelsPage() {
               <select
                 name="accrualMonth"
                 required
-                className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none"
+                className="input w-[5.5rem] text-xs"
                 defaultValue={6}
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (

@@ -13,7 +13,7 @@ import {
 const fieldLabelClass = "mb-1 block text-xs font-medium text-[var(--muted)]";
 
 const inputClass =
-  "neu-field w-full min-w-0 px-2.5 py-2 text-sm leading-normal text-[var(--text)]";
+  "neu-field w-full min-w-0 px-1.5 py-1 text-xs leading-snug text-[var(--text)]";
 
 function formatWonInput(n: number): string {
   return n.toLocaleString("ko-KR");
@@ -139,12 +139,12 @@ function SalaryPairFields({
   }, [effectiveAnnual, minimumAnnualSalaryWon]);
 
   return (
-    <div className="w-full min-w-0 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/60 p-4">
+    <div className="w-full min-w-0 space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-hover)]/60 p-3">
       <p className="text-xs font-semibold text-[var(--text)]">기존연봉 · 조정급여</p>
       <p className="text-xs text-[var(--muted)]">
         조정급여는 기존의 <strong className="text-[var(--text)]">80~100%</strong>만 가능.
       </p>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         <div className="min-w-0">
           <label className={fieldLabelClass} htmlFor={baseId}>
             기존연봉 (원)

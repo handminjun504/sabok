@@ -16,7 +16,7 @@ import { CommaWonInput } from "@/components/CommaWonInput";
 import { Tabs } from "@/components/Tabs";
 
 const INPUT_SM =
-  "w-20 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
+  "w-[4.25rem] rounded-md border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 text-xs tabular-nums focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-soft)]";
 
 export default async function QuarterlyPage() {
   const { tenantId, role } = await requireTenantContext();
@@ -116,8 +116,8 @@ export default async function QuarterlyPage() {
                         <td className="py-1.5 pr-2">
                           <CommaWonInput name={`${itemKey}_flat`} defaultValue={r?.flatAmount ?? null} className={INPUT_SM} />
                         </td>
-                        <td className="py-1.5 pr-2"><input name={`${itemKey}_pins`} defaultValue={r?.percentInsurance != null ? String(r.percentInsurance) : ""} className="w-16 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm" /></td>
-                        <td className="py-1.5 pr-2"><input name={`${itemKey}_ploan`} defaultValue={r?.percentLoanInterest != null ? String(r.percentLoanInterest) : ""} className="w-16 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm" /></td>
+                        <td className="py-1 pr-2"><input name={`${itemKey}_pins`} defaultValue={r?.percentInsurance != null ? String(r.percentInsurance) : ""} className="w-14 rounded-md border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 text-xs tabular-nums" /></td>
+                        <td className="py-1 pr-2"><input name={`${itemKey}_ploan`} defaultValue={r?.percentLoanInterest != null ? String(r.percentLoanInterest) : ""} className="w-14 rounded-md border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 text-xs tabular-nums" /></td>
                       </tr>
                     );
                   })}
@@ -140,7 +140,7 @@ export default async function QuarterlyPage() {
             <input type="hidden" name="year" value={year} />
             <div>
               <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">직원</label>
-              <select name="employeeId" className="input">
+              <select name="employeeId" className="input w-full max-w-md text-xs">
                 {employees.map((e) => (
                   <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
                 ))}
@@ -170,7 +170,7 @@ export default async function QuarterlyPage() {
               <input type="hidden" name="year" value={year} />
               <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">직원</label>
-                <select name="employeeId" className="input" required>
+                <select name="employeeId" className="input w-full max-w-md text-xs" required>
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
                   ))}
@@ -178,7 +178,7 @@ export default async function QuarterlyPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">항목</label>
-                <select name="itemKey" className="input">
+                <select name="itemKey" className="input w-full max-w-xs text-xs">
                   {items.map((k) => (
                     <option key={k} value={k}>{QUARTERLY_ITEM_LABELS[k]}</option>
                   ))}
@@ -186,11 +186,11 @@ export default async function QuarterlyPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">지급 월</label>
-                <input name="paymentMonth" type="number" min={1} max={12} defaultValue={3} className="input" required />
+                <input name="paymentMonth" type="number" min={1} max={12} defaultValue={3} className="input w-[4.5rem] text-xs" required />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">금액</label>
-                <CommaWonInput name="amount" className="input" required />
+                <CommaWonInput name="amount" className="input max-w-[11rem] text-xs" required />
               </div>
               <div className="flex items-end sm:col-span-4">
                 <button type="submit" className="btn btn-primary">저장</button>

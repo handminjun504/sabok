@@ -82,7 +82,7 @@ export default function LoginPage() {
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">이메일</label>
                 <input
-                  className="input"
+                  className="input text-sm"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="username"
@@ -93,7 +93,7 @@ export default function LoginPage() {
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">비밀번호</label>
                 <input
-                  className="input"
+                  className="input text-sm"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
@@ -106,7 +106,7 @@ export default function LoginPage() {
                   {error}
                 </p>
               )}
-              <button type="submit" disabled={loading} className="btn btn-primary mt-2 w-full py-3 text-base">
+              <button type="submit" disabled={loading} className="btn btn-primary mt-2 w-full text-sm">
                 {loading ? "확인 중…" : "로그인"}
               </button>
             </form>

@@ -19,9 +19,9 @@ export default async function SettingsPage() {
       {!canEdit && (
         <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
       )}
-      <form action={saveCompanySettingsFormAction} className="surface space-y-4 p-6">
+      <form action={saveCompanySettingsFormAction} className="surface space-y-3 p-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-[var(--muted)]">회사 창립월 (1~12)</label>
+          <label className="mb-1 block text-xs font-medium text-[var(--muted)]">회사 창립월 (1~12)</label>
           <input
             name="foundingMonth"
             type="number"
@@ -29,11 +29,11 @@ export default async function SettingsPage() {
             max={12}
             defaultValue={s?.foundingMonth ?? 1}
             readOnly={!canEdit}
-            className="input"
+            className="input max-w-[8rem] text-xs"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-[var(--muted)]">기본 급여일 (1~31)</label>
+          <label className="mb-1 block text-xs font-medium text-[var(--muted)]">기본 급여일 (1~31)</label>
           <input
             name="defaultPayDay"
             type="number"
@@ -41,20 +41,20 @@ export default async function SettingsPage() {
             max={31}
             defaultValue={s?.defaultPayDay ?? 25}
             readOnly={!canEdit}
-            className="input"
+            className="input max-w-[8rem] text-xs"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-[var(--muted)]">기준 연도</label>
+          <label className="mb-1 block text-xs font-medium text-[var(--muted)]">기준 연도</label>
           <input
             name="activeYear"
             type="number"
             defaultValue={s?.activeYear ?? new Date().getFullYear()}
             readOnly={!canEdit}
-            className="input"
+            className="input max-w-[10rem] text-xs"
           />
         </div>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-xs">
           <input
             type="checkbox"
             name="accrualCurrentMonthPayNext"

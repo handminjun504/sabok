@@ -119,14 +119,14 @@ export function TenantCreateForm({
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-[var(--muted)]">본사 자본금 (원)</label>
-              <CommaWonInput name="headOfficeCapital" className="input w-full" placeholder="선택" />
+              <CommaWonInput name="headOfficeCapital" className="input w-full text-xs" placeholder="선택" />
             </div>
           </div>
         </div>
 
         <div className="sm:col-span-2">
           <label className="mb-1 block text-sm font-medium text-[var(--muted)]">메모 (선택)</label>
-          <textarea name="memo" rows={3} className="input min-h-[5rem] w-full resize-y" placeholder="협의 사항·특이 운영 등" />
+          <textarea name="memo" rows={3} className="input min-h-[3.5rem] w-full resize-y text-xs" placeholder="협의 사항·특이 운영 등" />
         </div>
       </div>
       <button type="submit" className="btn btn-primary">

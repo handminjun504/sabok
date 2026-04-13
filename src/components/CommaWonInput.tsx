@@ -26,7 +26,7 @@ export function CommaWonInput({
   name,
   id,
   defaultValue,
-  className = "input w-full",
+  className = "input w-full text-xs",
   required,
   placeholder,
   disabled,

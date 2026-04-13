@@ -29,7 +29,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
   }
 
   return (
-    <section className="surface-prominent p-6" aria-labelledby="tenant-reg-info">
+    <section className="surface-prominent p-4 sm:p-5" aria-labelledby="tenant-reg-info">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="tenant-reg-info" className="text-sm font-bold text-[var(--text)]">
@@ -56,9 +56,9 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
         onSubmit={(e) => {
           if (!editing) e.preventDefault();
         }}
-        className="mt-4 space-y-5"
+        className="mt-3 space-y-3"
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
               거래처명
@@ -66,7 +66,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             <input
               name="name"
               required
-              className="input w-full"
+              className="input w-full text-xs"
               defaultValue={tenant.name}
               disabled={fieldsLocked}
             />
@@ -75,7 +75,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
               코드
             </label>
-            <div className="input w-full cursor-default border-[var(--border)] bg-[var(--surface-hover)] font-mono text-sm text-[var(--text)]">
+            <div className="input w-full cursor-default border-[var(--border)] bg-[var(--surface-hover)] py-[0.3rem] font-mono text-xs text-[var(--text)]">
               {tenant.code}
             </div>
             <p className="mt-1 text-[10px] text-[var(--muted)]">코드는 변경할 수 없습니다.</p>
@@ -137,7 +137,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             </label>
             <input
               name="approvalNumber"
-              className="input w-full"
+              className="input w-full text-xs"
               defaultValue={tenant.approvalNumber ?? ""}
               disabled={fieldsLocked}
               autoComplete="off"
@@ -149,7 +149,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             </label>
             <input
               name="businessRegNo"
-              className="input w-full"
+              className="input w-full text-xs"
               defaultValue={tenant.businessRegNo ?? ""}
               disabled={fieldsLocked}
               autoComplete="off"
@@ -162,7 +162,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             <CommaWonInput
               name="headOfficeCapital"
               defaultValue={tenant.headOfficeCapital}
-              className="input w-full"
+              className="input w-full text-xs"
               disabled={fieldsLocked}
             />
           </div>
@@ -173,7 +173,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             <textarea
               name="memo"
               rows={3}
-              className="input min-h-[5rem] w-full resize-y"
+              className="input min-h-[3.5rem] w-full resize-y text-xs"
               defaultValue={tenant.memo ?? ""}
               disabled={fieldsLocked}
               placeholder="협의 사항·특이 운영 등"
