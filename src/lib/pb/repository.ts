@@ -27,8 +27,9 @@ import {
 } from "@/lib/domain/tenant-profile";
 import type { Role } from "@/lib/role";
 import { parseRole } from "@/lib/role";
+import { ClientResponseError } from "pocketbase";
 import { getAdminPb } from "./admin-client";
-import { logPbClientError } from "./client-error-log";
+import { logPbClientError, pocketBaseRecordErrorMessage } from "./client-error-log";
 import { C } from "./collections";
 import { esc } from "./filter-esc";
 import {
@@ -328,14 +329,48 @@ export async function companySettingsByTenant(tenantId: string): Promise<Company
 
 export async function companySettingsCreateForTenant(tenantId: string): Promise<void> {
   const pb = await getAdminPb();
-  await pb.collection(C.companySettings).create({
+  const withAccrual = {
     tenantId,
     foundingMonth: 1,
     defaultPayDay: 25,
     activeYear: 2026,
     accrualCurrentMonthPayNext: false,
-    paymentEventDefs: {},
-  });
+    paymentEventDefs: {} as Record<string, unknown>,
+  };
+
+  try {
+    await pb.collection(C.companySettings).create(withAccrual);
+    return;
+  } catch (e) {
+    if (!(e instanceof ClientResponseError)) {
+      logPbClientError("companySettingsCreateForTenant", e);
+      throw e;
+    }
+    const detail = pocketBaseRecordErrorMessage(e).toLowerCase();
+    const accrualRejected =
+      detail.includes("accrualcurrentmonthpaynext") &&
+      (detail.includes("blank") || detail.includes("missing required") || detail.includes("nonempty"));
+    if (!accrualRejected) {
+      logPbClientError("companySettingsCreateForTenant", e);
+      throw e;
+    }
+    try {
+      await pb.collection(C.companySettings).create({
+        tenantId,
+        foundingMonth: 1,
+        defaultPayDay: 25,
+        activeYear: 2026,
+        paymentEventDefs: {},
+      });
+    } catch (e2) {
+      logPbClientError("companySettingsCreateForTenant (retry without accrual flag)", e2);
+      throw e2;
+    }
+    logPbClientError("companySettingsCreateForTenant (false rejected by Nonempty; created without field)", e);
+    console.warn(
+      "[pb] sabok_company_settings.accrualCurrentMonthPayNext: PB Nonempty가 false를 거절해 필드를 생략했습니다. Admin에서 해당 bool의 Nonempty를 끄거나 기본값을 설정하세요.",
+    );
+  }
 }
 
 export async function companySettingsUpsert(

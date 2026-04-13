@@ -26,8 +26,9 @@ export function parseTenantOperationMode(v: unknown): TenantOperationMode {
   return "GENERAL";
 }
 
+/** 카드·목록용 — 거래처 최초 등록 시 정한 개인·법인 적립 구분 */
 export function tenantClientEntityLabel(t: TenantClientEntityType): string {
-  return t === "CORPORATE" ? "법인사업자" : "개인사업자";
+  return t === "CORPORATE" ? "법인 적립" : "개인 적립";
 }
 
 export function tenantOperationModeLabel(m: TenantOperationMode): string {

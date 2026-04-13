@@ -62,10 +62,7 @@ export function SelectTenantClient({ tenants, isPlatformAdmin }: Props) {
       {isEmpty ? (
         isPlatformAdmin ? (
           <div className="surface-prominent mx-auto flex max-w-lg flex-col items-center p-10 text-center">
-            <p className="text-sm text-[var(--muted)]">
-              등록된 거래처가 없습니다. 아래에서 신규 거래처를 등록한 뒤 카드를 눌러 대시보드로 들어가세요.
-            </p>
-            <button type="button" className="btn btn-primary mt-6 px-8" onClick={openCreate}>
+            <button type="button" className="btn btn-primary px-8" onClick={openCreate}>
               거래처 추가
             </button>
           </div>

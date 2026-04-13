@@ -22,7 +22,7 @@ export function TenantDeleteForm({ tenantId, tenantCode }: { tenantId: string; t
       onSubmit={(e) => {
         if (
           !confirm(
-            `「${tenantCode}」거래처와 소속 직원·설정·출연·감사로그(해당 업체)까지 모두 삭제합니다. 되돌릴 수 없습니다. 계속할까요?`,
+            `「${tenantCode}」거래처와 소속 직원·설정·감사로그(해당 업체)까지 모두 삭제합니다. 되돌릴 수 없습니다. 계속할까요?`,
           )
         ) {
           e.preventDefault();

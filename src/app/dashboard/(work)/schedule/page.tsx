@@ -18,6 +18,7 @@ import {
   monthlySalaryPortion,
 } from "@/lib/domain/schedule";
 import { saveMonthlyNoteFormAction } from "@/app/actions/quarterly";
+import { CommaWonInput } from "@/components/CommaWonInput";
 import { Tabs } from "@/components/Tabs";
 
 function format(n: number) {
@@ -203,11 +204,7 @@ export default async function SchedulePage() {
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">선택적 복지 금액</label>
-            <input
-              name="optionalExtraAmount"
-              className="input"
-              placeholder="원 단위로 입력"
-            />
+            <CommaWonInput name="optionalExtraAmount" className="input" placeholder="원 단위" />
           </div>
           <div className="sm:col-span-2 lg:col-span-4">
             <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">메모 (선택)</label>

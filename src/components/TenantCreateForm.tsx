@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { createTenantAction, type TenantActionState } from "@/app/actions/tenant-admin";
+import { CommaWonInput } from "@/components/CommaWonInput";
 import { TENANT_OPERATION_MODES } from "@/lib/domain/tenant-profile";
 
 export type TenantCreateFormVariant = "full" | "select";
@@ -40,7 +41,9 @@ export function TenantCreateForm({
             {onSelectScreen ? "새 거래처(업체) 추가" : "거래처(업체) 등록"}
           </h2>
           <p className="text-sm text-[var(--muted)]">
-            {onSelectScreen ? "대시보드에서 쓸 거래처를 만듭니다." : "거래처 유형·기금 운영 방식을 고릅니다."}
+            {onSelectScreen
+              ? "대시보드에서 쓸 거래처를 만듭니다."
+              : "최초 등록 시 개인·법인 적립 구분과 기금 운영 방식을 정합니다."}
           </p>
         </>
       ) : null}
@@ -63,39 +66,18 @@ export function TenantCreateForm({
         </div>
 
         <div className="sm:col-span-2">
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">사업자·등록 정보 (선택)</p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">인가번호</label>
-              <input name="approvalNumber" className="input w-full" placeholder="예: 위탁 인가 번호" autoComplete="off" />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">사업자등록번호</label>
-              <input name="businessRegNo" className="input w-full" placeholder="하이픈 포함·생략 모두 가능" autoComplete="off" />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">본사 자본금 (원)</label>
-              <input
-                name="headOfficeCapital"
-                className="input w-full"
-                inputMode="numeric"
-                placeholder="예: 100000000 (콤마 가능)"
-                autoComplete="off"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="sm:col-span-2">
-          <span className="mb-2 block text-sm font-medium text-[var(--muted)]">고객사 사업자 유형</span>
+          <span className="mb-1 block text-sm font-medium text-[var(--text)]">개인·법인 적립 구분</span>
+          <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
+            SABOK에 거래처를 <strong>처음 등록할 때만</strong> 정합니다. 이후 적립·한도 등은 이 구분을 따릅니다.
+          </p>
           <div className="flex flex-wrap gap-x-8 gap-y-3 text-[0.9375rem] leading-snug text-[var(--text)]">
             <label className="flex cursor-pointer items-start gap-2.5">
               <input type="radio" name="clientEntityType" value="INDIVIDUAL" defaultChecked className="mt-1" />
-              <span>개인사업자</span>
+              <span>개인</span>
             </label>
             <label className="flex cursor-pointer items-start gap-2.5">
               <input type="radio" name="clientEntityType" value="CORPORATE" className="mt-1" />
-              <span>법인사업자</span>
+              <span>법인</span>
             </label>
           </div>
         </div>
@@ -121,6 +103,24 @@ export function TenantCreateForm({
                 </span>
               </label>
             ))}
+          </div>
+        </div>
+
+        <div className="sm:col-span-2">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">사업자·등록 정보 (선택)</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">인가번호</label>
+              <input name="approvalNumber" className="input w-full" placeholder="예: 위탁 인가 번호" autoComplete="off" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">사업자등록번호</label>
+              <input name="businessRegNo" className="input w-full" placeholder="하이픈 포함·생략 모두 가능" autoComplete="off" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">본사 자본금 (원)</label>
+              <CommaWonInput name="headOfficeCapital" className="input w-full" placeholder="선택" />
+            </div>
           </div>
         </div>
 

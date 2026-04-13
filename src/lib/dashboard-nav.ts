@@ -51,11 +51,7 @@ export function getDashboardNav(opts: {
     { href: "/dashboard/salary-inclusion-report", label: "급여포함신고" },
   );
   if (canEditCompanySettings(role)) {
-    work.push(
-      { href: "/dashboard/settings", label: "전사 설정" },
-      /** 출연처(기금 출연 상대) + 적립금 — 거래처(업체) 자체는 선택 화면에서 등록 */
-      { href: "/dashboard/vendor-contributions", label: "출연·적립" },
-    );
+    work.push({ href: "/dashboard/settings", label: "전사 설정" });
   }
   groups.push({ title: "업무", items: work });
 

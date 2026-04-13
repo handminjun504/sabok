@@ -12,6 +12,7 @@ import {
   saveQuarterlyEmployeeConfigFormAction,
   saveQuarterlyRatesFormAction,
 } from "@/app/actions/quarterly";
+import { CommaWonInput } from "@/components/CommaWonInput";
 import { Tabs } from "@/components/Tabs";
 
 const INPUT_SM =
@@ -97,12 +98,24 @@ export default async function QuarterlyPage() {
                     return (
                       <tr key={itemKey} className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]">
                         <td className="py-2 pr-4 text-sm font-medium">{QUARTERLY_ITEM_LABELS[itemKey]}</td>
-                        <td className="py-1.5 pr-2"><input name={`${itemKey}_infant`} defaultValue={r?.amountPerInfant != null ? String(r.amountPerInfant) : ""} className={INPUT_SM} /></td>
-                        <td className="py-1.5 pr-2"><input name={`${itemKey}_pre`} defaultValue={r?.amountPerPreschool != null ? String(r.amountPerPreschool) : ""} className={INPUT_SM} /></td>
-                        <td className="py-1.5 pr-2"><input name={`${itemKey}_teen`} defaultValue={r?.amountPerTeen != null ? String(r.amountPerTeen) : ""} className={INPUT_SM} /></td>
-                        <td className="py-1.5 pr-2"><input name={`${itemKey}_par`} defaultValue={r?.amountPerParent != null ? String(r.amountPerParent) : ""} className={INPUT_SM} /></td>
-                        <td className="py-1.5 pr-2"><input name={`${itemKey}_inlaw`} defaultValue={r?.amountPerInLaw != null ? String(r.amountPerInLaw) : ""} className={INPUT_SM} /></td>
-                        <td className="py-1.5 pr-2"><input name={`${itemKey}_flat`} defaultValue={r?.flatAmount != null ? String(r.flatAmount) : ""} className={INPUT_SM} /></td>
+                        <td className="py-1.5 pr-2">
+                          <CommaWonInput name={`${itemKey}_infant`} defaultValue={r?.amountPerInfant ?? null} className={INPUT_SM} />
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <CommaWonInput name={`${itemKey}_pre`} defaultValue={r?.amountPerPreschool ?? null} className={INPUT_SM} />
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <CommaWonInput name={`${itemKey}_teen`} defaultValue={r?.amountPerTeen ?? null} className={INPUT_SM} />
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <CommaWonInput name={`${itemKey}_par`} defaultValue={r?.amountPerParent ?? null} className={INPUT_SM} />
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <CommaWonInput name={`${itemKey}_inlaw`} defaultValue={r?.amountPerInLaw ?? null} className={INPUT_SM} />
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <CommaWonInput name={`${itemKey}_flat`} defaultValue={r?.flatAmount ?? null} className={INPUT_SM} />
+                        </td>
                         <td className="py-1.5 pr-2"><input name={`${itemKey}_pins`} defaultValue={r?.percentInsurance != null ? String(r.percentInsurance) : ""} className="w-16 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm" /></td>
                         <td className="py-1.5 pr-2"><input name={`${itemKey}_ploan`} defaultValue={r?.percentLoanInterest != null ? String(r.percentLoanInterest) : ""} className="w-16 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm" /></td>
                       </tr>
@@ -177,7 +190,7 @@ export default async function QuarterlyPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">금액</label>
-                <input name="amount" className="input" required />
+                <CommaWonInput name="amount" className="input" required />
               </div>
               <div className="flex items-end sm:col-span-4">
                 <button type="submit" className="btn btn-primary">저장</button>

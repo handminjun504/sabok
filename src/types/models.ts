@@ -120,7 +120,7 @@ export type Tenant = {
   name: string;
   active: boolean;
   memo?: string | null;
-  /** 고객사(위탁사) 사업자 유형 — PB `clientEntityType` */
+  /** 개인·법인 적립 구분(SABOK 거래처 최초 등록 시) — PB `clientEntityType` */
   clientEntityType: TenantClientEntityType;
   /** 사내근로복지기금 운용 방식 — PB `operationMode` (급여낮추기·인센티브 지급 등) */
   operationMode: TenantOperationMode;

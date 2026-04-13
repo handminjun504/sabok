@@ -4,6 +4,7 @@ import {
   saveLevelRulesFormAction,
   saveLevelTargetFormAction,
 } from "@/app/actions/levelRules";
+import { CommaWonInput } from "@/components/CommaWonInput";
 import { Tabs } from "@/components/Tabs";
 import {
   allPaymentEventKeysForYear,
@@ -56,9 +57,9 @@ export default async function LevelsPage() {
           {[1, 2, 3, 4, 5].map((lv) => (
             <div key={lv}>
               <label className="mb-1.5 block text-sm font-medium text-[var(--text)]">레벨 {lv}</label>
-              <input
+              <CommaWonInput
                 name={`target_${lv}`}
-                defaultValue={fmtInt(Number(targetMap.get(lv) ?? 0))}
+                defaultValue={Number(targetMap.get(lv) ?? 0)}
                 readOnly={!canEdit}
                 className="input read-only:bg-[var(--surface-hover)] read-only:text-[var(--muted)]"
               />
@@ -122,9 +123,9 @@ export default async function LevelsPage() {
                     {[1, 2, 3, 4, 5].map((lv) => (
                       <td key={lv} className="py-1.5 pr-2">
                         {canEdit ? (
-                          <input
+                          <CommaWonInput
                             name={`amt_${lv}_${ev}`}
-                            defaultValue={fmtInt(Number(ruleMap.get(`${lv}_${ev}`) ?? 0))}
+                            defaultValue={Number(ruleMap.get(`${lv}_${ev}`) ?? 0)}
                             className={INPUT_CLS}
                           />
                         ) : (

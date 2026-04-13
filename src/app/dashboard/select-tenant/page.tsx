@@ -66,9 +66,6 @@ export default async function SelectTenantPage() {
           <div className="min-w-0">
             <p className="page-eyebrow">시작하기</p>
             <h1 className="page-hero-title mt-2 neu-title-gradient">거래처 선택</h1>
-            <p className="page-hero-sub text-sm sm:text-base">
-              등록된 거래처가 없습니다. <strong>거래처 추가</strong>로 신규 업체를 등록한 뒤 카드에서 들어가세요.
-            </p>
           </div>
           <SelectTenantClient tenants={[]} isPlatformAdmin />
         </div>
@@ -87,10 +84,6 @@ export default async function SelectTenantPage() {
       <div className="min-w-0">
         <p className="page-eyebrow">업체 전환</p>
         <h1 className="page-hero-title mt-2 neu-title-gradient">거래처 선택</h1>
-        <p className="page-hero-sub text-sm sm:text-base">
-          카드에서 들어갈 거래처를 고르세요. 플랫폼 관리자는 <strong>+</strong> 로 신규 등록하고, 각 카드 하단에서 활성·비활성·삭제를 할 수
-          있습니다. 다른 거래처로 바꿀 때는 대시보드 상단의 <strong>다른 거래처로 전환</strong>을 이용하세요.
-        </p>
       </div>
       <SelectTenantClient tenants={cards} isPlatformAdmin={session.isPlatformAdmin} />
     </div>

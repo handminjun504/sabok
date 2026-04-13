@@ -16,6 +16,7 @@ import {
   paymentEventLabel,
 } from "@/lib/domain/payment-events";
 import { deleteLevel5OverrideFormAction, saveLevel5OverrideFormAction } from "@/app/actions/levelRules";
+import { CommaWonInput } from "@/components/CommaWonInput";
 
 async function OverrideForm({
   employeeId,
@@ -53,7 +54,11 @@ async function OverrideForm({
         </div>
         <div>
           <label className="text-xs text-[var(--muted)]">금액</label>
-          <input name="amount" className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm" required />
+          <CommaWonInput
+            name="amount"
+            required
+            className="input mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm"
+          />
         </div>
         <div className="flex items-end">
           <button type="submit" className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm text-white">
@@ -65,7 +70,8 @@ async function OverrideForm({
         {existing.map((o) => (
           <li key={o.id} className="flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2">
             <span>
-              {paymentEventLabel(o.eventKey, customDefs)}: <strong>{String(o.amount)}</strong> 원
+              {paymentEventLabel(o.eventKey, customDefs)}:{" "}
+              <strong>{o.amount.toLocaleString("ko-KR")}</strong> 원
             </span>
             <form action={deleteLevel5OverrideFormAction}>
               <input type="hidden" name="employeeId" value={employeeId} />
