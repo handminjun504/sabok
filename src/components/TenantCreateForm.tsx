@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { createTenantAction, type TenantActionState } from "@/app/actions/tenant-admin";
 import { CommaWonInput } from "@/components/CommaWonInput";
 import { TENANT_OPERATION_MODES } from "@/lib/domain/tenant-profile";
+import { CONTRIBUTION_ADDITIONAL_RESERVE_RULE_SUMMARY_KO } from "@/lib/domain/vendor-reserve";
 
 export type TenantCreateFormVariant = "full" | "select";
 
@@ -120,6 +121,9 @@ export function TenantCreateForm({
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-[var(--muted)]">본사 자본금 (원)</label>
               <CommaWonInput name="headOfficeCapital" className="input w-full text-xs" placeholder="선택" />
+              <p className="mt-1 text-[11px] leading-snug text-[var(--muted)]">
+                {CONTRIBUTION_ADDITIONAL_RESERVE_RULE_SUMMARY_KO}
+              </p>
             </div>
           </div>
         </div>

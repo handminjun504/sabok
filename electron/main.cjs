@@ -1,6 +1,6 @@
 /**
  * Thin desktop shell: Next.js 개발 서버 또는 배포 URL을 그대로 표시합니다.
- * 사용법: 터미널 1 — npm run dev
+ * 사용법: 터미널 1 — npm run dev (Windows 에서는 run-dev.mjs 로 CMD 창 억제)
  *         터미널 2 — npm run desktop
  */
 

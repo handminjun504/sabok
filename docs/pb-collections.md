@@ -229,14 +229,18 @@ Unique: `(tenantId, code)`
 
 통상 출연 실무는 본사에서 하며, 이 테이블은 그 사업장 기금으로 반영되는 출연액·추가 적립 결과를 남긴다.
 
+**출연금 C**는 해당 월에 레벨 1, 2, 3, 4, 5 직원에게 입금할 총 금액을 뜻한다(도메인 정의는 `src/lib/domain/vendor-reserve.ts` 주석 참고).
+
 | 필드                 | 타입   | 필수 | 비고 |
 |----------------------|--------|------|------|
 | tenantId             | text   | yes  |      |
 | vendorId             | text   | yes  |      |
-| contributionAmount   | number | yes  | 출연금 C |
+| contributionAmount   | number | yes  | 출연금 C(해당 월 레벨 1~5 직원 입금 합계) |
 | additionalReserved   | number | yes  | 실제 반영된 추가 적립 |
 | reserveAfter         | number | yes  | 반영 후 누적 |
 | note                 | text   | no   |      |
 | occurredAt           | text   | no   | ISO 날짜 문자열(선택) |
+
+추가 적립 산식: 앱은 `src/lib/domain/vendor-reserve.ts`의 `computeAdditionalReserve`를 따른다. **법인**은 출연금 C의 20%를 본사 자본금의 50% 누적까지 추가 적립하고 상한 도달 후에는 추가 적립 없음. **개인**은 매 출연금(월)마다 항상 C의 20% 추가 적립. 서버 기록 시 거래처(`sabok_tenants`)의 `clientEntityType`·`headOfficeCapital`을 우선한다.
 
 Rule: 공개 API는 모두 막고 **Superuser/Admin SDK(Next 서버)** 만 사용하는 것을 권장한다.

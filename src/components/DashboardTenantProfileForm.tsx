@@ -10,6 +10,7 @@ import {
   type TenantClientEntityType,
   type TenantOperationMode,
 } from "@/lib/domain/tenant-profile";
+import { CONTRIBUTION_ADDITIONAL_RESERVE_RULE_SUMMARY_KO } from "@/lib/domain/vendor-reserve";
 import type { Tenant } from "@/types/models";
 
 export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
@@ -76,6 +77,9 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
         {/* 폼에 없으면 저장 시 null 로 덮어써져 인가·사업자번호가 사라짐 — 항상 현재값 전송 */}
         <input type="hidden" name="approvalNumber" value={tenant.approvalNumber ?? ""} />
         <input type="hidden" name="businessRegNo" value={tenant.businessRegNo ?? ""} />
+        {/* 라디오는 disabled 시 제출되지 않음 → state와 동일한 값을 hidden으로 반드시 보냄 */}
+        <input type="hidden" name="clientEntityType" value={clientEntityType} />
+        <input type="hidden" name="operationMode" value={operationMode} />
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <p className="dash-eyebrow mb-1">인가번호</p>
@@ -123,12 +127,14 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             <span className="dash-eyebrow mb-1 block">
               개인·법인 적립 구분
             </span>
-            <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-[var(--text)]">
+            <div
+              className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-[var(--text)]"
+              role="radiogroup"
+              aria-label="개인·법인 적립 구분"
+            >
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="radio"
-                  name="clientEntityType"
-                  value="INDIVIDUAL"
                   checked={clientEntityType === "INDIVIDUAL"}
                   onChange={() => setClientEntityType("INDIVIDUAL")}
                   disabled={fieldsLocked}
@@ -138,8 +144,6 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="radio"
-                  name="clientEntityType"
-                  value="CORPORATE"
                   checked={clientEntityType === "CORPORATE"}
                   onChange={() => setClientEntityType("CORPORATE")}
                   disabled={fieldsLocked}
@@ -150,7 +154,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
             <span className="mb-2 block text-sm font-medium text-[var(--muted)]">기금 운영 방식</span>
-            <div className="space-y-2">
+            <div className="space-y-2" role="radiogroup" aria-label="기금 운영 방식">
               {TENANT_OPERATION_MODES.map((opt) => (
                 <label
                   key={opt.value}
@@ -158,8 +162,6 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
                 >
                   <input
                     type="radio"
-                    name="operationMode"
-                    value={opt.value}
                     checked={operationMode === opt.value}
                     onChange={() => setOperationMode(opt.value)}
                     disabled={fieldsLocked}
@@ -183,6 +185,9 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
               className="input w-full text-xs"
               disabled={fieldsLocked}
             />
+            <p className="mt-1 text-[11px] leading-snug text-[var(--muted)]">
+              {CONTRIBUTION_ADDITIONAL_RESERVE_RULE_SUMMARY_KO}
+            </p>
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
             <label className="dash-eyebrow mb-1 block">

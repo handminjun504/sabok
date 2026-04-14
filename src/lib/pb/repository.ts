@@ -112,6 +112,21 @@ function tenantTextField(r: Record<string, unknown>, primary: string, ...aliases
   return null;
 }
 
+/** PB에 숫자 필드가 clientEntityType 슬롯에 잘못 들어가면 법인이 개인으로 보이는 문제 방지 */
+function tenantClientEntityFromPb(r: Record<string, unknown>): TenantClientEntityType {
+  const tryKeys = ["clientEntityType", "client_entity_type", "적립구분"] as const;
+  for (const k of tryKeys) {
+    const v = r[k];
+    if (v == null || v === "") continue;
+    if (typeof v === "number") continue;
+    const s = String(v).trim();
+    if (!s) continue;
+    if (/^\d+([.,]\d+)?$/.test(s)) continue;
+    return parseTenantClientEntityType(v);
+  }
+  return parseTenantClientEntityType(r.clientEntityType);
+}
+
 function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
   const cap = Number(r.headOfficeCapital);
   return {
@@ -120,7 +135,7 @@ function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
     name: String(r.name),
     active: Boolean(r.active ?? true),
     memo: r.memo == null || r.memo === "" ? null : String(r.memo),
-    clientEntityType: parseTenantClientEntityType(r.clientEntityType),
+    clientEntityType: tenantClientEntityFromPb(r),
     operationMode: parseTenantOperationMode(r.operationMode),
     approvalNumber: tenantTextField(r, "approvalNumber", "approval_number", "인가번호"),
     businessRegNo: tenantTextField(
@@ -979,6 +994,7 @@ export async function vendorContributionListByVendor(vendorId: string, limit: nu
 export async function vendorAppendContribution(input: {
   tenantId: string;
   vendorId: string;
+  /** 출연금 C — 해당 월 레벨 1~5 직원 입금 총액 */
   contributionAmount: number;
   note?: string | null;
   occurredAt?: string | null;
@@ -989,11 +1005,22 @@ export async function vendorAppendContribution(input: {
     throw new Error("거래처를 찾을 수 없습니다.");
   }
   const vendor = mapVendorRow(vRow);
+  const tenant = await tenantGetById(input.tenantId);
+  /** 거래처 등록 정보(sabok_tenants)를 출연 추가 적립 판단의 기준으로 둔다. */
+  const businessType: VendorBusinessType =
+    tenant == null ? vendor.businessType : tenant.clientEntityType === "CORPORATE" ? "CORPORATE" : "INDIVIDUAL";
+  const workplaceCapitalForCap =
+    businessType === "CORPORATE"
+      ? tenant?.headOfficeCapital != null && Number.isFinite(tenant.headOfficeCapital)
+        ? Math.max(0, tenant.headOfficeCapital)
+        : Math.max(0, vendor.workplaceCapital)
+      : 0;
+
   const { computeAdditionalReserve } = await import("@/lib/domain/vendor-reserve");
   const calc = computeAdditionalReserve({
-    businessType: vendor.businessType,
+    businessType,
     contributionAmount: input.contributionAmount,
-    workplaceCapital: vendor.workplaceCapital,
+    workplaceCapital: workplaceCapitalForCap,
     accumulatedReserve: vendor.accumulatedReserve,
   });
 

@@ -6,8 +6,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev",
-    "dev:web": "next dev -H 0.0.0.0 -p 3000",
+    "dev": "node run-dev.mjs",
+    "dev:web": "node run-dev.mjs -- -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
     "start:web": "next start -H 0.0.0.0 -p 3000",
