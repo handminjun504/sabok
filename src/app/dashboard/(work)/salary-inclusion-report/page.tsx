@@ -6,6 +6,7 @@ import {
   levelPaymentRuleList,
   monthlyNoteListByTenantYear,
   quarterlyEmployeeConfigListByTenantYear,
+  tenantGetById,
 } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
@@ -17,9 +18,9 @@ import {
 import {
   computeActualWelfareThroughPaidMonth,
   computeIncentiveWelfareSalaryInclusionYtd,
-  computeSalaryInclusionVsActual,
-  salaryInclusionCapLabel,
+  computeSalaryInclusionCapBlocks,
 } from "@/lib/domain/schedule";
+import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 
 function format(n: number) {
   return n.toLocaleString("ko-KR");
@@ -41,7 +42,11 @@ export default async function SalaryInclusionReportPage({
   const throughMonth = parseThroughMonth(sp.throughMonth);
 
   const { tenantId } = await requireTenantContext();
-  const settings = await companySettingsByTenant(tenantId);
+  const [settings, tenantRow] = await Promise.all([
+    companySettingsByTenant(tenantId),
+    tenantGetById(tenantId),
+  ]);
+  const tenantOperationMode = parseTenantOperationMode(tenantRow?.operationMode);
   const year = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
   const accrual = settings?.accrualCurrentMonthPayNext ?? false;
@@ -79,9 +84,16 @@ export default async function SalaryInclusionReportPage({
       throughMonth,
       customSchedule
     );
-    const capVs = computeSalaryInclusionVsActual(emp, actual);
+    const capBlocks = computeSalaryInclusionCapBlocks(
+      emp,
+      actual,
+      empNotes,
+      year,
+      tenantOperationMode,
+      throughMonth
+    );
     const incentiveWelfare = computeIncentiveWelfareSalaryInclusionYtd(empNotes, year, throughMonth);
-    return { emp, capVs, incentiveWelfare };
+    return { emp, capBlocks, incentiveWelfare };
   });
 
   const monthLinks = (
@@ -135,38 +147,51 @@ export default async function SalaryInclusionReportPage({
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ emp, capVs }) => (
-              <tr key={emp.id} className="border-b border-[var(--border)]">
-                <td className="px-3 py-2 font-mono">{emp.employeeCode}</td>
-                <td className="px-3 py-2">{emp.name}</td>
-                <td className="px-3 py-2">{emp.level}</td>
-                <td className="dash-table-vline-strong px-3 py-2 text-right tabular-nums">
-                  {capVs.hasCap ? format(capVs.cap) : "—"}
-                </td>
-                <td className="dash-table-vline px-3 py-2 text-xs text-[var(--muted)]">
-                  {salaryInclusionCapLabel(capVs.capSource)}
-                </td>
-                <td className="dash-table-vline px-3 py-2 text-right tabular-nums">{format(capVs.actual)}</td>
-                {showOver ? (
-                  <td className="dash-table-vline px-3 py-2 text-right tabular-nums">
-                    {capVs.hasCap && capVs.overage > 0 ? (
-                      <span className="font-medium text-[var(--danger)]">{format(capVs.overage)}</span>
-                    ) : (
-                      "—"
-                    )}
+            {rows.flatMap(({ emp, capBlocks }) =>
+              capBlocks.map((b, idx) => (
+                <tr key={`${emp.id}-${b.key}`} className="border-b border-[var(--border)]">
+                  {idx === 0 ? (
+                    <>
+                      <td className="px-3 py-2 font-mono align-top" rowSpan={capBlocks.length}>
+                        {emp.employeeCode}
+                      </td>
+                      <td className="px-3 py-2 align-top" rowSpan={capBlocks.length}>
+                        {emp.name}
+                      </td>
+                      <td className="px-3 py-2 align-top" rowSpan={capBlocks.length}>
+                        {emp.level}
+                      </td>
+                    </>
+                  ) : null}
+                  <td className="dash-table-vline-strong px-3 py-2 text-right tabular-nums align-top">
+                    {b.hasCap ? format(b.cap) : "—"}
                   </td>
-                ) : null}
-                {showUnder ? (
-                  <td className="dash-table-vline px-3 py-2 text-right tabular-nums">
-                    {capVs.hasCap && capVs.underForSalaryReport > 0 ? (
-                      <span className="font-medium text-[var(--warn)]">{format(capVs.underForSalaryReport)}</span>
-                    ) : (
-                      "—"
-                    )}
+                  <td className="dash-table-vline px-3 py-2 text-xs text-[var(--muted)] align-top">
+                    <span className="text-[var(--text)]">{b.title}</span>
+                    <span className="block text-[0.65rem] text-[var(--muted)]">실적: {b.actualLabel}</span>
                   </td>
-                ) : null}
-              </tr>
-            ))}
+                  <td className="dash-table-vline px-3 py-2 text-right tabular-nums align-top">{format(b.actual)}</td>
+                  {showOver ? (
+                    <td className="dash-table-vline px-3 py-2 text-right tabular-nums align-top">
+                      {b.hasCap && b.overage > 0 ? (
+                        <span className="font-medium text-[var(--danger)]">{format(b.overage)}</span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  ) : null}
+                  {showUnder ? (
+                    <td className="dash-table-vline px-3 py-2 text-right tabular-nums align-top">
+                      {b.hasCap && b.underForSalaryReport > 0 ? (
+                        <span className="font-medium text-[var(--warn)]">{format(b.underForSalaryReport)}</span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  ) : null}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
         {rows.length === 0 && <p className="p-6 text-sm text-[var(--muted)]">직원 데이터가 없습니다.</p>}

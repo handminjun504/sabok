@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   employeeFindFirst,
+  monthlyNoteListByEmployeeYear,
   monthlyNoteUpsert,
   quarterlyEmployeeConfigUpsert,
   quarterlyRateList,
@@ -41,6 +42,70 @@ export async function applyQuarterlyTemplateFormAction(formData: FormData): Prom
 
 export async function saveMonthlyNoteFormAction(formData: FormData): Promise<void> {
   await saveMonthlyNoteAction(null, formData);
+}
+
+export async function saveMonthlyIncentiveAccrualYearFormAction(formData: FormData): Promise<void> {
+  await saveMonthlyIncentiveAccrualYearAction(null, formData);
+}
+
+function parseOptionalWonField(raw: string): number | null {
+  const s = String(raw ?? "")
+    .replace(/,/g, "")
+    .trim();
+  if (s === "") return null;
+  const n = Number(s);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n);
+}
+
+export async function saveMonthlyIncentiveAccrualYearAction(_: QState, formData: FormData): Promise<QState> {
+  const ctx = await resolveActionTenant();
+  if (!ctx.ok) return { 오류: ctx.message };
+  if (!canEditEmployees(ctx.role)) return { 오류: "권한이 없습니다." };
+
+  const employeeId = String(formData.get("employeeId") ?? "");
+  const year = parseInt(String(formData.get("year") ?? ""), 10);
+  if (!employeeId || !Number.isFinite(year)) {
+    return { 오류: "입력 오류" };
+  }
+
+  const emp = await employeeFindFirst(employeeId, ctx.tenantId);
+  if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
+
+  const existingList = await monthlyNoteListByEmployeeYear(emp.id, year);
+  const byMonth = new Map(existingList.map((n) => [n.month, n]));
+
+  try {
+    for (let month = 1; month <= 12; month++) {
+      const raw = String(formData.get(`incentiveAccrual_${month}`) ?? "");
+      const incentiveAccrualAmount = parseOptionalWonField(raw);
+      const prev = byMonth.get(month);
+      const optionalWelfareText = prev?.optionalWelfareText ?? null;
+      const optionalExtraAmount = prev?.optionalExtraAmount ?? null;
+      const incentiveWelfarePaymentAmount = prev?.incentiveWelfarePaymentAmount ?? null;
+
+      if (!prev && incentiveAccrualAmount == null) {
+        continue;
+      }
+
+      await monthlyNoteUpsert({
+        employeeId: emp.id,
+        year,
+        month,
+        optionalWelfareText,
+        optionalExtraAmount,
+        incentiveWelfarePaymentAmount,
+        incentiveAccrualAmount,
+      });
+    }
+  } catch (e) {
+    console.error(e);
+    return { 오류: "저장 실패" };
+  }
+
+  revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/salary-inclusion-report");
+  return { 성공: true };
 }
 
 export async function saveQuarterlyRatesAction(_: QState, formData: FormData): Promise<QState> {

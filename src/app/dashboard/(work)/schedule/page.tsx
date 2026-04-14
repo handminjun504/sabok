@@ -8,6 +8,7 @@ import {
   levelPaymentRuleList,
   monthlyNoteListByTenantYear,
   quarterlyEmployeeConfigListByTenantYear,
+  tenantGetById,
 } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees } from "@/lib/permissions";
@@ -15,13 +16,17 @@ import { customPaymentDefsForYear, customPaymentScheduleRows } from "@/lib/domai
 import {
   buildMonthlyBreakdown,
   computeActualYearlyWelfareForEmployee,
-  computeSalaryInclusionVsActual,
+  computeSalaryInclusionCapBlocks,
   monthlySalaryPortion,
   regularAnnualTotalsByLevel,
   welfareByScheduleDisplayMonth,
   welfareScheduleLinesByMonth,
 } from "@/lib/domain/schedule";
-import { saveMonthlyNoteFormAction } from "@/app/actions/quarterly";
+import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
+import {
+  saveMonthlyIncentiveAccrualYearFormAction,
+  saveMonthlyNoteFormAction,
+} from "@/app/actions/quarterly";
 import {
   salaryInclusionShowOverage,
   salaryInclusionShowShortfall,
@@ -30,11 +35,16 @@ import { CommaWonInput } from "@/components/CommaWonInput";
 import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
 import { Tabs } from "@/components/Tabs";
 import { ScheduleEmployeeLevelAssignments } from "@/components/ScheduleEmployeeLevelAssignments";
+import { MonthlyIncentiveAccrualGrid } from "@/components/MonthlyIncentiveAccrualGrid";
 import { ScheduleEmployeeCards } from "@/components/ScheduleEmployeeCards";
 
 export default async function SchedulePage() {
   const { tenantId, role } = await requireTenantContext();
-  const settings = await companySettingsByTenant(tenantId);
+  const [settings, tenantRow] = await Promise.all([
+    companySettingsByTenant(tenantId),
+    tenantGetById(tenantId),
+  ]);
+  const tenantOperationMode = parseTenantOperationMode(tenantRow?.operationMode);
   const year = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
   const accrual = settings?.accrualCurrentMonthPayNext ?? false;
@@ -62,7 +72,7 @@ export default async function SchedulePage() {
     welfareLinesByMonth: Map<number, { label: string; amount: number }[]>;
     yearlyWelfare: number;
     salaryMonth: number;
-    capVs: ReturnType<typeof computeSalaryInclusionVsActual>;
+    capBlocks: ReturnType<typeof computeSalaryInclusionCapBlocks>;
   };
 
   const customDefs = customPaymentDefsForYear(settings, year);
@@ -93,7 +103,14 @@ export default async function SchedulePage() {
       empNotes,
       customSchedule
     );
-    const capVs = computeSalaryInclusionVsActual(emp, yearlyWelfare);
+    const capBlocks = computeSalaryInclusionCapBlocks(
+      emp,
+      yearlyWelfare,
+      empNotes,
+      year,
+      tenantOperationMode,
+      12
+    );
 
     return {
       emp,
@@ -101,7 +118,7 @@ export default async function SchedulePage() {
       welfareLinesByMonth,
       yearlyWelfare,
       salaryMonth: monthlySalaryPortion(emp),
-      capVs,
+      capBlocks,
     };
   });
 
@@ -123,12 +140,31 @@ export default async function SchedulePage() {
       linesByMonth,
       yearlyWelfare: r.yearlyWelfare,
       salaryMonth: r.salaryMonth,
-      capVs: {
-        hasCap: r.capVs.hasCap,
-        cap: r.capVs.cap,
-        overage: r.capVs.overage,
-        underForSalaryReport: r.capVs.underForSalaryReport,
-      },
+      capBlocks: r.capBlocks.map((b) => ({
+        key: b.key,
+        title: b.title,
+        actualLabel: b.actualLabel,
+        hasCap: b.hasCap,
+        cap: b.cap,
+        actual: b.actual,
+        overage: b.overage,
+        underForSalaryReport: b.underForSalaryReport,
+      })),
+    };
+  });
+
+  const incentiveAccrualRows = employees.map((emp) => {
+    const empNotes = notes.filter((n) => n.employeeId === emp.id);
+    const incentiveAccrualByMonth: Record<number, number | null> = {};
+    for (let m = 1; m <= 12; m++) {
+      const hit = empNotes.find((x) => x.month === m);
+      incentiveAccrualByMonth[m] = hit?.incentiveAccrualAmount ?? null;
+    }
+    return {
+      employeeId: emp.id,
+      employeeCode: emp.employeeCode,
+      name: emp.name,
+      incentiveAccrualByMonth,
     };
   });
 
@@ -145,6 +181,17 @@ export default async function SchedulePage() {
           showCapUnder={showCapUnder}
         />
       </div>
+    </div>
+  );
+
+  const incentiveAccrualTab = (
+    <div className="surface dash-panel-pad">
+      <MonthlyIncentiveAccrualGrid
+        year={year}
+        rows={incentiveAccrualRows}
+        canEdit={canNote}
+        saveAction={saveMonthlyIncentiveAccrualYearFormAction}
+      />
     </div>
   );
 
@@ -226,6 +273,7 @@ export default async function SchedulePage() {
       <Tabs
         tabs={[
           { label: "월별 스케줄", content: scheduleTab },
+          { label: "월별 발생 인센", content: incentiveAccrualTab },
           { label: "레벨·예정액", content: levelAssignmentTab },
           { label: "선택적 복지·메모", content: noteTab },
         ]}

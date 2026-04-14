@@ -17,6 +17,7 @@ import {
   QUARTERLY_INTERVAL_MONTHS,
 } from "../business-rules";
 import { paymentEventLabel } from "./payment-events";
+import type { TenantOperationMode } from "./tenant-profile";
 
 /** 테넌트 추가 정기 행사(귀속 월) */
 export type CustomPaymentScheduleDef = { eventKey: string; accrualMonth: number };
@@ -585,4 +586,106 @@ export function computeSalaryInclusionVsActual(
   }
   const v = computeWelfareCapVsActual(cap, actualWelfare);
   return { ...v, capSource: source };
+}
+
+/** 지급월 1~N: 월별 노트의 인센→사복 지급액 합 */
+export function sumIncentiveWelfarePaymentThroughMonth(
+  notes: Pick<MonthlyEmployeeNote, "year" | "month" | "incentiveWelfarePaymentAmount">[],
+  year: number,
+  lastPaidMonthInclusive: number
+): number {
+  const m = Math.min(12, Math.max(0, lastPaidMonthInclusive));
+  return Math.round(
+    notes
+      .filter((n) => n.year === year && n.month >= 1 && n.month <= m)
+      .reduce((s, n) => s + (n.incentiveWelfarePaymentAmount != null ? toNum(n.incentiveWelfarePaymentAmount) : 0), 0)
+  );
+}
+
+/** 스케줄 카드·급여포함신고용 — 블록 단위 상한/실적/초과 */
+export type SalaryInclusionCapBlock = {
+  key: "welfare" | "incentive" | "single";
+  title: string;
+  /** 실적 의미(예: 연간 기금 vs 인센 사복 합) */
+  actualLabel: string;
+  cap: number;
+  actual: number;
+  overage: number;
+  underForSalaryReport: number;
+  hasCap: boolean;
+};
+
+/**
+ * 업체 `COMBINED`(급여낮추기+인센) 이고 사복지급분·예상 인센이 모두 있으면:
+ * - 사복지급분 상한 vs **연간(또는 누적) 기금 실적**
+ * - 예상 인센 상한 vs **월별 노트「사복으로 지급할 인센」누적 합**
+ * 그 외 운영 방식은 기존 `computeSalaryInclusionVsActual` 한 블록.
+ */
+export function computeSalaryInclusionCapBlocks(
+  employee: Employee,
+  yearlyWelfareActual: number,
+  notes: Pick<MonthlyEmployeeNote, "year" | "month" | "incentiveWelfarePaymentAmount">[],
+  year: number,
+  operationMode: TenantOperationMode,
+  lastPaidMonthInclusive: number = 12
+): SalaryInclusionCapBlock[] {
+  const wAlloc = Math.round(toNum(employee.welfareAllocation));
+  const incCap = employee.incentiveAmount != null ? Math.round(toNum(employee.incentiveAmount)) : 0;
+  const incentivePaid = sumIncentiveWelfarePaymentThroughMonth(notes, year, lastPaidMonthInclusive);
+
+  if (operationMode === "COMBINED" && wAlloc > 0 && incCap > 0) {
+    const wv = computeWelfareCapVsActual(wAlloc, yearlyWelfareActual);
+    const iv = computeWelfareCapVsActual(incCap, incentivePaid);
+    return [
+      {
+        key: "welfare",
+        title: "사복지급분 상한",
+        actualLabel: lastPaidMonthInclusive >= 12 ? "연간 기금 실적" : `기금 실적(~${lastPaidMonthInclusive}월)`,
+        cap: wv.cap,
+        actual: wv.actual,
+        overage: wv.overage,
+        underForSalaryReport: wv.underForSalaryReport,
+        hasCap: wv.hasCap,
+      },
+      {
+        key: "incentive",
+        title: "예상 인센 상한",
+        actualLabel:
+          lastPaidMonthInclusive >= 12
+            ? "인센 사복 지급(월 노트) 합"
+            : `인센 사복 지급 합(~${lastPaidMonthInclusive}월)`,
+        cap: iv.cap,
+        actual: iv.actual,
+        overage: iv.overage,
+        underForSalaryReport: iv.underForSalaryReport,
+        hasCap: iv.hasCap,
+      },
+    ];
+  }
+
+  const legacy = computeSalaryInclusionVsActual(employee, yearlyWelfareActual);
+  const singleTitle =
+    legacy.capSource === "incentive"
+      ? "예상 인센 상한"
+      : legacy.capSource === "welfare"
+        ? "사복지급분 상한"
+        : "상한";
+  const singleActualLabel =
+    legacy.capSource === "incentive"
+      ? "연간 기금 실적"
+      : legacy.capSource === "welfare"
+        ? "연간 기금 실적"
+        : "연간 기금 실적";
+  return [
+    {
+      key: "single",
+      title: singleTitle,
+      actualLabel: singleActualLabel,
+      cap: legacy.cap,
+      actual: legacy.actual,
+      overage: legacy.overage,
+      underForSalaryReport: legacy.underForSalaryReport,
+      hasCap: legacy.hasCap,
+    },
+  ];
 }

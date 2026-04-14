@@ -4,6 +4,17 @@ import { useMemo, useState } from "react";
 
 export type ScheduleWelfareLine = { label: string; amount: number };
 
+export type ScheduleCapBlock = {
+  key: string;
+  title: string;
+  actualLabel: string;
+  hasCap: boolean;
+  cap: number;
+  actual: number;
+  overage: number;
+  underForSalaryReport: number;
+};
+
 export type ScheduleCardRow = {
   employeeId: string;
   employeeCode: string;
@@ -15,12 +26,7 @@ export type ScheduleCardRow = {
   linesByMonth: Record<number, ScheduleWelfareLine[]>;
   yearlyWelfare: number;
   salaryMonth: number;
-  capVs: {
-    hasCap: boolean;
-    cap: number;
-    overage: number;
-    underForSalaryReport: number;
-  };
+  capBlocks: ScheduleCapBlock[];
 };
 
 function format(n: number) {
@@ -194,35 +200,48 @@ export function ScheduleEmployeeCards({
                     <span className="font-semibold tabular-nums text-[var(--text)]">{format(r.yearlyWelfare)}원</span>
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[var(--muted)]">
-                  <span>
-                    상한{" "}
-                    <span className="tabular-nums text-[var(--text)]">
-                      {r.capVs.hasCap ? `${format(r.capVs.cap)}원` : "—"}
-                    </span>
-                  </span>
-                  {showCapOver ? (
-                    <span>
-                      초과{" "}
-                      {r.capVs.hasCap && r.capVs.overage > 0 ? (
-                        <span className="font-medium tabular-nums text-[var(--danger)]">{format(r.capVs.overage)}원</span>
-                      ) : (
-                        <span className="tabular-nums">—</span>
-                      )}
-                    </span>
-                  ) : null}
-                  {showCapUnder ? (
-                    <span>
-                      미달{" "}
-                      {r.capVs.hasCap && r.capVs.underForSalaryReport > 0 ? (
-                        <span className="font-medium tabular-nums text-[var(--warn)]">
-                          {format(r.capVs.underForSalaryReport)}원
+                <div className="space-y-2">
+                  {r.capBlocks.map((b) => (
+                    <div
+                      key={b.key}
+                      className="flex flex-col gap-1 border-t border-[var(--border)]/60 pt-2 first:border-t-0 first:pt-0"
+                    >
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                        {b.title}
+                        <span className="ml-1 font-normal normal-case text-[var(--muted)]">· {b.actualLabel}</span>
+                      </p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[var(--muted)]">
+                        <span>
+                          상한{" "}
+                          <span className="tabular-nums text-[var(--text)]">
+                            {b.hasCap ? `${format(b.cap)}원` : "—"}
+                          </span>
                         </span>
-                      ) : (
-                        <span className="tabular-nums">—</span>
-                      )}
-                    </span>
-                  ) : null}
+                        {showCapOver ? (
+                          <span>
+                            초과{" "}
+                            {b.hasCap && b.overage > 0 ? (
+                              <span className="font-medium tabular-nums text-[var(--danger)]">{format(b.overage)}원</span>
+                            ) : (
+                              <span className="tabular-nums">—</span>
+                            )}
+                          </span>
+                        ) : null}
+                        {showCapUnder ? (
+                          <span>
+                            미달{" "}
+                            {b.hasCap && b.underForSalaryReport > 0 ? (
+                              <span className="font-medium tabular-nums text-[var(--warn)]">
+                                {format(b.underForSalaryReport)}원
+                              </span>
+                            ) : (
+                              <span className="tabular-nums">—</span>
+                            )}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </footer>
             </article>

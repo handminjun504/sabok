@@ -820,6 +820,18 @@ export async function monthlyNoteListByTenantYear(
   return rows.map((x) => mapMonthlyNote(asRecord(x))).filter((n) => set.has(n.employeeId));
 }
 
+/** 한 직원·연도의 월별 노트 전부 (1~12월 중 기록된 달만 있을 수 있음) */
+export async function monthlyNoteListByEmployeeYear(
+  employeeId: string,
+  year: number
+): Promise<MonthlyEmployeeNote[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.monthlyEmployeeNotes).getFullList({
+    filter: `employeeId="${esc(employeeId)}" && year=${year}`,
+  });
+  return rows.map((x) => mapMonthlyNote(asRecord(x)));
+}
+
 export async function monthlyNoteUpsert(data: {
   employeeId: string;
   year: number;
