@@ -8,21 +8,43 @@ function won(n: number | null | undefined): string {
   return s || "—";
 }
 
-/** 카드 안에서 라벨·값을 한 칸으로 (그리드 여러 열에 나란히 배치) */
-function FieldCell({ label, value }: { label: string; value: ReactNode }) {
+/** 금액·한 줄 값: 라벨(왼쪽) / 값(오른쪽, 줄바꿈 금지) — 좁은 칸에 숫자가 쪼개지는 것 방지 */
+function FieldRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="min-w-0">
-      <div className="text-xs font-bold leading-tight tracking-tight text-[var(--muted)]">{label}</div>
-      <div className="mt-1 break-words text-base font-semibold leading-snug text-[var(--text)]">{value}</div>
+    <div className="flex min-w-0 items-baseline justify-between gap-4 border-b border-[var(--border)]/70 py-2.5 last:border-b-0">
+      <span className="min-w-0 flex-1 pr-2 text-sm font-semibold leading-snug text-[var(--text)]">{label}</span>
+      <span className="shrink-0 whitespace-nowrap text-right text-base font-bold tabular-nums tracking-tight text-[var(--text)]">
+        {value}
+      </span>
     </div>
   );
 }
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <p className="mb-1.5 mt-4 border-b-2 border-[var(--border-strong)] pb-1.5 text-sm font-bold tracking-tight text-[var(--text)] first:mt-0">
+    <h3 className="mb-0 mt-5 border-b-2 border-[var(--border-strong)] pb-2 text-[0.9375rem] font-bold tracking-tight text-[var(--text)] first:mt-0">
       {children}
-    </p>
+    </h3>
+  );
+}
+
+/** 짧은 라벨 + 숫자 묶음 (가족 수 등) — 라벨은 한 줄 유지, 짧은 표기 + title로 풀네임 */
+function StatChip({
+  label,
+  labelTitle,
+  value,
+}: {
+  label: string;
+  labelTitle?: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="min-w-[3.25rem] shrink-0">
+      <p className="whitespace-nowrap text-xs font-bold text-[var(--muted)]" title={labelTitle}>
+        {label}
+      </p>
+      <p className="mt-1 whitespace-nowrap text-lg font-bold tabular-nums text-[var(--text)]">{value}</p>
+    </div>
   );
 }
 
@@ -42,80 +64,83 @@ export function EmployeeDirectoryGrid({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
       {employees.map((e) => (
         <article
           key={e.id}
-          className="surface surface-hoverable flex min-w-0 flex-col overflow-hidden text-sm leading-snug"
+          className="surface surface-hoverable flex min-w-0 flex-col overflow-hidden shadow-[var(--shadow-card)]"
         >
-          <header className="border-b border-[var(--border)] bg-[var(--surface-hover)]/35 px-4 py-3.5 sm:px-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="truncate text-lg font-bold tracking-tight text-[var(--text)]">{e.name}</h2>
-                <p className="mt-1.5 text-sm text-[var(--muted)]">
-                  <span className="font-mono text-sm font-bold tabular-nums text-[var(--text)]">{e.employeeCode}</span>
-                  {e.position ? (
-                    <span className="mt-1 block break-words text-sm font-semibold leading-snug text-[var(--text)]">
-                      직급 {e.position}
-                    </span>
-                  ) : null}
-                </p>
+          <header className="border-b border-[var(--border)] bg-[var(--surface-hover)]/40 px-5 py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 space-y-1">
+                <h2 className="text-xl font-bold tracking-tight text-[var(--text)]">{e.name}</h2>
+                <p className="font-mono text-sm font-bold tabular-nums text-[var(--text)]">{e.employeeCode}</p>
+                {e.position ? (
+                  <p className="text-sm font-semibold text-[var(--text)]">직급 {e.position}</p>
+                ) : null}
               </div>
               <Link
                 href={`/dashboard/employees/${e.id}`}
-                className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-bold text-[var(--accent)] transition-colors hover:bg-[var(--surface-hover)]"
+                className="shrink-0 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-bold text-[var(--accent)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
               >
                 상세
               </Link>
             </div>
           </header>
 
-          <div className="flex flex-1 flex-col gap-0.5 px-4 pb-4 pt-1 sm:px-5">
+          <div className="space-y-0 px-5 pb-5 pt-3">
             <SectionTitle>급여·복지</SectionTitle>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-3 min-[360px]:grid-cols-4">
-              <FieldCell label="기존연봉" value={<span className="tabular-nums font-bold">{won(e.baseSalary)}</span>} />
-              <FieldCell label="조정급여" value={<span className="tabular-nums font-bold">{won(e.adjustedSalary)}</span>} />
-              <FieldCell label="사복지급분" value={<span className="tabular-nums font-bold">{won(e.welfareAllocation)}</span>} />
-              <FieldCell label="알아서금액" value={<span className="tabular-nums font-bold">{won(e.discretionaryAmount)}</span>} />
+            <div className="pt-1">
+              <FieldRow label="기존연봉" value={won(e.baseSalary)} />
+              <FieldRow label="조정급여" value={won(e.adjustedSalary)} />
+              <FieldRow label="사복지급분" value={won(e.welfareAllocation)} />
+              <FieldRow label="알아서금액" value={won(e.discretionaryAmount)} />
             </div>
 
             {colRepReturn || colSpouseReceipt || colWorkerNet ? (
               <>
                 <SectionTitle>표시 항목</SectionTitle>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3">
-                  {colRepReturn ? <FieldCell label="대표반환" value={yn(e.flagRepReturn) || "—"} /> : null}
-                  {colSpouseReceipt ? <FieldCell label="배우자수령" value={yn(e.flagSpouseReceipt) || "—"} /> : null}
-                  {colWorkerNet ? (
-                    <FieldCell label="근로자 실질 수령" value={yn(e.flagWorkerNet) || "—"} />
-                  ) : null}
+                <div className="pt-1">
+                  {colRepReturn ? <FieldRow label="대표반환" value={yn(e.flagRepReturn) || "—"} /> : null}
+                  {colSpouseReceipt ? <FieldRow label="배우자수령" value={yn(e.flagSpouseReceipt) || "—"} /> : null}
+                  {colWorkerNet ? <FieldRow label="근로자 실질 수령" value={yn(e.flagWorkerNet) || "—"} /> : null}
                 </div>
               </>
             ) : null}
 
             <SectionTitle>가족·일정</SectionTitle>
-            <div className="grid grid-cols-3 gap-x-3 gap-y-3">
-              <FieldCell label="입사 월" value={<span className="tabular-nums font-bold">{e.hireMonth ?? "—"}</span>} />
-              <FieldCell label="생일 월" value={<span className="tabular-nums font-bold">{e.birthMonth ?? "—"}</span>} />
-              <FieldCell label="결혼기념월" value={<span className="tabular-nums font-bold">{e.weddingMonth ?? "—"}</span>} />
+            <div className="grid grid-cols-3 gap-4 border-b border-[var(--border)]/70 py-3 sm:gap-6">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-[var(--muted)]">입사 월</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{e.hireMonth ?? "—"}</p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-[var(--muted)]">생일 월</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{e.birthMonth ?? "—"}</p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-[var(--muted)]" title="결혼기념월">
+                  결혼기념
+                </p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{e.weddingMonth ?? "—"}</p>
+              </div>
             </div>
-            <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-5">
-              <FieldCell label="영유아" value={<span className="tabular-nums font-bold">{e.childrenInfant}</span>} />
-              <FieldCell label="미취학아동" value={<span className="tabular-nums font-bold">{e.childrenPreschool}</span>} />
-              <FieldCell label="청소년" value={<span className="tabular-nums font-bold">{e.childrenTeen}</span>} />
-              <FieldCell label="부모님" value={<span className="tabular-nums font-bold">{e.parentsCount}</span>} />
-              <FieldCell label="시부모님" value={<span className="tabular-nums font-bold">{e.parentsInLawCount}</span>} />
+            <div className="flex flex-wrap items-start gap-x-6 gap-y-4 border-b border-[var(--border)]/70 py-4">
+              <StatChip label="영유아" value={e.childrenInfant} />
+              <StatChip label="미취학" labelTitle="미취학아동" value={e.childrenPreschool} />
+              <StatChip label="청소년" value={e.childrenTeen} />
+              <StatChip label="부모님" value={e.parentsCount} />
+              <StatChip label="시부모님" value={e.parentsInLawCount} />
             </div>
 
             <SectionTitle>공제·지급</SectionTitle>
-            <div className="grid grid-cols-3 gap-x-3 gap-y-3">
-              <FieldCell label="보험료" value={<span className="tabular-nums font-bold">{won(e.insurancePremium)}</span>} />
-              <FieldCell label="대출이자" value={<span className="tabular-nums font-bold">{won(e.loanInterest)}</span>} />
-              <FieldCell label="월세" value={<span className="tabular-nums font-bold">{won(e.monthlyRentAmount)}</span>} />
-            </div>
-            <div className="mt-1 grid grid-cols-3 gap-x-3 gap-y-3">
-              <FieldCell label="급여일" value={<span className="tabular-nums font-bold">{e.payDay ?? "—"}</span>} />
-              <FieldCell label="레벨" value={<span className="tabular-nums font-bold">{e.level}</span>} />
-              <FieldCell label="예상 인센" value={<span className="tabular-nums font-bold">{won(e.incentiveAmount)}</span>} />
+            <div className="pt-1">
+              <FieldRow label="보험료" value={won(e.insurancePremium)} />
+              <FieldRow label="대출이자" value={won(e.loanInterest)} />
+              <FieldRow label="월세" value={won(e.monthlyRentAmount)} />
+              <FieldRow label="급여일" value={e.payDay ?? "—"} />
+              <FieldRow label="레벨" value={e.level} />
+              <FieldRow label="예상 인센" value={won(e.incentiveAmount)} />
             </div>
           </div>
         </article>
