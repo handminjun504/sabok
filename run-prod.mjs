@@ -49,8 +49,15 @@ loadEnvFile(".env");
 loadEnvFile(".env.local");
 
 const nextBin = path.join(__dirname, "node_modules", "next", "dist", "bin", "next");
-/** 기본 포트. PM2/`.env`의 `PORT`가 있으면 그 값이 우선합니다. */
-const port = process.env.PORT || "10002";
+
+const portRaw = process.env.PORT?.trim();
+if (!portRaw) {
+  console.error(
+    "[sabok] PORT 환경 변수가 없습니다. .env·PM2 env·컨테이너 등에서 리스닝 포트를 지정하세요. (폴백 없음)",
+  );
+  process.exit(1);
+}
+const port = portRaw;
 
 const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
 const tsxCli = path.join(__dirname, "node_modules", "tsx", "dist", "cli.mjs");

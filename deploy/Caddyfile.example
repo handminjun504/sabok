@@ -1,0 +1,14 @@
+# 참고용 — 실제 블록은 배포 파이프라인이 생성(도메인·포트·경로 변수 치환).
+# Caddy env 치환을 쓸 경우: reverse_proxy 127.0.0.1:{$PORT} 형태(런타임에 PORT 노출 필요).
+
+# your.domain.example {
+# 	encode gzip zstd
+# 	reverse_proxy 127.0.0.1:10002
+# }
+
+# 서브패스(Next basePath 와 함께):
+# your.domain.example {
+# 	handle_path /your-prefix/* {
+# 		reverse_proxy 127.0.0.1:10002
+# 	}
+# }

@@ -2,7 +2,9 @@
  * PM2 단일 인스턴스 (fork). 사복 저장소 루트에서만 사용.
  *   pm2 start ecosystem.config.cjs
  *   pm2 reload ecosystem.config.cjs --update-env
- * GL 대시보드 `start` API가 불안정할 때 서버 RDP에서 위 명령으로 기동·재시작.
+ *
+ * PORT·시크릿·PB 접속 정보는 저장소에 고정하지 않고 배포 파이프라인이 주입한다.
+ * 계약: docs/deploy-caddy-pm2.md
  */
 const path = require("path");
 
@@ -27,7 +29,6 @@ module.exports = {
       kill_timeout: 8_000,
       env: {
         NODE_ENV: "production",
-        PORT: "10002",
       },
     },
   ],

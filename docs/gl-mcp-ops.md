@@ -41,12 +41,12 @@
 
 ## GL 서버 · Windows PM2
 
-**경로 분리(필수)**: sabok은 **`https://github.com/handminjun504/sabok`** 전용 클론 디렉터리에만 둔다. **GL 대시보드·gl-server(`handminjun504/gl-server`)와 같은 폴더를 쓰거나, GL이 쓰는 경로에 MCP/스크립트로 `git remote`·`reset`을 걸지 않는다.** 한 디렉터리에 두 제품을 섞으면 대시보드(예: 4000)와 사복(예: 10002, `PORT`로 변경 가능)이 함께 망가질 수 있다.
+**경로 분리(필수)**: sabok은 **`https://github.com/handminjun504/sabok`** 전용 클론 디렉터리에만 둔다. **GL 대시보드·gl-server(`handminjun504/gl-server`)와 같은 폴더를 쓰거나, GL이 쓰는 경로에 MCP/스크립트로 `git remote`·`reset`을 걸지 않는다.** 한 디렉터리에 두 제품을 섞으면 대시보드(예: 4000)와 사복(리스닝 포트는 서버에서 `PORT`로 지정)이 함께 망가질 수 있다.
 
 1. **코드 동기화**: **사복 전용 루트**에서만 `git pull`(또는 수동 배포). 원격이 `handminjun504/sabok` 인지 `git remote -v`로 확인한 뒤 진행한다. MCP `git_pull`/`exec_command`는 **그 경로가 sabok 전용임이 확실할 때만** 사용한다.
 2. **설치**: `npm install --include=dev` 권장(`next build`용 devDependency).
 3. **빌드**: `npm run build`를 끝까지 실행.
-4. **PM2**: `run-prod.mjs`를 `command`(절대 경로), `interpreter`=`node`, `cwd`=**그 사복 전용 루트**, `env`에 `PORT`(기본 10002, 다른 서비스와 겹치면 변경), `NODE_ENV=production`, **`POCKETBASE_*`**, **`SESSION_SECRET`**.
+4. **PM2**: `run-prod.mjs`를 `command`(절대 경로), `interpreter`=`node`, `cwd`=**그 사복 전용 루트**, 배포가 **`PORT`(필수)**, `NODE_ENV=production`, **`POCKETBASE_*`**, **`SESSION_SECRET`** 등을 주입. Caddy+자동 배포 계약은 [deploy-caddy-pm2.md](./deploy-caddy-pm2.md).
 5. **시드**: `run-prod.mjs`는 기본적으로 시드 생략. 기동 시 시드 필요 시 `SABOK_RUN_SEED_ON_START=1`. 레거시: `SABOK_SKIP_DB_SETUP=1`도 생략.
 6. **재배포**: Windows에서는 저장소 루트에서 `.\scripts\deploy-sabok.ps1` 실행(원격이 `handminjun504/sabok` 인지 검사) 후 PM2에서 해당 앱만 재시작. 수동이면 `git pull` → `npm install --include=dev` → `npm run build` → 재시작.
 

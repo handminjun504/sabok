@@ -6,12 +6,11 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "node run-dev.mjs -- -p 10002",
-    "dev:web": "node run-dev.mjs -- -H 0.0.0.0 -p 10002",
+    "dev": "node run-dev.mjs",
+    "dev:web": "node run-dev.mjs -- -H 0.0.0.0",
     "build": "next build",
-    "start": "next start -p $PORT",
+    "start": "next start",
     "start:web": "next start -H 0.0.0.0 -p $PORT",
-    "desktop": "node ./node_modules/electron/cli.js ./electron/main.cjs",
     "lint": "next lint",
     "sheet:parity": "tsx scripts/sheet-parity.ts",
     "sheet:snapshots": "bash scripts/refresh-sheet-snapshots.sh",
@@ -39,7 +38,6 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
-    "electron": "^35.1.2",
     "cross-env": "^7.0.3",
     "eslint": "^9.24.0",
     "eslint-config-next": "^15.2.4",
