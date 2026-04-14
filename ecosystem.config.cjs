@@ -13,6 +13,8 @@ module.exports = {
       script: "run-prod.mjs",
       interpreter: "node",
       cwd: __dirname,
+      /** Windows에서 불필요한 콘솔(CMD) 창 생성 억제 */
+      windowsHide: true,
       instances: 1,
       exec_mode: "fork",
       autorestart: true,

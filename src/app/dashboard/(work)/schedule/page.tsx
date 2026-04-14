@@ -205,10 +205,8 @@ export default async function SchedulePage() {
   const noteTab = canNote ? (
     <CollapsibleEditorPanel
       title="선택적 복지·메모"
-      description="해당 월 지급 합계에 반영됩니다. 인센·사복 지급은 급여포함신고와 연계됩니다."
       triggerLabel="작성·수정 열기"
       defaultOpen={false}
-      summary={<p className="text-sm text-[var(--muted)]">필요할 때만 펼쳐 입력하세요.</p>}
     >
       <form action={saveMonthlyNoteFormAction} className="space-y-3">
         <input type="hidden" name="year" value={year} />
@@ -258,12 +256,7 @@ export default async function SchedulePage() {
     <div className="space-y-6">
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          기준 연도 <strong>{year}</strong> · 월 열: <strong>정기는 귀속월</strong>,{" "}
-          <strong>분기·선택 복지는 지급월</strong> 기준(12열 합 = 연간 기금과 동일).{" "}
-          {accrual ? "정기는 당월 귀속·익월 지급이어도 금액은 귀속 달 열에 표시." : "정기는 귀속·지급 동월."} 연간 기금 합계 대비 상한은{" "}
-          <strong className="text-[var(--text)]">예상 인센</strong>(입력 시) 또는 <strong className="text-[var(--text)]">사복지급분</strong>입니다.
-        </p>
+        <p className="mt-1 text-sm text-[var(--muted)]">{year}년</p>
       </div>
       <Tabs
         tabs={[

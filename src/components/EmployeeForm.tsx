@@ -436,9 +436,6 @@ export function EmployeeForm({
                 defaultValue={employee?.incentiveAmount ?? undefined}
                 optional
               />
-              <p className="mt-1 text-xs leading-snug text-[var(--muted)]">
-                입력 시 급여포함신고·스케줄의 연간 상한으로 씁니다. 비우면 사복지급분이 상한입니다. 실지급이 상한을 넘으면 초과분은 급여에 포함해 신고합니다.
-              </p>
             </div>
             <CommaNumberInput
               className="sm:col-span-2"

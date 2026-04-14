@@ -37,10 +37,10 @@ export default function LoginPage() {
     <main className="flex min-h-screen flex-col lg:flex-row">
       <section className="relative flex flex-1 flex-col justify-center px-6 py-12 lg:px-12 xl:px-16">
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.55] lg:rounded-br-[3rem]"
+          className="pointer-events-none absolute inset-0 opacity-[0.5] lg:rounded-br-[3rem]"
           style={{
             background:
-              "radial-gradient(ellipse 120% 80% at 20% 20%, rgba(20, 184, 166, 0.2) 0%, transparent 55%), radial-gradient(ellipse 90% 60% at 80% 60%, rgba(13, 92, 86, 0.12) 0%, transparent 50%)",
+              "radial-gradient(ellipse 120% 80% at 18% 18%, rgba(196, 92, 51, 0.14) 0%, transparent 52%), radial-gradient(ellipse 100% 70% at 82% 58%, rgba(214, 115, 74, 0.1) 0%, transparent 48%)",
           }}
         />
         <div className="relative max-w-lg">

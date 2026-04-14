@@ -108,21 +108,7 @@ export default async function SalaryInclusionReportPage({
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">급여포함신고</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          기준 연도 <strong>{year}</strong> · 지급월 <strong>1~{throughMonth}월</strong> 누적 실지급 vs 상한.
-          예상 인센(<code className="text-xs">인센티브</code> 필드)이 있으면 그 금액이 연간 상한이고, 없으면 사복지급분이 상한입니다.
-          {showOver ? (
-            <>
-              {" "}
-              실지급이 상한을 넘기면 <strong className="text-[var(--text)]">초과분은 급여(과세)에 포함해 신고</strong>하는 흐름을
-              전제로 합니다.
-            </>
-          ) : null}
-          {showUnder && !showOver ? (
-            <>
-              {" "}
-              아래 표는 <strong className="text-[var(--text)]">상한보다 적게 지급한 금액(미달)</strong>만 열로 보여 줍니다.
-            </>
-          ) : null}
+          {year}년 · 지급월 1–{throughMonth}월
         </p>
         <p className="mt-2 text-xs text-[var(--muted)]">
           표시 방식: <strong className="text-[var(--text)]">{varianceModeLabel}</strong> ·{" "}
@@ -184,12 +170,6 @@ export default async function SalaryInclusionReportPage({
 
       <div>
         <h2 className="text-lg font-semibold text-[var(--text)]">인센 → 사복 (월별 노트)</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          인센을 사복으로 지급하기로 한 경우, <strong className="text-[var(--text)]">스케줄 → 선택적 복지·메모</strong>에서
-          해당 월의 <strong className="text-[var(--text)]">발생 인센</strong>과 <strong className="text-[var(--text)]">사복으로 지급할 인센</strong>을
-          넣습니다. 지급월 1~{throughMonth}월 누적 발생이 누적 사복(인센) 지급보다 크면, 차액은 급여에 포함해 신고합니다.
-          (예: 1월 발생 307,000 + 2월 발생 203,100 = 510,100, 2월 사복 지급 500,000 → 차액 10,100)
-        </p>
         <div className="surface mt-3 overflow-x-auto dash-panel-pad">
           <table className="min-w-[820px] w-full text-left text-sm">
             <thead>

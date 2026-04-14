@@ -80,6 +80,7 @@ function runPbSeed() {
     cwd: __dirname,
     stdio: "inherit",
     shell: true,
+    windowsHide: true,
     env: { ...process.env, NODE_ENV: process.env.NODE_ENV || "production" },
   });
   const code = r.status ?? 1;
@@ -112,6 +113,7 @@ if (
     cwd: __dirname,
     stdio: "inherit",
     shell: true,
+    windowsHide: true,
     env: { ...process.env, NODE_ENV: "production" },
   });
   if ((br.status ?? 1) !== 0) {
@@ -149,6 +151,7 @@ warnIfBuildOlderThanGitTip();
 const child = spawn(process.execPath, [nextBin, "start", "-H", "0.0.0.0", "-p", String(port)], {
   cwd: __dirname,
   stdio: "inherit",
+  windowsHide: true,
   env: { ...process.env, NODE_ENV: "production" },
 });
 
