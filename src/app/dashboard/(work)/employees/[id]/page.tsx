@@ -110,6 +110,9 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           activeYear={year}
           foundingMonth={settings?.foundingMonth ?? 1}
           minimumAnnualSalaryWon={minimumAnnualSalaryWon}
+          surveyShowRepReturn={settings?.surveyShowRepReturn ?? false}
+          surveyShowSpouseReceipt={settings?.surveyShowSpouseReceipt ?? false}
+          surveyShowWorkerNet={settings?.surveyShowWorkerNet ?? false}
         />
       ) : (
         <p className="text-sm text-[var(--muted)]">조회 전용입니다.</p>

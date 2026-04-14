@@ -8,6 +8,10 @@
  * git pull 직후에는 반드시 `npm run build` 후 재시작하세요. pull만 하고 빌드 없이 재시작하면
  * 브라우저에 "Server Components render" / digest 오류만 보일 수 있습니다.
  * 기동 시 자동 빌드: .env 에 SABOK_BUILD_BEFORE_START=1
+ *
+ * Windows: npm.cmd + shell 기동은 보조 CMD 창이 뜰 수 있어, 시드·빌드는 `node`로 직접 호출하고
+ * Next 자식은 stdio 파이프로 붙여 불필요한 콘솔 창 생성을 줄입니다. 바탕화면 숨김 실행은
+ * `scripts/windows/start-sabok-hidden.vbs` 참고.
  */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -49,6 +53,8 @@ const nextBin = path.join(__dirname, "node_modules", "next", "dist", "bin", "nex
 const port = process.env.PORT || "10002";
 
 const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
+const tsxCli = path.join(__dirname, "node_modules", "tsx", "dist", "cli.mjs");
+const seedScript = path.join(__dirname, "scripts", "pb-seed.ts");
 
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret || sessionSecret.length < 16) {
@@ -76,13 +82,21 @@ function runPbSeed() {
     return 0;
   }
   console.log("[sabok] PocketBase seed …");
-  const r = spawnSync(npmCmd, ["run", "pb:seed"], {
-    cwd: __dirname,
-    stdio: "inherit",
-    shell: true,
-    windowsHide: true,
-    env: { ...process.env, NODE_ENV: process.env.NODE_ENV || "production" },
-  });
+  const seedEnv = { ...process.env, NODE_ENV: process.env.NODE_ENV || "production" };
+  const r = fs.existsSync(tsxCli)
+    ? spawnSync(process.execPath, [tsxCli, seedScript], {
+        cwd: __dirname,
+        stdio: "inherit",
+        windowsHide: true,
+        env: seedEnv,
+      })
+    : spawnSync(npmCmd, ["run", "pb:seed"], {
+        cwd: __dirname,
+        stdio: "inherit",
+        shell: true,
+        windowsHide: true,
+        env: seedEnv,
+      });
   const code = r.status ?? 1;
   if (code !== 0) {
     console.error(
@@ -108,11 +122,10 @@ if (
   process.env.SABOK_BUILD_BEFORE_START === "1" ||
   process.env.SABOK_BUILD_BEFORE_START === "true"
 ) {
-  console.log("[sabok] SABOK_BUILD_BEFORE_START — npm run build …");
-  const br = spawnSync(npmCmd, ["run", "build"], {
+  console.log("[sabok] SABOK_BUILD_BEFORE_START — next build …");
+  const br = spawnSync(process.execPath, [nextBin, "build"], {
     cwd: __dirname,
     stdio: "inherit",
-    shell: true,
     windowsHide: true,
     env: { ...process.env, NODE_ENV: "production" },
   });
@@ -148,12 +161,31 @@ function warnIfBuildOlderThanGitTip() {
 }
 warnIfBuildOlderThanGitTip();
 
-const child = spawn(process.execPath, [nextBin, "start", "-H", "0.0.0.0", "-p", String(port)], {
+const isWin = process.platform === "win32";
+const nextStartArgs = [nextBin, "start", "-H", "0.0.0.0", "-p", String(port)];
+const child = spawn(process.execPath, nextStartArgs, {
   cwd: __dirname,
-  stdio: "inherit",
+  /** Windows에서 inherit 시 부모에 콘솔이 없을 때 자식이 새 CMD를 띄우는 경우가 있어 파이프로 연결 */
+  stdio: isWin ? ["ignore", "pipe", "pipe"] : "inherit",
   windowsHide: true,
   env: { ...process.env, NODE_ENV: "production" },
 });
+if (isWin) {
+  child.stdout?.on("data", (chunk) => {
+    try {
+      process.stdout.write(chunk);
+    } catch {
+      /* hidden / no console */
+    }
+  });
+  child.stderr?.on("data", (chunk) => {
+    try {
+      process.stderr.write(chunk);
+    } catch {
+      /* hidden / no console */
+    }
+  });
+}
 
 child.on("exit", (code, signal) => {
   if (signal) {

@@ -15,6 +15,10 @@ module.exports = {
       cwd: __dirname,
       /** Windows에서 불필요한 콘솔(CMD) 창 생성 억제 */
       windowsHide: true,
+      /** 콘솔 대신 파일로 남김(Windows 서비스/RDP에서 CMD 플래시 완화) */
+      merge_logs: true,
+      out_file: path.join(__dirname, "logs", "pm2-sabok-out.log"),
+      error_file: path.join(__dirname, "logs", "pm2-sabok-error.log"),
       instances: 1,
       exec_mode: "fork",
       autorestart: true,

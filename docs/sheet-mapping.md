@@ -80,6 +80,6 @@
 
 ## CSV 가져오기
 
-헤더 별칭: [csv-import.ts](../src/lib/csv-import.ts) `ALIASES`. 보내기 헤더 순서: `SHEET_EMPLOYEE_EXPORT_HEADERS`.
+헤더 별칭: [csv-import.ts](../src/lib/csv-import.ts) `ALIASES`. 보내기 헤더 순서: `sheetEmployeeExportHeaders(전사설정)` — 조사표 플래그 열(대표반환·배우자수령·근로자 실질 수령)은 전사 설정에서 켠 것만 포함.
 
 **직원정보 탭 원본 CSV:** 1~2행은 표 제목·창립월 등 메타이고, **헤더는 3행**(첫 셀 `CODE`). 앱 CSV 가져오기는 **첫 줄이 헤더**인 파일을 기대하므로, 시트에서 가져올 때는 해당 행만 남기거나 범위를 `CODE` 행부터 보내기한다.

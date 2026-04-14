@@ -15,6 +15,9 @@ const schema = z.object({
   activeYear: z.coerce.number().min(2000).max(2100),
   accrualCurrentMonthPayNext: z.coerce.boolean(),
   salaryInclusionVarianceMode: z.enum(["BOTH", "OVER_ONLY", "UNDER_ONLY"]),
+  surveyShowRepReturn: z.boolean(),
+  surveyShowSpouseReceipt: z.boolean(),
+  surveyShowWorkerNet: z.boolean(),
 });
 
 export type SettingsState = { 오류?: string; 성공?: boolean } | null;
@@ -30,6 +33,9 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     activeYear: formData.get("activeYear"),
     accrualCurrentMonthPayNext: formData.get("accrualCurrentMonthPayNext") === "on",
     salaryInclusionVarianceMode: formData.get("salaryInclusionVarianceMode"),
+    surveyShowRepReturn: formData.get("surveyShowRepReturn") === "on",
+    surveyShowSpouseReceipt: formData.get("surveyShowSpouseReceipt") === "on",
+    surveyShowWorkerNet: formData.get("surveyShowWorkerNet") === "on",
   });
   if (!parsed.success) {
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };
@@ -61,5 +67,6 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard/schedule");
   revalidatePath("/dashboard/salary-inclusion-report");
+  revalidatePath("/dashboard/employees");
   return { 성공: true };
 }

@@ -15,6 +15,9 @@ export default async function SettingsPage() {
   const defaultPayDay = s?.defaultPayDay ?? 25;
   const activeYear = s?.activeYear ?? new Date().getFullYear();
   const accrualNext = s?.accrualCurrentMonthPayNext ?? false;
+  const surveyRep = s?.surveyShowRepReturn ?? false;
+  const surveySpouse = s?.surveyShowSpouseReceipt ?? false;
+  const surveyWorker = s?.surveyShowWorkerNet ?? false;
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div>
@@ -38,6 +41,10 @@ export default async function SettingsPage() {
               <strong>{activeYear}</strong>년
               {accrualNext ? " · 당월 귀속·차월 지급" : ""}
               <span className="mt-1 block text-xs text-[var(--muted)]">급여포함 초과·미달: {varianceSummary}</span>
+              <span className="mt-1 block text-xs text-[var(--muted)]">
+                조사표 항목: 대표반환 {surveyRep ? "ON" : "OFF"} · 배우자수령 {surveySpouse ? "ON" : "OFF"} · 근로자 실질{" "}
+                {surveyWorker ? "ON" : "OFF"}
+              </span>
             </p>
           }
         >
@@ -47,6 +54,9 @@ export default async function SettingsPage() {
             activeYear={activeYear}
             accrualCurrentMonthPayNext={accrualNext}
             varianceMode={varianceMode}
+            surveyShowRepReturn={surveyRep}
+            surveyShowSpouseReceipt={surveySpouse}
+            surveyShowWorkerNet={surveyWorker}
           />
         </CollapsibleEditorPanel>
       ) : (
@@ -59,6 +69,10 @@ export default async function SettingsPage() {
             {accrualNext ? "당월 귀속·차월 지급 사용 중" : "귀속·지급 동월"}
           </p>
           <p className="text-[var(--muted)]">급여포함 초과·미달 표시: {varianceSummary}</p>
+          <p className="text-[var(--muted)]">
+            조사표 항목: 대표반환 {surveyRep ? "ON" : "OFF"} · 배우자수령 {surveySpouse ? "ON" : "OFF"} · 근로자 실질{" "}
+            {surveyWorker ? "ON" : "OFF"}
+          </p>
         </div>
       )}
     </div>

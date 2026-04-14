@@ -213,6 +213,9 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     activeYear: num(r.activeYear, new Date().getFullYear()),
     accrualCurrentMonthPayNext: bool(r.accrualCurrentMonthPayNext),
     salaryInclusionVarianceMode: parseSalaryInclusionVarianceMode(r.salaryInclusionVarianceMode),
+    surveyShowRepReturn: bool(r.surveyShowRepReturn),
+    surveyShowSpouseReceipt: bool(r.surveyShowSpouseReceipt),
+    surveyShowWorkerNet: bool(r.surveyShowWorkerNet),
     paymentEventDefs: parsePaymentEventDefs(r.paymentEventDefs),
   };
 }

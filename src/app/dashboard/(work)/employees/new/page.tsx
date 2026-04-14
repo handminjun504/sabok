@@ -21,6 +21,9 @@ export default async function NewEmployeePage() {
         activeYear={activeYear}
         foundingMonth={foundingMonth}
         minimumAnnualSalaryWon={minimumAnnualSalaryWon}
+        surveyShowRepReturn={settings?.surveyShowRepReturn ?? false}
+        surveyShowSpouseReceipt={settings?.surveyShowSpouseReceipt ?? false}
+        surveyShowWorkerNet={settings?.surveyShowWorkerNet ?? false}
       />
     </div>
   );

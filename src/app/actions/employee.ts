@@ -100,6 +100,23 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     경고 = `${payYear}년 최저임금(연 환산 약 ${minAnnual.toLocaleString("ko-KR")}원)보다 적용 연봉(${effectiveAnnual.toLocaleString("ko-KR")}원)이 낮습니다. 확인하세요.`;
   }
 
+  const existingEmp = id ? await employeeFindFirst(id, ctx.tenantId) : null;
+  if (id && !existingEmp) return { 오류: "직원을 찾을 수 없습니다." };
+
+  const showSurveyRep = settings?.surveyShowRepReturn ?? false;
+  const showSurveySpouse = settings?.surveyShowSpouseReceipt ?? false;
+  const showSurveyWorker = settings?.surveyShowWorkerNet ?? false;
+
+  const flagRepReturn = showSurveyRep
+    ? chk(formData, "flagRepReturn")
+    : (existingEmp?.flagRepReturn ?? false);
+  const flagSpouseReceipt = showSurveySpouse
+    ? chk(formData, "flagSpouseReceipt")
+    : (existingEmp?.flagSpouseReceipt ?? false);
+  const flagWorkerNet = showSurveyWorker
+    ? chk(formData, "flagWorkerNet")
+    : (existingEmp?.flagWorkerNet ?? false);
+
   const data: Record<string, unknown> = {
     name,
     position,
@@ -126,9 +143,9 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     monthlyRentAmount: optDec(formData.get("monthlyRentAmount")),
     payDay: intOpt(formData.get("payDay")),
     flagAutoAmount: chk(formData, "flagAutoAmount"),
-    flagRepReturn: chk(formData, "flagRepReturn"),
-    flagSpouseReceipt: chk(formData, "flagSpouseReceipt"),
-    flagWorkerNet: chk(formData, "flagWorkerNet"),
+    flagRepReturn,
+    flagSpouseReceipt,
+    flagWorkerNet,
   };
 
   /** 신규 생성 시 선택 필드가 null이면 키 자체를 빼서 PB 검증 오류를 줄임 */
@@ -175,9 +192,8 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
   }
 
   try {
-    if (id) {
-      const emp = await employeeFindFirst(id, ctx.tenantId);
-      if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
+    if (id && existingEmp) {
+      const emp = existingEmp;
       await employeeUpdate(emp.id, bodyForUpdate(emp.employeeCode));
       await writeAudit({
         userId: ctx.userId,

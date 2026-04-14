@@ -6,8 +6,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { SHEET_EMPLOYEE_EXPORT_HEADERS } from "../src/lib/csv-import";
-import type { Employee, LevelPaymentRule, MonthlyEmployeeNote, QuarterlyEmployeeConfig } from "../src/types/models";
+import { sheetEmployeeExportHeaders } from "../src/lib/csv-import";
+import type { CompanySettings, Employee, LevelPaymentRule, MonthlyEmployeeNote, QuarterlyEmployeeConfig } from "../src/types/models";
 import {
   buildMonthlyBreakdown,
   computeIncentiveWelfareSalaryInclusionYtd,
@@ -130,17 +130,30 @@ const spend0 = aggregateWelfareSpendBySource([], 2026, 1, false, [], [], [], [],
 const legal0 = allocateYearlyWelfareToLegalCategories(spend0, 0);
 assert.equal([...legal0.values()].reduce((a, b) => a + b, 0), 0);
 
-// 커밋된 직원정보 스냅샷: 시트 3행 헤더가 앱 CSV 보내기(레벨·예상 인센 제외)와 동일
+// 커밋된 직원정보 스냅샷: 시트 3행 헤더가 앱 CSV 보내기(조사표 플래그 전부 ON, 레벨·예상 인센 제외)와 동일
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const snapPath = path.join(__dir, "../docs/sheet-snapshots/gid-0.csv");
 if (fs.existsSync(snapPath)) {
+  const surveyAllOn: CompanySettings = {
+    id: "",
+    tenantId: "",
+    foundingMonth: 1,
+    defaultPayDay: 25,
+    activeYear: 2026,
+    accrualCurrentMonthPayNext: false,
+    salaryInclusionVarianceMode: "BOTH",
+    surveyShowRepReturn: true,
+    surveyShowSpouseReceipt: true,
+    surveyShowWorkerNet: true,
+    paymentEventDefs: null,
+  };
   const lines = fs.readFileSync(snapPath, "utf8").split(/\r?\n/).filter((l) => l.length > 0);
   const headerRow = lines[2]?.split(",").map((c) => c.trim()) ?? [];
-  const expectedCore = SHEET_EMPLOYEE_EXPORT_HEADERS.slice(0, -2);
+  const expectedCore = sheetEmployeeExportHeaders(surveyAllOn).slice(0, -2);
   assert.deepEqual(
     headerRow,
     [...expectedCore],
-    "docs/sheet-snapshots/gid-0.csv 3행 헤더가 SHEET_EMPLOYEE_EXPORT_HEADERS(레벨·예상 인센 제외)와 일치해야 함"
+    "docs/sheet-snapshots/gid-0.csv 3행 헤더가 sheetEmployeeExportHeaders(조사표 전부 ON, 레벨·예상 인센 제외)와 일치해야 함"
   );
 }
 

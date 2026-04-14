@@ -15,9 +15,9 @@ export default async function EmployeesPage() {
   const activeYear = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
   const yy = String(activeYear).slice(-2);
-  const colRepReturn = list.some((e) => e.flagRepReturn);
-  const colSpouseReceipt = list.some((e) => e.flagSpouseReceipt);
-  const colWorkerNet = list.some((e) => e.flagWorkerNet);
+  const colRepReturn = settings?.surveyShowRepReturn ?? false;
+  const colSpouseReceipt = settings?.surveyShowSpouseReceipt ?? false;
+  const colWorkerNet = settings?.surveyShowWorkerNet ?? false;
 
   return (
     <div className="space-y-6">

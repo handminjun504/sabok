@@ -3,9 +3,16 @@ import type { ReactNode } from "react";
 import type { Employee } from "@/types/models";
 import { formatWon, yn } from "@/lib/spreadsheet-format";
 
+const EMPTY = "-";
+
 function won(n: number | null | undefined): string {
   const s = formatWon(n ?? null);
-  return s || "—";
+  return s || EMPTY;
+}
+
+function monthWithSuffix(m: number | null | undefined): string {
+  if (m == null) return EMPTY;
+  return `${m}월`;
 }
 
 /** 금액·한 줄 값: 라벨(왼쪽) / 값(오른쪽, 줄바꿈 금지) — 좁은 칸에 숫자가 쪼개지는 것 방지 */
@@ -101,9 +108,9 @@ export function EmployeeDirectoryGrid({
               <>
                 <SectionTitle>표시 항목</SectionTitle>
                 <div className="pt-1">
-                  {colRepReturn ? <FieldRow label="대표반환" value={yn(e.flagRepReturn) || "—"} /> : null}
-                  {colSpouseReceipt ? <FieldRow label="배우자수령" value={yn(e.flagSpouseReceipt) || "—"} /> : null}
-                  {colWorkerNet ? <FieldRow label="근로자 실질 수령" value={yn(e.flagWorkerNet) || "—"} /> : null}
+                  {colRepReturn ? <FieldRow label="대표반환" value={yn(e.flagRepReturn) || EMPTY} /> : null}
+                  {colSpouseReceipt ? <FieldRow label="배우자수령" value={yn(e.flagSpouseReceipt) || EMPTY} /> : null}
+                  {colWorkerNet ? <FieldRow label="근로자 실질 수령" value={yn(e.flagWorkerNet) || EMPTY} /> : null}
                 </div>
               </>
             ) : null}
@@ -112,17 +119,17 @@ export function EmployeeDirectoryGrid({
             <div className="grid grid-cols-3 gap-4 border-b border-[var(--border)]/70 py-3 sm:gap-6">
               <div className="min-w-0">
                 <p className="text-xs font-bold text-[var(--muted)]">입사 월</p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{e.hireMonth ?? "—"}</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{monthWithSuffix(e.hireMonth)}</p>
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-[var(--muted)]">생일 월</p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{e.birthMonth ?? "—"}</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{monthWithSuffix(e.birthMonth)}</p>
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-[var(--muted)]" title="결혼기념월">
                   결혼기념
                 </p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{e.weddingMonth ?? "—"}</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{monthWithSuffix(e.weddingMonth)}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-start gap-x-6 gap-y-4 border-b border-[var(--border)]/70 py-4">
@@ -138,7 +145,7 @@ export function EmployeeDirectoryGrid({
               <FieldRow label="보험료" value={won(e.insurancePremium)} />
               <FieldRow label="대출이자" value={won(e.loanInterest)} />
               <FieldRow label="월세" value={won(e.monthlyRentAmount)} />
-              <FieldRow label="급여일" value={e.payDay ?? "—"} />
+              <FieldRow label="급여일" value={e.payDay != null ? e.payDay : EMPTY} />
               <FieldRow label="레벨" value={e.level} />
               <FieldRow label="예상 인센" value={won(e.incentiveAmount)} />
             </div>

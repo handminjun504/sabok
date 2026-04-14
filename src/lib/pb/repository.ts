@@ -409,6 +409,9 @@ export async function companySettingsUpsert(
     activeYear: number;
     accrualCurrentMonthPayNext: boolean;
     salaryInclusionVarianceMode: SalaryInclusionVarianceMode;
+    surveyShowRepReturn: boolean;
+    surveyShowSpouseReceipt: boolean;
+    surveyShowWorkerNet: boolean;
   }
 ): Promise<void> {
   const existing = await companySettingsByTenant(tenantId);

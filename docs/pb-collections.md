@@ -74,6 +74,9 @@ Unique: `(userId, tenantId)`
 | activeYear                 | number | yes | |
 | accrualCurrentMonthPayNext | bool | yes | default false |
 | salaryInclusionVarianceMode | text | no | `BOTH` \| `OVER_ONLY` \| `UNDER_ONLY` — 급여포함신고·월별 스케줄에서 상한 대비 **초과·미달 열** 표시 방식. 없으면 앱에서 `BOTH`로 취급 |
+| surveyShowRepReturn | bool | no | 조사표·직원 목록·CSV·직원 폼에 **대표반환** 표시. 없으면 `false` |
+| surveyShowSpouseReceipt | bool | no | **배우자수령** 표시. 없으면 `false` |
+| surveyShowWorkerNet | bool | no | **근로자 실질 수령** 표시. 없으면 `false` |
 | paymentEventDefs           | json | no  | 연도 문자열 키 → `{ eventKey, label, accrualMonth }[]` 배열. 추가 정기 지급 행사(레벨 금액·스케줄). 없으면 `{}` 또는 생략 |
 
 > **Nonempty:** `accrualCurrentMonthPayNext` 에 Nonempty를 켜면 `false` 가 거절됩니다. **Nonempty 끄기** 권장. 앱은 거절 시 해당 필드 없이 생성 후 조회 시 `false` 로 취급합니다.

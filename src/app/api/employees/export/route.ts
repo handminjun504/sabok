@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { canAccessAnyTenant, getSession } from "@/lib/session";
 import { buildEmployeeSheetCsv } from "@/lib/csv-import";
-import { employeeListByTenantCodeAsc, userTenantFind } from "@/lib/pb/repository";
+import { companySettingsByTenant, employeeListByTenantCodeAsc, userTenantFind } from "@/lib/pb/repository";
 
 async function resolveTenantIdForApi(session: NonNullable<Awaited<ReturnType<typeof getSession>>>) {
   if (!session.activeTenantId) {
@@ -21,8 +21,11 @@ export async function GET() {
   const rTen = await resolveTenantIdForApi(session);
   if (!rTen.ok) return rTen.응답;
 
-  const list = await employeeListByTenantCodeAsc(rTen.tenantId);
-  const csv = buildEmployeeSheetCsv(list);
+  const [list, settings] = await Promise.all([
+    employeeListByTenantCodeAsc(rTen.tenantId),
+    companySettingsByTenant(rTen.tenantId),
+  ]);
+  const csv = buildEmployeeSheetCsv(list, settings);
 
   return new NextResponse(csv, {
     status: 200,

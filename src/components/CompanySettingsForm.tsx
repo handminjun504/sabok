@@ -12,6 +12,9 @@ type Props = {
   activeYear: number;
   accrualCurrentMonthPayNext: boolean;
   varianceMode: SalaryInclusionVarianceMode;
+  surveyShowRepReturn: boolean;
+  surveyShowSpouseReceipt: boolean;
+  surveyShowWorkerNet: boolean;
 };
 
 /**
@@ -24,6 +27,9 @@ export function CompanySettingsForm({
   activeYear,
   accrualCurrentMonthPayNext,
   varianceMode,
+  surveyShowRepReturn,
+  surveyShowSpouseReceipt,
+  surveyShowWorkerNet,
 }: Props) {
   const router = useRouter();
   const [state, formAction] = useActionState<SettingsState, FormData>(saveCompanySettingsAction, null);
@@ -39,7 +45,16 @@ export function CompanySettingsForm({
       {state?.오류 ? <p className="text-sm text-[var(--danger)]">{state.오류}</p> : null}
       {state?.성공 ? <p className="text-sm text-[var(--success)]">저장되었습니다.</p> : null}
       <form
-        key={[foundingMonth, defaultPayDay, activeYear, accrualCurrentMonthPayNext, varianceMode].join("|")}
+        key={[
+          foundingMonth,
+          defaultPayDay,
+          activeYear,
+          accrualCurrentMonthPayNext,
+          varianceMode,
+          surveyShowRepReturn,
+          surveyShowSpouseReceipt,
+          surveyShowWorkerNet,
+        ].join("|")}
         action={formAction}
         className="space-y-3"
       >
@@ -78,6 +93,26 @@ export function CompanySettingsForm({
         <input type="checkbox" name="accrualCurrentMonthPayNext" defaultChecked={accrualCurrentMonthPayNext} />
         당월 귀속·차월 지급 (정기분 표시)
       </label>
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
+        <p className="dash-field-label mb-2">조사표 표시 항목</p>
+        <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
+          끄면 직원 목록·조사표 CSV·직원 상세(알아서 금액 자동 옆 체크)에서 해당 열·입력이 숨겨집니다.
+        </p>
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input type="checkbox" name="surveyShowRepReturn" defaultChecked={surveyShowRepReturn} />
+            <span className="text-[var(--text)]">대표반환</span>
+          </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input type="checkbox" name="surveyShowSpouseReceipt" defaultChecked={surveyShowSpouseReceipt} />
+            <span className="text-[var(--text)]">배우자수령</span>
+          </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input type="checkbox" name="surveyShowWorkerNet" defaultChecked={surveyShowWorkerNet} />
+            <span className="text-[var(--text)]">근로자 실질 수령</span>
+          </label>
+        </div>
+      </div>
       <div>
         <span className="dash-field-label">급여포함신고·스케줄: 상한 대비 초과 / 미달 표시</span>
         <div className="mt-2 space-y-2">

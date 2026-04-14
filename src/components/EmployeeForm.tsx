@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useMemo, useState, useCallback } from "react";
+import { useActionState, useEffect, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { employeePositionSelectValues } from "@/lib/domain/employee-positions";
 import type { Employee } from "@/types/models";
@@ -238,11 +238,18 @@ export function EmployeeForm({
   activeYear,
   foundingMonth,
   minimumAnnualSalaryWon,
+  surveyShowRepReturn = false,
+  surveyShowSpouseReceipt = false,
+  surveyShowWorkerNet = false,
 }: {
   employee?: Employee | null;
   activeYear: number;
   foundingMonth: number;
   minimumAnnualSalaryWon: number;
+  /** 전사 설정 — 꺼지면 해당 체크는 폼에 없고 저장 시 DB 값 유지 */
+  surveyShowRepReturn?: boolean;
+  surveyShowSpouseReceipt?: boolean;
+  surveyShowWorkerNet?: boolean;
 }) {
   const [state, formAction] = useActionState<EmployeeActionState, FormData>(saveEmployeeAction, null);
   const [delState, delFormAction, delPending] = useActionState<EmployeeActionState, FormData>(
@@ -257,22 +264,6 @@ export function EmployeeForm({
   }, [delState?.성공, router]);
   const yy = String(activeYear).slice(-2);
   const isNew = !employee;
-  const hasAnyThreeFlag = useMemo(
-    () =>
-      Boolean(employee?.flagRepReturn) ||
-      Boolean(employee?.flagSpouseReceipt) ||
-      Boolean(employee?.flagWorkerNet),
-    [employee?.flagRepReturn, employee?.flagSpouseReceipt, employee?.flagWorkerNet],
-  );
-  const [threeFlagsOpen, setThreeFlagsOpen] = useState(() => isNew || hasAnyThreeFlag);
-  useEffect(() => {
-    if (isNew) {
-      setThreeFlagsOpen(true);
-      return;
-    }
-    setThreeFlagsOpen(hasAnyThreeFlag);
-  }, [isNew, hasAnyThreeFlag, employee?.id]);
-  const openThreeFlags = useCallback(() => setThreeFlagsOpen(true), []);
   const positionOptions = employeePositionSelectValues(employee?.position);
   const positionDefault = (employee?.position ?? "").trim();
   const positionNeedsPlaceholder = !positionDefault;
@@ -465,36 +456,35 @@ export function EmployeeForm({
             />
             </div>
 
-            <div className="space-y-3 border-t border-[var(--border)] pt-4 text-[0.8125rem] leading-normal">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--border)] pt-4 text-[0.8125rem] leading-normal">
               <label className="flex cursor-pointer items-center gap-2">
                 <input type="checkbox" name="flagAutoAmount" defaultChecked={employee?.flagAutoAmount} />
-                <span className="text-[var(--text)]">알아서 금액(자동)</span>
+                <span className="whitespace-nowrap text-[var(--text)]">알아서 금액(자동)</span>
               </label>
-              {threeFlagsOpen ? (
-                <div className="flex flex-wrap gap-x-6 gap-y-2">
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input type="checkbox" name="flagRepReturn" defaultChecked={employee?.flagRepReturn} />
-                    <span className="text-[var(--text)]">대표반환</span>
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input type="checkbox" name="flagSpouseReceipt" defaultChecked={employee?.flagSpouseReceipt} />
-                    <span className="text-[var(--text)]">배우자수령</span>
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input type="checkbox" name="flagWorkerNet" defaultChecked={employee?.flagWorkerNet} />
-                    <span className="text-[var(--text)]">근로자 실질 수령</span>
-                  </label>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={openThreeFlags}
-                  className="text-left text-[0.8125rem] text-[var(--accent)] underline-offset-2 hover:underline"
-                >
-                  조사표 표시 옵션 추가 — 대표반환 · 배우자수령 · 근로자 실질 수령
-                </button>
-              )}
+              {surveyShowRepReturn ? (
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" name="flagRepReturn" defaultChecked={employee?.flagRepReturn} />
+                  <span className="whitespace-nowrap text-[var(--text)]">대표반환</span>
+                </label>
+              ) : null}
+              {surveyShowSpouseReceipt ? (
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" name="flagSpouseReceipt" defaultChecked={employee?.flagSpouseReceipt} />
+                  <span className="whitespace-nowrap text-[var(--text)]">배우자수령</span>
+                </label>
+              ) : null}
+              {surveyShowWorkerNet ? (
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" name="flagWorkerNet" defaultChecked={employee?.flagWorkerNet} />
+                  <span className="whitespace-nowrap text-[var(--text)]">근로자 실질 수령</span>
+                </label>
+              ) : null}
             </div>
+            {!surveyShowRepReturn && !surveyShowSpouseReceipt && !surveyShowWorkerNet ? (
+              <p className="mt-2 text-xs text-[var(--muted)]">
+                조사표 플래그는 <strong className="text-[var(--text)]">전사 설정</strong>에서 켠 뒤 여기서 표시됩니다.
+              </p>
+            ) : null}
           </section>
 
           <section className="space-y-3 border-t border-[var(--border)] pt-6">

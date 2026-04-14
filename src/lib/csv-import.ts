@@ -1,6 +1,6 @@
 /** 사복 진행 조사표 형식 CSV 컬럼(한글/영문 별칭) → Employee 입력. 시트 실시간 연동 없음. */
 
-import type { Employee } from "@/types/models";
+import type { CompanySettings, Employee } from "@/types/models";
 
 const ALIASES: Record<string, string> = {
   code: "employeeCode",
@@ -114,8 +114,8 @@ export function parseEmployeeCsv(text: string): CsvRowResult[] {
   return out;
 }
 
-/** 참고 시트 「직원정보」 열 순서 + 앱 확장(레벨, 예상 인센) — CSV 보내기/문서 단일 기준 */
-export const SHEET_EMPLOYEE_EXPORT_HEADERS = [
+/** 참고 시트 「직원정보」 열 순서(조사표 플래그 열 제외) + 앱 확장(레벨, 예상 인센) */
+const SHEET_EMPLOYEE_EXPORT_HEADERS_CORE = [
   "CODE",
   "이름",
   "직급",
@@ -123,9 +123,9 @@ export const SHEET_EMPLOYEE_EXPORT_HEADERS = [
   "조정급여",
   "사복지급분",
   "알아서금액",
-  "대표반환",
-  "배우자수령",
-  "근로자 실질 수령(반환분 제외)",
+] as const;
+
+const SHEET_EMPLOYEE_EXPORT_HEADERS_TAIL = [
   "입사 월",
   "생일 월만입력",
   "결혼기념월(예정월)",
@@ -142,6 +142,27 @@ export const SHEET_EMPLOYEE_EXPORT_HEADERS = [
   "예상 인센",
 ] as const;
 
+const SURVEY_HEADER_REP = "대표반환";
+const SURVEY_HEADER_SPOUSE = "배우자수령";
+const SURVEY_HEADER_WORKER = "근로자 실질 수령(반환분 제외)";
+
+function surveyExportHeaders(settings: CompanySettings | null): string[] {
+  const h: string[] = [];
+  if (settings?.surveyShowRepReturn) h.push(SURVEY_HEADER_REP);
+  if (settings?.surveyShowSpouseReceipt) h.push(SURVEY_HEADER_SPOUSE);
+  if (settings?.surveyShowWorkerNet) h.push(SURVEY_HEADER_WORKER);
+  return h;
+}
+
+/** 전사 설정에 따라 조사표 플래그 열이 가변 — 문서·다운로드 시 `buildEmployeeSheetCsv`와 동일 규칙 */
+export function sheetEmployeeExportHeaders(settings: CompanySettings | null): string[] {
+  return [
+    ...SHEET_EMPLOYEE_EXPORT_HEADERS_CORE,
+    ...surveyExportHeaders(settings),
+    ...SHEET_EMPLOYEE_EXPORT_HEADERS_TAIL,
+  ];
+}
+
 function csvEscapeCell(v: string): string {
   if (/[",\r\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
   return v;
@@ -156,7 +177,12 @@ function ynCell(b: boolean): string {
 }
 
 /** 스프레드시트에 붙여넣기 하기 좋은 한 행. 숫자는 ko-KR 콤마 형식. */
-export function employeeToSheetCsvCells(e: Employee): string[] {
+export function employeeToSheetCsvCells(e: Employee, settings: CompanySettings | null): string[] {
+  const survey: string[] = [];
+  if (settings?.surveyShowRepReturn) survey.push(ynCell(e.flagRepReturn));
+  if (settings?.surveyShowSpouseReceipt) survey.push(ynCell(e.flagSpouseReceipt));
+  if (settings?.surveyShowWorkerNet) survey.push(ynCell(e.flagWorkerNet));
+
   return [
     e.employeeCode,
     e.name,
@@ -165,9 +191,7 @@ export function employeeToSheetCsvCells(e: Employee): string[] {
     wonCell(e.adjustedSalary),
     wonCell(e.welfareAllocation),
     e.discretionaryAmount != null && Number(e.discretionaryAmount) !== 0 ? wonCell(e.discretionaryAmount) : "",
-    ynCell(e.flagRepReturn),
-    ynCell(e.flagSpouseReceipt),
-    ynCell(e.flagWorkerNet),
+    ...survey,
     e.hireMonth != null ? String(e.hireMonth) : "",
     e.birthMonth != null ? String(e.birthMonth) : "",
     e.weddingMonth != null ? String(e.weddingMonth) : "",
@@ -186,8 +210,10 @@ export function employeeToSheetCsvCells(e: Employee): string[] {
 }
 
 /** UTF-8 BOM + CSV 한 덩어리(파일 저장·다른 도구에 붙여넣기용) */
-export function buildEmployeeSheetCsv(employees: Employee[]): string {
-  const header = SHEET_EMPLOYEE_EXPORT_HEADERS.map(csvEscapeCell).join(",");
-  const body = employees.map((e) => employeeToSheetCsvCells(e).map(csvEscapeCell).join(",")).join("\r\n");
+export function buildEmployeeSheetCsv(employees: Employee[], settings: CompanySettings | null): string {
+  const header = sheetEmployeeExportHeaders(settings).map(csvEscapeCell).join(",");
+  const body = employees
+    .map((e) => employeeToSheetCsvCells(e, settings).map(csvEscapeCell).join(","))
+    .join("\r\n");
   return `\uFEFF${header}\r\n${body}\r\n`;
 }
