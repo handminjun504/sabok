@@ -1,5 +1,6 @@
 /** 월별 기금(정기·분기·선택) 집계 — 참고 시트의 월별지급·취합과 같은 의미로 맞춤. docs/sheet-mapping.md */
 import type {
+  CustomPaymentEventDef,
   Employee,
   Level5Override,
   LevelPaymentRule,
@@ -9,9 +10,13 @@ import type {
 import {
   FIXED_EVENT_MONTH,
   PAYMENT_EVENT,
+  PAYMENT_EVENT_LABELS,
+  QUARTERLY_ITEM_LABELS,
   type PaymentEventKey,
+  type QuarterlyItemKey,
   QUARTERLY_INTERVAL_MONTHS,
 } from "../business-rules";
+import { paymentEventLabel } from "./payment-events";
 
 /** 테넌트 추가 정기 행사(귀속 월) */
 export type CustomPaymentScheduleDef = { eventKey: string; accrualMonth: number };
@@ -308,6 +313,53 @@ export function welfareByScheduleDisplayMonth(
     }
   }
   return map;
+}
+
+/** 스케줄 표 열(월)에 맞춘 내역 — 정기는 귀속월, 분기·노트는 지급월 (`welfareByScheduleDisplayMonth` 와 동일 기준) */
+export type WelfareScheduleDisplayLine = { label: string; amount: number };
+
+function eventLabelForScheduleRow(eventKey: string, customDefs: CustomPaymentEventDef[]): string {
+  if (Object.prototype.hasOwnProperty.call(PAYMENT_EVENT_LABELS, eventKey)) {
+    return PAYMENT_EVENT_LABELS[eventKey as PaymentEventKey];
+  }
+  return paymentEventLabel(eventKey, customDefs);
+}
+
+export function welfareScheduleLinesByMonth(
+  br: MonthBreakdown[],
+  noteExtrasByPaidMonth: ReadonlyMap<number, number> | undefined,
+  customDefs: CustomPaymentEventDef[]
+): Map<number, WelfareScheduleDisplayLine[]> {
+  const byMonth = new Map<number, WelfareScheduleDisplayLine[]>();
+  for (let m = 1; m <= 12; m++) {
+    const lines: WelfareScheduleDisplayLine[] = [];
+    const accrualRow = br.find((r) => r.accrualMonth === m);
+    if (accrualRow) {
+      for (const ev of accrualRow.regularEvents) {
+        if (ev.amount === 0) continue;
+        lines.push({
+          label: eventLabelForScheduleRow(ev.eventKey, customDefs),
+          amount: ev.amount,
+        });
+      }
+    }
+    for (const row of br) {
+      if (row.paidMonth !== m) continue;
+      for (const q of row.quarterly) {
+        if (q.amount === 0) continue;
+        const lab = Object.prototype.hasOwnProperty.call(QUARTERLY_ITEM_LABELS, q.itemKey)
+          ? QUARTERLY_ITEM_LABELS[q.itemKey as QuarterlyItemKey]
+          : q.itemKey;
+        lines.push({ label: lab, amount: q.amount });
+      }
+    }
+    const noteExtra = noteExtrasByPaidMonth?.get(m) ?? 0;
+    if (noteExtra > 0) {
+      lines.push({ label: "선택적 복지(월별 노트)", amount: noteExtra });
+    }
+    if (lines.length > 0) byMonth.set(m, lines);
+  }
+  return byMonth;
 }
 
 export function yearlyWelfareTotal(rows: MonthBreakdown[]): number {

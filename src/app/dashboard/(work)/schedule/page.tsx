@@ -11,7 +11,7 @@ import {
 } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees } from "@/lib/permissions";
-import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
+import { customPaymentDefsForYear, customPaymentScheduleRows } from "@/lib/domain/payment-events";
 import {
   buildMonthlyBreakdown,
   computeActualYearlyWelfareForEmployee,
@@ -19,6 +19,7 @@ import {
   monthlySalaryPortion,
   regularAnnualTotalsByLevel,
   welfareByScheduleDisplayMonth,
+  welfareScheduleLinesByMonth,
 } from "@/lib/domain/schedule";
 import { saveMonthlyNoteFormAction } from "@/app/actions/quarterly";
 import {
@@ -57,11 +58,14 @@ export default async function SchedulePage() {
     emp: Employee;
     /** 1~12월 열: 정기=귀속월, 분기·선택 복지=지급월 */
     welfareByMonth: Map<number, number>;
+    /** 월별 항목 내역(합계와 동일 귀속·지급 기준) */
+    welfareLinesByMonth: Map<number, { label: string; amount: number }[]>;
     yearlyWelfare: number;
     salaryMonth: number;
     capVs: ReturnType<typeof computeSalaryInclusionVsActual>;
   };
 
+  const customDefs = customPaymentDefsForYear(settings, year);
   const customSchedule = customPaymentScheduleRows(settings, year);
 
   const rows: Row[] = employees.map((emp) => {
@@ -76,6 +80,7 @@ export default async function SchedulePage() {
       noteByMonth.set(n.month, (noteByMonth.get(n.month) ?? 0) + extra);
     }
     const welfareByMonth = welfareByScheduleDisplayMonth(br, noteByMonth);
+    const welfareLinesByMonth = welfareScheduleLinesByMonth(br, noteByMonth, customDefs);
 
     const yearlyWelfare = computeActualYearlyWelfareForEmployee(
       emp,
@@ -90,15 +95,24 @@ export default async function SchedulePage() {
     );
     const capVs = computeSalaryInclusionVsActual(emp, yearlyWelfare);
 
-    return { emp, welfareByMonth, yearlyWelfare, salaryMonth: monthlySalaryPortion(emp), capVs };
+    return {
+      emp,
+      welfareByMonth,
+      welfareLinesByMonth,
+      yearlyWelfare,
+      salaryMonth: monthlySalaryPortion(emp),
+      capVs,
+    };
   });
 
   const canNote = canEditEmployees(role);
 
   const scheduleCardRows = rows.map((r) => {
     const welfareByMonth: Record<number, number> = {};
+    const linesByMonth: Record<number, { label: string; amount: number }[]> = {};
     for (let m = 1; m <= 12; m++) {
       welfareByMonth[m] = r.welfareByMonth.get(m) ?? 0;
+      linesByMonth[m] = r.welfareLinesByMonth.get(m) ?? [];
     }
     return {
       employeeId: r.emp.id,
@@ -106,6 +120,7 @@ export default async function SchedulePage() {
       name: r.emp.name,
       level: r.emp.level,
       welfareByMonth,
+      linesByMonth,
       yearlyWelfare: r.yearlyWelfare,
       salaryMonth: r.salaryMonth,
       capVs: {

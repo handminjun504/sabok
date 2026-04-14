@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+export type ScheduleWelfareLine = { label: string; amount: number };
+
 export type ScheduleCardRow = {
   employeeId: string;
   employeeCode: string;
@@ -9,6 +11,8 @@ export type ScheduleCardRow = {
   level: number;
   /** 지급 스케줄 열 기준 월 1~12 → 원 */
   welfareByMonth: Record<number, number>;
+  /** 해당 월 열에 포함된 행사·분기·노트 등 항목별 금액 */
+  linesByMonth: Record<number, ScheduleWelfareLine[]>;
   yearlyWelfare: number;
   salaryMonth: number;
   capVs: {
@@ -87,7 +91,8 @@ export function ScheduleEmployeeCards({
         {rows.map((r) => {
           const avgWelfare = r.yearlyWelfare / 12;
           const avgTotal = r.salaryMonth + avgWelfare;
-          const focusAmt = focusMonth != null ? r.welfareByMonth[focusMonth] ?? 0 : null;
+          const focusAmt = focusMonth != null ? (r.welfareByMonth[focusMonth] ?? 0) : null;
+          const focusLines = focusMonth != null ? (r.linesByMonth[focusMonth] ?? []) : [];
 
           return (
             <article
@@ -109,6 +114,7 @@ export function ScheduleEmployeeCards({
                   {MONTHS.map((m) => {
                     const v = r.welfareByMonth[m] ?? 0;
                     const empty = v === 0;
+                    const lines = r.linesByMonth[m] ?? [];
                     return (
                       <div
                         key={m}
@@ -126,6 +132,21 @@ export function ScheduleEmployeeCards({
                         >
                           {format(v)}
                         </div>
+                        {!empty && lines.length > 0 ? (
+                          <ul className="mt-1 max-h-[5rem] space-y-0.5 overflow-y-auto border-t border-[var(--border)]/50 pt-1 text-left">
+                            {lines.map((line, i) => (
+                              <li
+                                key={`${line.label}-${i}`}
+                                className="flex items-start justify-between gap-1 text-[0.58rem] leading-snug tabular-nums"
+                              >
+                                <span className="min-w-0 flex-1 whitespace-pre-line text-left text-[var(--muted)]">
+                                  {line.label}
+                                </span>
+                                <span className="shrink-0 font-medium text-[var(--text)]">{format(line.amount)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -136,6 +157,19 @@ export function ScheduleEmployeeCards({
                     {year}년 {focusMonth}월
                   </p>
                   <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--text)]">{format(focusAmt ?? 0)}원</p>
+                  {focusLines.length > 0 ? (
+                    <ul className="mt-4 space-y-2 border-t border-[var(--border)] pt-3 text-left text-xs">
+                      {focusLines.map((line, i) => (
+                        <li
+                          key={`${line.label}-${i}`}
+                          className="flex items-start justify-between gap-3 tabular-nums"
+                        >
+                          <span className="min-w-0 flex-1 whitespace-pre-line text-[var(--muted)]">{line.label}</span>
+                          <span className="shrink-0 font-semibold text-[var(--text)]">{format(line.amount)}원</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
               )}
 
