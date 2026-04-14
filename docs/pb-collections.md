@@ -22,7 +22,7 @@ Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사
 | name               | text | yes  |             |
 | active             | bool | yes  | default true |
 | memo               | text | no   |             |
-| clientEntityType   | text | yes  | `INDIVIDUAL` \| `CORPORATE` — **개인·법인 적립 구분**(거래처 SABOK 최초 등록 시). **기존 DB**: 마이그레이션 시 일괄 `INDIVIDUAL` 권장 |
+| clientEntityType   | text | yes  | `INDIVIDUAL` \| `CORPORATE`(권장, 대소문자 무관) — **개인·법인 적립 구분**. PB에 `법인`/`개인` 한글만 있어도 앱 조회 시 정규화됨. 저장 시 앱은 대문자 영문으로 보냄 |
 | operationMode      | text | yes  | `GENERAL` \| `SALARY_WELFARE` \| `INCENTIVE_WELFARE` \| `COMBINED` — 일반 / 급여낮추기(고위험) / 인센 기금 / 복합. **기존 DB**: 없으면 `GENERAL`, 저장 시 필드 추가 후 기본값 |
 | approvalNumber     | text | no   | 인가번호 등 위탁·등록 식별 문자열 |
 | businessRegNo      | text | no   | 사업자등록번호(표시·검색용, 형식 자유) |
@@ -73,6 +73,7 @@ Unique: `(userId, tenantId)`
 | defaultPayDay              | number | yes | default 25 |
 | activeYear                 | number | yes | |
 | accrualCurrentMonthPayNext | bool | yes | default false |
+| salaryInclusionVarianceMode | text | no | `BOTH` \| `OVER_ONLY` \| `UNDER_ONLY` — 급여포함신고·월별 스케줄에서 상한 대비 **초과·미달 열** 표시 방식. 없으면 앱에서 `BOTH`로 취급 |
 | paymentEventDefs           | json | no  | 연도 문자열 키 → `{ eventKey, label, accrualMonth }[]` 배열. 추가 정기 지급 행사(레벨 금액·스케줄). 없으면 `{}` 또는 생략 |
 
 > **Nonempty:** `accrualCurrentMonthPayNext` 에 Nonempty를 켜면 `false` 가 거절됩니다. **Nonempty 끄기** 권장. 앱은 거절 시 해당 필드 없이 생성 후 조회 시 `false` 로 취급합니다.

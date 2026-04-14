@@ -17,7 +17,14 @@ export type TenantOperationMode =
   | "COMBINED";
 
 export function parseTenantClientEntityType(v: unknown): TenantClientEntityType {
-  return String(v) === "CORPORATE" ? "CORPORATE" : "INDIVIDUAL";
+  if (v == null || v === "") return "INDIVIDUAL";
+  const raw = String(v).trim();
+  if (raw === "법인") return "CORPORATE";
+  if (raw === "개인") return "INDIVIDUAL";
+  const u = raw.toUpperCase();
+  if (u === "CORPORATE" || u === "CORPORATION") return "CORPORATE";
+  if (u === "INDIVIDUAL" || u === "PERSON" || u === "SOLE") return "INDIVIDUAL";
+  return "INDIVIDUAL";
 }
 
 export function parseTenantOperationMode(v: unknown): TenantOperationMode {

@@ -98,6 +98,9 @@ export type MonthlyEmployeeNote = {
   incentiveWelfarePaymentAmount: number | null;
 };
 
+/** 급여포함신고·스케줄에서 상한 대비 초과/미달 표시 방식 — PB `salaryInclusionVarianceMode` */
+export type SalaryInclusionVarianceMode = "BOTH" | "OVER_ONLY" | "UNDER_ONLY";
+
 /** 연도 문자열 키(예: "2026") → 추가 정기 지급 행사(귀속 월 지정) */
 export type CustomPaymentEventDef = {
   eventKey: string;
@@ -114,6 +117,8 @@ export type CompanySettings = {
   defaultPayDay: number;
   activeYear: number;
   accrualCurrentMonthPayNext: boolean;
+  /** 급여포함신고·스케줄의 상한 대비 초과/미달 열 표시. PB 필드 없으면 BOTH */
+  salaryInclusionVarianceMode: SalaryInclusionVarianceMode;
   /** PB JSON. 없으면 null */
   paymentEventDefs: PaymentEventDefsByYear | null;
 };

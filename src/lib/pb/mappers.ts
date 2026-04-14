@@ -1,3 +1,4 @@
+import { parseSalaryInclusionVarianceMode } from "@/lib/domain/salary-inclusion-display";
 import type {
   CompanySettings,
   CustomPaymentEventDef,
@@ -174,6 +175,7 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     defaultPayDay: num(r.defaultPayDay, 25),
     activeYear: num(r.activeYear, new Date().getFullYear()),
     accrualCurrentMonthPayNext: bool(r.accrualCurrentMonthPayNext),
+    salaryInclusionVarianceMode: parseSalaryInclusionVarianceMode(r.salaryInclusionVarianceMode),
     paymentEventDefs: parsePaymentEventDefs(r.paymentEventDefs),
   };
 }

@@ -11,6 +11,7 @@ import type {
   PaymentEventDefsByYear,
   QuarterlyEmployeeConfig,
   QuarterlyRate,
+  SalaryInclusionVarianceMode,
   Tenant,
   UserRow,
   UserTenantLink,
@@ -407,6 +408,7 @@ export async function companySettingsUpsert(
     defaultPayDay: number;
     activeYear: number;
     accrualCurrentMonthPayNext: boolean;
+    salaryInclusionVarianceMode: SalaryInclusionVarianceMode;
   }
 ): Promise<void> {
   const existing = await companySettingsByTenant(tenantId);

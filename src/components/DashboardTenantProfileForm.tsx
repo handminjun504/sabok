@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateTenantProfileAction, type TenantProfileState } from "@/app/actions/tenant-profile";
 import { CommaWonInput } from "@/components/CommaWonInput";
-import { TENANT_OPERATION_MODES } from "@/lib/domain/tenant-profile";
+import {
+  TENANT_OPERATION_MODES,
+  type TenantClientEntityType,
+  type TenantOperationMode,
+} from "@/lib/domain/tenant-profile";
 import type { Tenant } from "@/types/models";
 
 export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
@@ -14,8 +18,16 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
   const [editing, setEditing] = useState(false);
   /** 취소 시 폼을 remount해 defaultValue 초기화 */
   const [formKey, setFormKey] = useState(0);
+  /** PB·서버에서 내려온 값과 제출값이 항상 일치하도록 라디오는 제어 컴포넌트로 둔다. */
+  const [clientEntityType, setClientEntityType] = useState<TenantClientEntityType>(tenant.clientEntityType);
+  const [operationMode, setOperationMode] = useState<TenantOperationMode>(tenant.operationMode);
 
   const fieldsLocked = !editing;
+
+  useEffect(() => {
+    setClientEntityType(tenant.clientEntityType);
+    setOperationMode(tenant.operationMode);
+  }, [tenant.clientEntityType, tenant.operationMode]);
 
   useEffect(() => {
     if (state?.성공) {
@@ -26,6 +38,8 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
 
   function cancelEdit() {
     setEditing(false);
+    setClientEntityType(tenant.clientEntityType);
+    setOperationMode(tenant.operationMode);
     setFormKey((k) => k + 1);
   }
 
@@ -91,7 +105,8 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
                   type="radio"
                   name="clientEntityType"
                   value="INDIVIDUAL"
-                  defaultChecked={tenant.clientEntityType === "INDIVIDUAL"}
+                  checked={clientEntityType === "INDIVIDUAL"}
+                  onChange={() => setClientEntityType("INDIVIDUAL")}
                   disabled={fieldsLocked}
                 />
                 <span>개인</span>
@@ -101,7 +116,8 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
                   type="radio"
                   name="clientEntityType"
                   value="CORPORATE"
-                  defaultChecked={tenant.clientEntityType === "CORPORATE"}
+                  checked={clientEntityType === "CORPORATE"}
+                  onChange={() => setClientEntityType("CORPORATE")}
                   disabled={fieldsLocked}
                 />
                 <span>법인</span>
@@ -120,7 +136,8 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
                     type="radio"
                     name="operationMode"
                     value={opt.value}
-                    defaultChecked={tenant.operationMode === opt.value}
+                    checked={operationMode === opt.value}
+                    onChange={() => setOperationMode(opt.value)}
                     disabled={fieldsLocked}
                     className="mt-1"
                   />

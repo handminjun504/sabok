@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 import { pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
+import { parseTenantClientEntityType } from "@/lib/domain/tenant-profile";
 import { tenantUpdateProfile } from "@/lib/pb/repository";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
@@ -12,7 +13,10 @@ export type TenantProfileState = { 오류?: string; 성공?: boolean } | null;
 
 const schema = z.object({
   name: z.string().min(1, "거래처명을 입력하세요."),
-  clientEntityType: z.enum(["INDIVIDUAL", "CORPORATE"]),
+  clientEntityType: z.preprocess(
+    (v) => parseTenantClientEntityType(v),
+    z.enum(["INDIVIDUAL", "CORPORATE"])
+  ),
   operationMode: z.enum(["GENERAL", "SALARY_WELFARE", "INCENTIVE_WELFARE", "COMBINED"]),
   memo: z.string().optional(),
   approvalNumber: z.string().optional(),

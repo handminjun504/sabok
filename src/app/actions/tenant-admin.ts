@@ -6,6 +6,7 @@ import { z } from "zod";
 import { pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
 import { getSession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
+import { parseTenantClientEntityType } from "@/lib/domain/tenant-profile";
 import {
   companySettingsCreateForTenant,
   tenantCreate,
@@ -22,7 +23,10 @@ export type TenantDeleteState = { 오류?: string; 성공?: boolean } | null;
 const tenantCreateSchema = z.object({
   code: z.string().min(1, "업체 코드를 입력하세요."),
   name: z.string().min(1, "업체명을 입력하세요."),
-  clientEntityType: z.enum(["INDIVIDUAL", "CORPORATE"]),
+  clientEntityType: z.preprocess(
+    (v) => parseTenantClientEntityType(v),
+    z.enum(["INDIVIDUAL", "CORPORATE"])
+  ),
   operationMode: z.enum(["GENERAL", "SALARY_WELFARE", "INCENTIVE_WELFARE", "COMBINED"]),
   memo: z.string().optional(),
   approvalNumber: z.string().optional(),

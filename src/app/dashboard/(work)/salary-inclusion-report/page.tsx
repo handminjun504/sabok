@@ -10,6 +10,11 @@ import {
 import { requireTenantContext } from "@/lib/tenant-context";
 import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
 import {
+  SALARY_INCLUSION_VARIANCE_MODES,
+  salaryInclusionShowOverage,
+  salaryInclusionShowShortfall,
+} from "@/lib/domain/salary-inclusion-display";
+import {
   computeActualWelfareThroughPaidMonth,
   computeIncentiveWelfareSalaryInclusionYtd,
   computeSalaryInclusionVsActual,
@@ -40,6 +45,11 @@ export default async function SalaryInclusionReportPage({
   const year = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
   const accrual = settings?.accrualCurrentMonthPayNext ?? false;
+  const varianceMode = settings?.salaryInclusionVarianceMode ?? "BOTH";
+  const showOver = salaryInclusionShowOverage(varianceMode);
+  const showUnder = salaryInclusionShowShortfall(varianceMode);
+  const varianceModeLabel =
+    SALARY_INCLUSION_VARIANCE_MODES.find((x) => x.value === varianceMode)?.label ?? varianceMode;
 
   const employees = await employeeListByTenantCodeAsc(tenantId);
   const ids = employees.map((e) => e.id);
@@ -100,7 +110,26 @@ export default async function SalaryInclusionReportPage({
         <p className="mt-1 text-sm text-[var(--muted)]">
           기준 연도 <strong>{year}</strong> · 지급월 <strong>1~{throughMonth}월</strong> 누적 실지급 vs 상한.
           예상 인센(<code className="text-xs">인센티브</code> 필드)이 있으면 그 금액이 연간 상한이고, 없으면 사복지급분이 상한입니다.
-          실지급이 상한을 넘기면 <strong className="text-[var(--text)]">초과분은 급여(과세)에 포함해 신고</strong>하는 흐름을 전제로 합니다.
+          {showOver ? (
+            <>
+              {" "}
+              실지급이 상한을 넘기면 <strong className="text-[var(--text)]">초과분은 급여(과세)에 포함해 신고</strong>하는 흐름을
+              전제로 합니다.
+            </>
+          ) : null}
+          {showUnder && !showOver ? (
+            <>
+              {" "}
+              아래 표는 <strong className="text-[var(--text)]">상한보다 적게 지급한 금액(미달)</strong>만 열로 보여 줍니다.
+            </>
+          ) : null}
+        </p>
+        <p className="mt-2 text-xs text-[var(--muted)]">
+          표시 방식: <strong className="text-[var(--text)]">{varianceModeLabel}</strong> ·{" "}
+          <Link href="/dashboard/settings" className="text-[var(--accent)] hover:underline">
+            전사 설정
+          </Link>
+          에서 변경
         </p>
         {monthLinks}
       </div>
@@ -115,8 +144,8 @@ export default async function SalaryInclusionReportPage({
               <th className="px-3 py-2 text-right">상한</th>
               <th className="px-3 py-2">상한 기준</th>
               <th className="px-3 py-2 text-right">누적 실지급</th>
-              <th className="px-3 py-2 text-right">초과(급여 포함)</th>
-              <th className="px-3 py-2 text-right">미달(급여포함신고)</th>
+              {showOver ? <th className="px-3 py-2 text-right">초과(급여 포함)</th> : null}
+              {showUnder ? <th className="px-3 py-2 text-right">미달(급여포함신고)</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -128,20 +157,24 @@ export default async function SalaryInclusionReportPage({
                 <td className="px-3 py-2 text-right">{capVs.hasCap ? format(capVs.cap) : "—"}</td>
                 <td className="px-3 py-2 text-xs text-[var(--muted)]">{salaryInclusionCapLabel(capVs.capSource)}</td>
                 <td className="px-3 py-2 text-right">{format(capVs.actual)}</td>
-                <td className="px-3 py-2 text-right">
-                  {capVs.hasCap && capVs.overage > 0 ? (
-                    <span className="font-medium text-[var(--danger)]">{format(capVs.overage)}</span>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-3 py-2 text-right">
-                  {capVs.hasCap && capVs.underForSalaryReport > 0 ? (
-                    <span className="font-medium text-[var(--warn)]">{format(capVs.underForSalaryReport)}</span>
-                  ) : (
-                    "—"
-                  )}
-                </td>
+                {showOver ? (
+                  <td className="px-3 py-2 text-right">
+                    {capVs.hasCap && capVs.overage > 0 ? (
+                      <span className="font-medium text-[var(--danger)]">{format(capVs.overage)}</span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                ) : null}
+                {showUnder ? (
+                  <td className="px-3 py-2 text-right">
+                    {capVs.hasCap && capVs.underForSalaryReport > 0 ? (
+                      <span className="font-medium text-[var(--warn)]">{format(capVs.underForSalaryReport)}</span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>

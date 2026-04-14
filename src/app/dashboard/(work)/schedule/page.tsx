@@ -19,6 +19,10 @@ import {
   welfareByScheduleDisplayMonth,
 } from "@/lib/domain/schedule";
 import { saveMonthlyNoteFormAction } from "@/app/actions/quarterly";
+import {
+  salaryInclusionShowOverage,
+  salaryInclusionShowShortfall,
+} from "@/lib/domain/salary-inclusion-display";
 import { CommaWonInput } from "@/components/CommaWonInput";
 import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
 import { Tabs } from "@/components/Tabs";
@@ -33,6 +37,9 @@ export default async function SchedulePage() {
   const year = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
   const accrual = settings?.accrualCurrentMonthPayNext ?? false;
+  const varianceMode = settings?.salaryInclusionVarianceMode ?? "BOTH";
+  const showCapOver = salaryInclusionShowOverage(varianceMode);
+  const showCapUnder = salaryInclusionShowShortfall(varianceMode);
 
   const employees = await employeeListByTenantCodeAsc(tenantId);
   const ids = employees.map((e) => e.id);
@@ -143,7 +150,8 @@ export default async function SchedulePage() {
               <th className="dash-table-th whitespace-nowrap text-left">급여+기금(월평)</th>
               <th className="dash-table-th whitespace-nowrap text-left">연간 기금 합계</th>
               <th className="dash-table-th whitespace-nowrap text-left">상한</th>
-              <th className="dash-table-th text-left">초과</th>
+              {showCapOver ? <th className="dash-table-th text-left">초과</th> : null}
+              {showCapUnder ? <th className="dash-table-th text-left">미달</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -166,13 +174,24 @@ export default async function SchedulePage() {
                   <td className="px-3 py-2.5 text-right tabular-nums tracking-normal text-[var(--muted)]">
                     {r.capVs.hasCap ? format(r.capVs.cap) : "—"}
                   </td>
-                  <td className="px-3 py-2.5 text-right tracking-normal">
-                    {r.capVs.hasCap && r.capVs.overage > 0 ? (
-                      <span className="font-medium text-[var(--danger)]">{format(r.capVs.overage)}</span>
-                    ) : (
-                      <span className="text-[var(--muted)]">—</span>
-                    )}
-                  </td>
+                  {showCapOver ? (
+                    <td className="px-3 py-2.5 text-right tracking-normal">
+                      {r.capVs.hasCap && r.capVs.overage > 0 ? (
+                        <span className="font-medium text-[var(--danger)]">{format(r.capVs.overage)}</span>
+                      ) : (
+                        <span className="text-[var(--muted)]">—</span>
+                      )}
+                    </td>
+                  ) : null}
+                  {showCapUnder ? (
+                    <td className="px-3 py-2.5 text-right tracking-normal">
+                      {r.capVs.hasCap && r.capVs.underForSalaryReport > 0 ? (
+                        <span className="font-medium text-[var(--warn)]">{format(r.capVs.underForSalaryReport)}</span>
+                      ) : (
+                        <span className="text-[var(--muted)]">—</span>
+                      )}
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}

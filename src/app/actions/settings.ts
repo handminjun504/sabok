@@ -12,6 +12,7 @@ const schema = z.object({
   defaultPayDay: z.coerce.number().min(1).max(31),
   activeYear: z.coerce.number().min(2000).max(2100),
   accrualCurrentMonthPayNext: z.coerce.boolean(),
+  salaryInclusionVarianceMode: z.enum(["BOTH", "OVER_ONLY", "UNDER_ONLY"]),
 });
 
 export type SettingsState = { 오류?: string; 성공?: boolean } | null;
@@ -30,6 +31,7 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     defaultPayDay: formData.get("defaultPayDay"),
     activeYear: formData.get("activeYear"),
     accrualCurrentMonthPayNext: formData.get("accrualCurrentMonthPayNext") === "on",
+    salaryInclusionVarianceMode: formData.get("salaryInclusionVarianceMode"),
   });
   if (!parsed.success) {
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };
@@ -46,5 +48,6 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
   });
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/salary-inclusion-report");
   return { 성공: true };
 }
