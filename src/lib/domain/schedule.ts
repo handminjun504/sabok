@@ -264,6 +264,13 @@ export function monthlySalaryPortion(employee: Pick<Employee, "adjustedSalary" |
   return Math.round(base / 12);
 }
 
+/** 적용 연봉(원/년): 조정급여가 있으면 조정, 없으면 기존연봉 */
+export function effectiveAnnualSalaryWon(employee: Pick<Employee, "baseSalary" | "adjustedSalary">): number {
+  const adj = toNum(employee.adjustedSalary);
+  const base = toNum(employee.baseSalary);
+  return Math.round(adj > 0 ? adj : base);
+}
+
 /** 지급월 기준으로 모든 직원 합계(정기+분기가 동일 행에 묶인 값) */
 export function sumByPaidMonth(all: MonthBreakdown[]): Map<number, number> {
   const map = new Map<number, number>();

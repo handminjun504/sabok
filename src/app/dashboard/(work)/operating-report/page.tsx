@@ -81,11 +81,11 @@ export default async function OperatingReportPage() {
 
       <div className="surface dash-panel-pad">
         <h2 className="text-sm font-bold tracking-normal text-[var(--text)]">보고서 상단 정보</h2>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
-          <div>
-            <dt className="dash-eyebrow">업체 이름</dt>
-            <dd className="mt-1 font-medium text-[var(--text)]">{tenantName}</dd>
-          </div>
+        <dl className="mt-3">
+          <dt className="dash-eyebrow">업체 이름</dt>
+          <dd className="mt-1 text-base font-medium leading-snug text-[var(--text)]">{tenantName}</dd>
+        </dl>
+        <dl className="mt-5 grid gap-4 border-t border-[var(--border)] pt-5 text-sm sm:grid-cols-2">
           <div>
             <dt className="dash-eyebrow">인가번호</dt>
             <dd className="mt-1 font-mono text-[var(--text)]">{approvalNumber}</dd>
@@ -95,7 +95,11 @@ export default async function OperatingReportPage() {
             <dd className="mt-1 font-mono text-[var(--text)]">{businessRegNo}</dd>
           </div>
         </dl>
-        {tenant ? <OperatingReportTenantIdentifiersForm tenant={tenant} /> : null}
+        {tenant ? (
+          <div className="mt-5">
+            <OperatingReportTenantIdentifiersForm tenant={tenant} />
+          </div>
+        ) : null}
       </div>
 
       <div className="surface overflow-x-auto dash-panel-pad">

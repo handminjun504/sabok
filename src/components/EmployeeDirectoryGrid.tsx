@@ -1,7 +1,29 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { Employee } from "@/types/models";
+import type {
+  Employee,
+  Level5Override,
+  LevelPaymentRule,
+  MonthlyEmployeeNote,
+  QuarterlyEmployeeConfig,
+} from "@/types/models";
+import {
+  computeActualYearlyWelfareForEmployee,
+  effectiveAnnualSalaryWon,
+  type CustomPaymentScheduleDef,
+} from "@/lib/domain/schedule";
 import { formatWon, yn } from "@/lib/spreadsheet-format";
+
+export type EmployeeDirectoryPayrollYearContext = {
+  activeYear: number;
+  foundingMonth: number;
+  accrualCurrentMonthPayNext: boolean;
+  rules: LevelPaymentRule[];
+  overrides: Level5Override[];
+  quarterly: QuarterlyEmployeeConfig[];
+  monthlyNotes: MonthlyEmployeeNote[];
+  customSchedule: CustomPaymentScheduleDef[];
+};
 
 const EMPTY = "-";
 
@@ -60,11 +82,14 @@ export function EmployeeDirectoryGrid({
   colRepReturn,
   colSpouseReceipt,
   colWorkerNet,
+  payrollYearContext,
 }: {
   employees: Employee[];
   colRepReturn: boolean;
   colSpouseReceipt: boolean;
   colWorkerNet: boolean;
+  /** 있으면 기준 연도 기준 연간 사복·급여+사복 합계 표시(스케줄·분기·월별 노트와 동일 로직) */
+  payrollYearContext?: EmployeeDirectoryPayrollYearContext;
 }) {
   if (employees.length === 0) {
     return <p className="p-6 text-base font-medium text-[var(--muted)]">등록된 직원이 없습니다.</p>;
@@ -72,7 +97,27 @@ export function EmployeeDirectoryGrid({
 
   return (
     <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
-      {employees.map((e) => (
+      {employees.map((e) => {
+        const ovr = payrollYearContext?.overrides.filter((x) => x.employeeId === e.id) ?? [];
+        const q = payrollYearContext?.quarterly.filter((x) => x.employeeId === e.id) ?? [];
+        const n = payrollYearContext?.monthlyNotes.filter((x) => x.employeeId === e.id) ?? [];
+        const welfareY =
+          payrollYearContext != null
+            ? computeActualYearlyWelfareForEmployee(
+                e,
+                payrollYearContext.activeYear,
+                payrollYearContext.foundingMonth,
+                payrollYearContext.accrualCurrentMonthPayNext,
+                payrollYearContext.rules,
+                ovr,
+                q,
+                n,
+                payrollYearContext.customSchedule,
+              )
+            : 0;
+        const salaryY = payrollYearContext != null ? effectiveAnnualSalaryWon(e) : 0;
+        const totalY = salaryY + welfareY;
+        return (
         <article
           key={e.id}
           className="surface surface-hoverable flex min-w-0 flex-col overflow-hidden shadow-[var(--shadow-card)]"
@@ -102,6 +147,18 @@ export function EmployeeDirectoryGrid({
               <FieldRow label="조정급여" value={won(e.adjustedSalary)} />
               <FieldRow label="사복지급분" value={won(e.welfareAllocation)} />
               <FieldRow label="알아서금액" value={won(e.discretionaryAmount)} />
+              {payrollYearContext != null ? (
+                <>
+                  <FieldRow
+                    label={`${payrollYearContext.activeYear}년 연간 사복(스케줄·노트)`}
+                    value={won(welfareY)}
+                  />
+                  <FieldRow
+                    label={`${payrollYearContext.activeYear}년 연간 합계(급여+사복)`}
+                    value={won(totalY)}
+                  />
+                </>
+              ) : null}
             </div>
 
             {colRepReturn || colSpouseReceipt || colWorkerNet ? (
@@ -151,7 +208,8 @@ export function EmployeeDirectoryGrid({
             </div>
           </div>
         </article>
-      ))}
+        );
+      })}
     </div>
   );
 }
