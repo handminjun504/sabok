@@ -1,5 +1,8 @@
 /**
  * PocketBase 시드 (Admin API). `docs/pb-collections.md` 컬렉션이 준비된 뒤 실행.
+ *
+ * 계정(이메일): admin@reversep.local · senior@reversep.local · junior@reversep.local
+ * 비밀번호: 환경변수 `SABOK_SEED_PASSWORD` — 없으면 기본값 `Reversep2026!` (로컬·데모 전용)
  */
 import bcrypt from "bcryptjs";
 import { PAYMENT_EVENT } from "../src/lib/business-rules";
@@ -32,6 +35,27 @@ const tenantProfileDefaults = {
   operationMode: "GENERAL",
 } as const;
 
+/** 예전 시드 이메일 — 실행 시 삭제 후 아래 신규 3계정만 둠 */
+const LEGACY_SEED_EMAILS = [
+  "admin@sabok.local",
+  "senior@sabok.local",
+  "junior@sabok.local",
+  "outsourcer@sabok.local",
+] as const;
+
+async function deleteUserByEmailIfExists(email: string) {
+  const existing = await firstByFilter(C.users, `email="${esc(email)}"`);
+  if (!existing?.id) return;
+  const userId = String(existing.id);
+  const pb = await pbReady();
+  const links = await pb.collection(C.userTenants).getFullList({ filter: `userId="${esc(userId)}"` });
+  for (const row of links) {
+    await pb.collection(C.userTenants).delete(String((row as { id: string }).id));
+  }
+  await pb.collection(C.users).delete(userId);
+  console.log("삭제됨(기존 시드):", email);
+}
+
 async function upsertTenantByCode(code: string, name: string) {
   const existing = await firstByFilter(C.tenants, `code="${esc(code)}"`);
   const pb = await pbReady();
@@ -49,36 +73,34 @@ async function upsertTenantByCode(code: string, name: string) {
 }
 
 async function main() {
-  const passwordHash = await bcrypt.hash("sabok123!", 12);
+  for (const em of LEGACY_SEED_EMAILS) {
+    await deleteUserByEmailIfExists(em);
+  }
+
+  const seedPassword = process.env.SABOK_SEED_PASSWORD?.trim() || "Reversep2026!";
+  const passwordHash = await bcrypt.hash(seedPassword, 12);
   const tenantId = await upsertTenantByCode("demo", "데모 고객사");
 
-  const adminId = await upsertUser("admin@sabok.local", {
+  const adminId = await upsertUser("admin@reversep.local", {
     passwordHash,
     name: "시스템 관리자",
     role: Role.ADMIN,
     isPlatformAdmin: true,
     accessAllTenants: false,
   });
-  const seniorId = await upsertUser("senior@sabok.local", {
+  const seniorId = await upsertUser("senior@reversep.local", {
     passwordHash,
     name: "김선임",
     role: Role.SENIOR,
     isPlatformAdmin: false,
     accessAllTenants: false,
   });
-  const juniorId = await upsertUser("junior@sabok.local", {
+  const juniorId = await upsertUser("junior@reversep.local", {
     passwordHash,
     name: "이후임",
     role: Role.JUNIOR,
     isPlatformAdmin: false,
     accessAllTenants: false,
-  });
-  await upsertUser("outsourcer@sabok.local", {
-    passwordHash,
-    name: "아웃소싱 대리(데모)",
-    role: Role.SENIOR,
-    isPlatformAdmin: false,
-    accessAllTenants: true,
   });
 
   const pb = await pbReady();
@@ -239,8 +261,9 @@ async function main() {
     });
   }
 
+  const pwHint = process.env.SABOK_SEED_PASSWORD?.trim() ? "(SABOK_SEED_PASSWORD)" : "Reversep2026!";
   console.log(
-    "PB 시드 완료: admin@sabok.local / senior@sabok.local / junior@sabok.local 비밀번호 sabok123! · 업체 코드 demo",
+    `PB 시드 완료 — 계정: admin@reversep.local · senior@reversep.local · junior@reversep.local / 비밀번호: ${pwHint} / 업체 코드 demo`,
   );
 }
 

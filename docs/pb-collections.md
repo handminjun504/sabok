@@ -52,7 +52,7 @@ Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사
 
 시드(`pb:seed`) 실패 시 400 + `isPlatformAdmin` / `accessAllTenants` 오류면, Admin에서 해당 필드가 **bool·필수**로 존재하는지 확인한다(없으면 추가).
 
-데모: `outsourcer@sabok.local` — `accessAllTenants`만 true, `sabok_user_tenants` 없이 로그인 후 업체 선택 가능.
+시드(`pb:seed`) 기본 계정: `admin@reversep.local` · `senior@reversep.local` · `junior@reversep.local` — 비밀번호는 `SABOK_SEED_PASSWORD` 환경변수 또는 스크립트 기본값(콘솔 안내). 예전 `*@sabok.local` 시드 계정은 시드 실행 시 삭제됩니다.
 
 ## `sabok_user_tenants`
 
