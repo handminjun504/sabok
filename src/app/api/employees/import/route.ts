@@ -56,6 +56,12 @@ export async function POST(req: Request) {
       parentsInLawCount: Number(f.parentsInLawCount),
       insurancePremium: Number(f.insurancePremium),
       loanInterest: Number(f.loanInterest),
+      monthlyRentAmount: (() => {
+        const s = f.monthlyRentAmount;
+        if (s == null || s === "") return null;
+        const n = Number(String(s).replace(/,/g, ""));
+        return Number.isFinite(n) ? n : null;
+      })(),
       payDay: f.payDay as number | null,
       level: Number(f.level),
       flagAutoAmount: Boolean(f.flagAutoAmount),

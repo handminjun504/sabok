@@ -456,6 +456,13 @@ export function EmployeeForm({
               defaultValue={employee?.quarterlyPayAmount ?? undefined}
               optional
             />
+            <CommaNumberInput
+              className="sm:col-span-2"
+              label="연간 지급 예정액(스케줄·레벨 추천)"
+              name="expectedYearlyWelfare"
+              defaultValue={employee?.expectedYearlyWelfare ?? undefined}
+              optional
+            />
             </div>
 
             <div className="space-y-3 border-t border-[var(--border)] pt-4 text-[0.8125rem] leading-normal">
@@ -520,15 +527,22 @@ export function EmployeeForm({
             <Cell label="급여일" name="payDay" type="number" defaultValue={employee?.payDay ?? ""} />
             <CommaNumberInput
               className="sm:col-span-2"
-              label="보험료"
+              label="보험료(발생)"
               name="insurancePremium"
               defaultValue={employee?.insurancePremium}
             />
             <CommaNumberInput
               className="sm:col-span-2"
-              label="대출이자"
+              label="대출이자(발생)"
               name="loanInterest"
               defaultValue={employee?.loanInterest}
+            />
+            <CommaNumberInput
+              className="sm:col-span-2"
+              label="월세(발생·월)"
+              name="monthlyRentAmount"
+              defaultValue={employee?.monthlyRentAmount ?? undefined}
+              optional
             />
             </div>
           </section>

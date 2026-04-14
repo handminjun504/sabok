@@ -86,6 +86,8 @@ export const QUARTERLY_ITEM = {
   PARENT_SUPPORT: "PARENT_SUPPORT",
   HEALTH_INSURANCE: "HEALTH_INSURANCE",
   HOUSING_INTEREST: "HOUSING_INTEREST",
+  /** 월세(월 발생액) — 템플릿 정액 열 = 지급 한도(원). 지급 월에 1~12월을 고르면 달마다 동일 금액 반영 */
+  HOUSING_RENT: "HOUSING_RENT",
 } as const;
 
 export type QuarterlyItemKey = (typeof QUARTERLY_ITEM)[keyof typeof QUARTERLY_ITEM];
@@ -97,6 +99,7 @@ export const QUARTERLY_ITEM_LABELS: Record<QuarterlyItemKey, string> = {
   PARENT_SUPPORT: "부모 봉양 지원금",
   HEALTH_INSURANCE: "건강보험 지원금",
   HOUSING_INTEREST: "주택이자 지원금",
+  HOUSING_RENT: "월세 지원",
 };
 
 /** 분기 주기(개월). 지급 월은 직원/항목별로 선택 가능 */

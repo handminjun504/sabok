@@ -31,6 +31,70 @@ function toNum(v: number | null | undefined): number {
   return Number(v) || 0;
 }
 
+/** 직원 발생액(보험료·이자·월세 등) 대비 분기 템플릿에 넣는 기금 지급 한도(원) */
+function quarterlyWelfareMinOccurredAndCap(occurred: number, capWon: number | null | undefined): number {
+  const o = Math.max(0, Math.round(toNum(occurred)));
+  const c =
+    capWon != null && capWon !== undefined && Number.isFinite(Number(capWon))
+      ? Math.max(0, Math.round(toNum(capWon)))
+      : 0;
+  if (c <= 0) return 0;
+  return Math.min(o, c);
+}
+
+function employeeLevelNorm(employee: Pick<Employee, "level">): number {
+  const n = Math.round(Number(employee.level));
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(5, Math.max(1, n));
+}
+
+/** 해당 연도·레벨의 정기(레벨/행사) 규칙 금액 합 — 모든 행사가 한 번씩 발생한다고 가정한 표준 연간 합 */
+export function sumRegularRulesAnnualForLevel(
+  rules: LevelPaymentRule[],
+  year: number,
+  level: number
+): number {
+  let s = 0;
+  for (const r of rules) {
+    if (r.year !== year || Number(r.level) !== level) continue;
+    s += Math.round(toNum(r.amount));
+  }
+  return s;
+}
+
+/** 레벨 1~5 각각의 정기(규칙) 연간 합 */
+export function regularAnnualTotalsByLevel(rules: LevelPaymentRule[], year: number): Record<number, number> {
+  const out: Record<number, number> = {};
+  for (let lv = 1; lv <= 5; lv++) {
+    out[lv] = sumRegularRulesAnnualForLevel(rules, year, lv);
+  }
+  return out;
+}
+
+/**
+ * 지급 예정액(원)과 각 레벨의 정기(규칙) 연간 합을 비교해 가장 가까운 레벨.
+ * 예정액이 없거나 0 이하면 null.
+ */
+export function suggestLevelByExpectedRegular(
+  expectedWon: number | null | undefined,
+  totalsByLevel: Record<number, number>
+): number | null {
+  const e =
+    expectedWon != null && Number.isFinite(Number(expectedWon)) ? Math.max(0, Math.round(Number(expectedWon))) : 0;
+  if (e <= 0) return null;
+  let best: number | null = null;
+  let bestDiff = Infinity;
+  for (let lv = 1; lv <= 5; lv++) {
+    const t = totalsByLevel[lv] ?? 0;
+    const d = Math.abs(t - e);
+    if (d < bestDiff || (d === bestDiff && best !== null && lv < best)) {
+      bestDiff = d;
+      best = lv;
+    }
+  }
+  return best;
+}
+
 export function resolveEventAmount(
   employee: Pick<Employee, "level">,
   eventKey: string,
@@ -38,11 +102,14 @@ export function resolveEventAmount(
   rules: LevelPaymentRule[],
   overrides: Level5Override[]
 ): number {
-  if (employee.level === 5) {
+  const lv = employeeLevelNorm(employee);
+  if (lv === 5) {
     const ov = overrides.find((o) => o.year === year && o.eventKey === eventKey);
     if (ov) return toNum(ov.amount);
   }
-  const rule = rules.find((r) => r.year === year && r.level === employee.level && r.eventKey === eventKey);
+  const rule = rules.find(
+    (r) => r.year === year && Number(r.level) === lv && r.eventKey === eventKey
+  );
   return rule ? toNum(rule.amount) : 0;
 }
 
@@ -138,7 +205,7 @@ export function suggestQuarterlyMonths(startMonth: number): number[] {
   );
 }
 
-/** 분기 금액 산출(템플릿 요율) */
+/** 분기 금액 산출(템플릿). 보험·이자·월세는 발생액 대비 지급 한도(원) = min(발생, 한도). */
 export function computeQuarterlyAmountFromRates(
   employee: Pick<
     Employee,
@@ -149,6 +216,7 @@ export function computeQuarterlyAmountFromRates(
     | "parentsInLawCount"
     | "insurancePremium"
     | "loanInterest"
+    | "monthlyRentAmount"
   >,
   itemKey: string,
   rate: {
@@ -158,7 +226,9 @@ export function computeQuarterlyAmountFromRates(
     amountPerParent: number | null;
     amountPerInLaw: number | null;
     flatAmount: number | null;
+    /** PB 필드명 레거시 — 의미는 건강보험 지급 한도(원) */
     percentInsurance: number | null;
+    /** PB 필드명 레거시 — 의미는 주택이자 지급 한도(원) */
     percentLoanInterest: number | null;
   } | null
 ): number {
@@ -176,9 +246,14 @@ export function computeQuarterlyAmountFromRates(
         toNum(rate.amountPerInLaw) * employee.parentsInLawCount
       );
     case "HEALTH_INSURANCE":
-      return Math.round(toNum(rate.percentInsurance) * toNum(employee.insurancePremium));
+      return quarterlyWelfareMinOccurredAndCap(employee.insurancePremium, rate.percentInsurance);
     case "HOUSING_INTEREST":
-      return Math.round(toNum(rate.percentLoanInterest) * toNum(employee.loanInterest));
+      return quarterlyWelfareMinOccurredAndCap(employee.loanInterest, rate.percentLoanInterest);
+    case "HOUSING_RENT":
+      return quarterlyWelfareMinOccurredAndCap(
+        employee.monthlyRentAmount != null ? toNum(employee.monthlyRentAmount) : 0,
+        rate.flatAmount
+      );
     default:
       return toNum(rate.flatAmount);
   }

@@ -102,7 +102,9 @@ Prisma 스키마와 동일한 의미의 필드 (숫자 금액은 **number**).
 | incentiveAmount, discretionaryAmount, optionalWelfareAmount, monthlyPayAmount, quarterlyPayAmount | number | 선택 | `optionalWelfareAmount`는 UI·저장에서 사용하지 않음(항상 null). 선택적 복지는 `sabok_monthly_employee_notes.optionalExtraAmount`로 월별 입력 |
 | birthMonth, hireMonth, resignMonth, weddingMonth, payDay | number | 선택 | `resignMonth`: 퇴사월(1~12), 미입력=재직 중. **기존 DB**: Admin에서 `resignMonth` number 필드 추가(Nonempty 끔) |
 | childrenInfant, childrenPreschool, childrenTeen, parentsCount, parentsInLawCount | number | yes | 0 허용 → PB **Nonempty 끄기** |
-| insurancePremium, loanInterest | number | yes | 0 허용 → PB **Nonempty 끄기** |
+| insurancePremium, loanInterest | number | yes | 0 허용 → PB **Nonempty 끄기**. 분기 템플릿 건강보험·주택이자는 **발생액**과 비교 |
+| monthlyRentAmount | number | no | 월세 등 월 단위 발생액. `HOUSING_RENT` 분기 항목과 한도 `min` |
+| expectedYearlyWelfare | number | no | 연간 지급 예정액(원). 월별 스케줄「레벨·예정액」탭·직원 폼에서 입력, 레벨 규칙 합과 비교해 추천 레벨 산출. **Nonempty 끄기** |
 | level                 | number | yes  | |
 | flagAutoAmount, flagRepReturn, flagSpouseReceipt, flagWorkerNet | bool | yes | false 허용 → PB **Nonempty 끄기** |
 
@@ -150,8 +152,8 @@ Unique: `(tenantId, year, level)`
 | year               | number | yes  |
 | itemKey            | text   | yes  |
 | amountPerInfant …  | number | no   |
-| percentInsurance, percentLoanInterest | number | no |
-| flatAmount         | number | no   |
+| percentInsurance, percentLoanInterest | number | no | PB 필드명은 레거시. **의미: 건강보험·주택이자 각각 기금 지급 한도(원)** = min(직원 발생액, 한도) |
+| flatAmount         | number | no   | 기타 정액 행·**월세(HOUSING_RENT) 지급 한도(원)** |
 
 Unique: `(tenantId, year, itemKey)`
 

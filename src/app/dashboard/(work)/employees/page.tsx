@@ -99,6 +99,7 @@ export default async function EmployeesPage() {
               <th className="dash-table-head text-center">시부모님</th>
               <th className="dash-table-head whitespace-nowrap text-right">보험료</th>
               <th className="dash-table-head whitespace-nowrap text-right">대출이자</th>
+              <th className="dash-table-head whitespace-nowrap text-right">월세</th>
               <th className="dash-table-head text-center">급여일</th>
               <th className="dash-table-head text-center">레벨</th>
               <th className="dash-table-head whitespace-nowrap text-right">예상 인센</th>
@@ -134,6 +135,7 @@ export default async function EmployeesPage() {
                 <td className="px-3 py-2.5 text-center tabular-nums">{e.parentsInLawCount}</td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.insurancePremium)}</td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.loanInterest)}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.monthlyRentAmount)}</td>
                 <td className="px-3 py-2.5 text-center tabular-nums">{e.payDay ?? "—"}</td>
                 <td className="px-3 py-2.5 text-center tabular-nums">{e.level}</td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.incentiveAmount)}</td>

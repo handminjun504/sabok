@@ -1,4 +1,6 @@
 import type { Employee } from "@/types/models";
+
+export const dynamic = "force-dynamic";
 import {
   companySettingsByTenant,
   employeeListByTenantCodeAsc,
@@ -16,6 +18,7 @@ import {
   computeActualYearlyWelfareForEmployee,
   computeSalaryInclusionVsActual,
   monthlySalaryPortion,
+  regularAnnualTotalsByLevel,
   welfareByScheduleDisplayMonth,
 } from "@/lib/domain/schedule";
 import { saveMonthlyNoteFormAction } from "@/app/actions/quarterly";
@@ -26,6 +29,7 @@ import {
 import { CommaWonInput } from "@/components/CommaWonInput";
 import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
 import { Tabs } from "@/components/Tabs";
+import { ScheduleEmployeeLevelAssignments } from "@/components/ScheduleEmployeeLevelAssignments";
 
 function format(n: number) {
   return n.toLocaleString("ko-KR");
@@ -53,6 +57,7 @@ export default async function SchedulePage() {
   ]);
 
   const targetByLevel = new Map(targets.map((t) => [t.level, Number(t.targetAmount)]));
+  const regularTotalsByLevel = regularAnnualTotalsByLevel(rules, year);
 
   type Row = {
     emp: Employee;
@@ -109,6 +114,7 @@ export default async function SchedulePage() {
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {[1, 2, 3, 4, 5].map((lv) => {
         const a = levelAgg.get(lv)!;
+        const ruleAnnual = regularTotalsByLevel[lv] ?? 0;
         const delta = a.sum - a.target;
         const deltaColor =
           delta > 0 ? "text-[var(--danger)]" : delta < 0 ? "text-[var(--warn)]" : "text-[var(--success)]";
@@ -118,7 +124,11 @@ export default async function SchedulePage() {
             <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{a.cnt}명</p>
             <div className="mt-2 space-y-1 text-xs">
               <p>
-                <span className="text-[var(--muted)]">연간 </span>
+                <span className="text-[var(--muted)]">정기(규칙) 연간 </span>
+                <span className="font-medium tabular-nums text-[var(--text)]">{format(ruleAnnual)}원</span>
+              </p>
+              <p>
+                <span className="text-[var(--muted)]">연간 실적 </span>
                 <span className="font-medium tabular-nums text-[var(--text)]">{format(a.sum)}원</span>
               </p>
               <p>
@@ -210,6 +220,22 @@ export default async function SchedulePage() {
     </div>
   );
 
+  const levelAssignmentTab = (
+    <div className="space-y-4">
+      <ScheduleEmployeeLevelAssignments
+        employees={employees.map((e) => ({
+          id: e.id,
+          employeeCode: e.employeeCode,
+          name: e.name,
+          level: e.level,
+          expectedYearlyWelfare: e.expectedYearlyWelfare,
+        }))}
+        regularTotalsByLevel={regularTotalsByLevel}
+        canEdit={canNote}
+      />
+    </div>
+  );
+
   const noteTab = canNote ? (
     <CollapsibleEditorPanel
       title="선택적 복지·메모"
@@ -272,6 +298,7 @@ export default async function SchedulePage() {
       <Tabs
         tabs={[
           { label: "월별 스케줄", content: scheduleTab },
+          { label: "레벨·예정액", content: levelAssignmentTab },
           { label: "선택적 복지·메모", content: noteTab },
         ]}
       />

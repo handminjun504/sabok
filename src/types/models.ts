@@ -28,8 +28,12 @@ export type Employee = {
   parentsInLawCount: number;
   insurancePremium: number;
   loanInterest: number;
+  /** 월세 등 월 단위 주거 비용(발생액). 분기 템플릿 월세 항목·한도와 min */
+  monthlyRentAmount: number | null;
   payDay: number | null;
   level: number;
+  /** 연간 지급 예정액(원, 선택) — 스케줄 화면에서 레벨 추천·정렬용. PB `expectedYearlyWelfare` */
+  expectedYearlyWelfare: number | null;
   flagAutoAmount: boolean;
   flagRepReturn: boolean;
   flagSpouseReceipt: boolean;

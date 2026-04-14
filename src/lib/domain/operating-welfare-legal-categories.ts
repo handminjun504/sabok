@@ -105,6 +105,7 @@ export function legalCategoryForQuarterlyItemKey(itemKey: string): number {
   if (!isQuarterlyKey(itemKey)) return 66;
   switch (itemKey) {
     case QUARTERLY_ITEM.HOUSING_INTEREST:
+    case QUARTERLY_ITEM.HOUSING_RENT:
       return 57;
     case QUARTERLY_ITEM.HEALTH_INSURANCE:
       return 59;

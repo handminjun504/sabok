@@ -111,6 +111,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     discretionaryAmount: optDec(formData.get("discretionaryAmount")),
     monthlyPayAmount: optDec(formData.get("monthlyPayAmount")),
     quarterlyPayAmount: optDec(formData.get("quarterlyPayAmount")),
+    expectedYearlyWelfare: optDec(formData.get("expectedYearlyWelfare")),
     birthMonth: intOpt(formData.get("birthMonth")),
     hireMonth: intOpt(formData.get("hireMonth")),
     resignMonth: intOpt(formData.get("resignMonth")),
@@ -122,6 +123,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     parentsInLawCount: int0(formData.get("parentsInLawCount")),
     insurancePremium: d(formData.get("insurancePremium")),
     loanInterest: d(formData.get("loanInterest")),
+    monthlyRentAmount: optDec(formData.get("monthlyRentAmount")),
     payDay: intOpt(formData.get("payDay")),
     flagAutoAmount: chk(formData, "flagAutoAmount"),
     flagRepReturn: chk(formData, "flagRepReturn"),
@@ -137,6 +139,8 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
       "discretionaryAmount",
       "monthlyPayAmount",
       "quarterlyPayAmount",
+      "expectedYearlyWelfare",
+      "monthlyRentAmount",
       "birthMonth",
       "hireMonth",
       "resignMonth",
@@ -156,6 +160,8 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
       "discretionaryAmount",
       "monthlyPayAmount",
       "quarterlyPayAmount",
+      "expectedYearlyWelfare",
+      "monthlyRentAmount",
       "birthMonth",
       "hireMonth",
       "resignMonth",
@@ -216,6 +222,8 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
 
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/operating-report");
+  revalidatePath("/dashboard/salary-inclusion-report");
   return 경고 ? { 성공: true, 경고 } : { 성공: true };
 }
 
@@ -240,6 +248,8 @@ export async function deleteEmployeeAction(employeeId: string): Promise<Employee
   }
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/operating-report");
+  revalidatePath("/dashboard/salary-inclusion-report");
   return { 성공: true };
 }
 

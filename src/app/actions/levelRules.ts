@@ -74,6 +74,8 @@ export async function saveLevelRulesAction(
   });
   revalidatePath("/dashboard/levels");
   revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/operating-report");
+  revalidatePath("/dashboard/salary-inclusion-report");
   return { 성공: true };
 }
 
@@ -123,6 +125,8 @@ export async function saveLevelTargetAction(
   });
   revalidatePath("/dashboard/levels");
   revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/operating-report");
+  revalidatePath("/dashboard/salary-inclusion-report");
   return { 성공: true };
 }
 
@@ -164,6 +168,8 @@ export async function addCustomPaymentEventAction(
   });
   revalidatePath("/dashboard/levels");
   revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/operating-report");
+  revalidatePath("/dashboard/salary-inclusion-report");
   return { 성공: true };
 }
 
@@ -203,6 +209,8 @@ export async function deleteCustomPaymentEventAction(
   revalidatePath("/dashboard/levels");
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/operating-report");
+  revalidatePath("/dashboard/salary-inclusion-report");
   return { 성공: true };
 }
 
@@ -236,6 +244,8 @@ export async function saveLevel5OverrideAction(
   });
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/operating-report");
+  revalidatePath("/dashboard/salary-inclusion-report");
   return { 성공: true };
 }
 
@@ -269,5 +279,7 @@ export async function deleteLevel5OverrideAction(
   }
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/operating-report");
+  revalidatePath("/dashboard/salary-inclusion-report");
   return { 성공: true };
 }

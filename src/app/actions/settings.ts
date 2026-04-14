@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 import { companySettingsUpsert } from "@/lib/pb/repository";
+import { pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
 import { canEditCompanySettings } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
@@ -16,10 +18,6 @@ const schema = z.object({
 });
 
 export type SettingsState = { 오류?: string; 성공?: boolean } | null;
-
-export async function saveCompanySettingsFormAction(formData: FormData): Promise<void> {
-  await saveCompanySettingsAction(null, formData);
-}
 
 export async function saveCompanySettingsAction(_: SettingsState, formData: FormData): Promise<SettingsState> {
   const ctx = await resolveActionTenant();
@@ -37,7 +35,21 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };
   }
 
-  await companySettingsUpsert(ctx.tenantId, parsed.data);
+  try {
+    await companySettingsUpsert(ctx.tenantId, parsed.data);
+  } catch (e) {
+    console.error("[saveCompanySettingsAction]", e);
+    const detail =
+      e instanceof ClientResponseError
+        ? pocketBaseRecordErrorMessage(e)
+        : e instanceof Error
+          ? e.message
+          : String(e);
+    return {
+      오류: `${detail} · PocketBase sabok_company_settings 스키마(특히 salaryInclusionVarianceMode 필드)를 확인하세요.`,
+    };
+  }
+
   await writeAudit({
     userId: ctx.userId,
     tenantId: ctx.tenantId,

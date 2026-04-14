@@ -177,6 +177,7 @@ async function main() {
       parentsInLawCount: 0,
       insurancePremium: 200_000,
       loanInterest: 150_000,
+      monthlyRentAmount: 450_000,
       payDay: 10,
       level: 3,
       flagAutoAmount: true,
@@ -194,6 +195,7 @@ async function main() {
     "PARENT_SUPPORT",
     "HEALTH_INSURANCE",
     "HOUSING_INTEREST",
+    "HOUSING_RENT",
   ] as const;
   for (const itemKey of items) {
     const f = `tenantId="${esc(tenantId)}" && year=${year} && itemKey="${esc(itemKey)}"`;
@@ -207,9 +209,9 @@ async function main() {
       amountPerTeen: itemKey === "TEEN_SCHOLARSHIP" ? 400_000 : null,
       amountPerParent: itemKey === "PARENT_SUPPORT" ? 100_000 : null,
       amountPerInLaw: itemKey === "PARENT_SUPPORT" ? 80_000 : null,
-      percentInsurance: itemKey === "HEALTH_INSURANCE" ? 0.5 : null,
-      percentLoanInterest: itemKey === "HOUSING_INTEREST" ? 0.3 : null,
-      flatAmount: null,
+      percentInsurance: itemKey === "HEALTH_INSURANCE" ? 150_000 : null,
+      percentLoanInterest: itemKey === "HOUSING_INTEREST" ? 120_000 : null,
+      flatAmount: itemKey === "HOUSING_RENT" ? 400_000 : null,
     };
     if (ex?.id) {
       await pb.collection(C.quarterlyRates).update(String(ex.id), body);

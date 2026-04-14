@@ -12,6 +12,7 @@ import {
   buildMonthlyBreakdown,
   computeIncentiveWelfareSalaryInclusionYtd,
   resolveSalaryInclusionCap,
+  suggestLevelByExpectedRegular,
   welfareByScheduleDisplayMonth,
   yearlyWelfareTotal,
 } from "../src/lib/domain/schedule";
@@ -47,8 +48,10 @@ function minimalEmployee(over: Partial<Employee> = {}): Employee {
     parentsInLawCount: 0,
     insurancePremium: 0,
     loanInterest: 0,
+    monthlyRentAmount: null,
     payDay: null,
     level: 3,
+    expectedYearlyWelfare: null,
     flagAutoAmount: false,
     flagRepReturn: false,
     flagSpouseReceipt: false,
@@ -118,6 +121,10 @@ assert.equal(sumCols, yearlyWelfareTotal(brGrid) + 7_000);
 assert.equal(grid.get(2), 50_000, "2월 귀속 정기는 2월 열");
 assert.equal(grid.get(6), 30_000, "분기는 지급월 6열");
 assert.equal(grid.get(4), 7_000, "노트는 지급월 열");
+
+const totalsSuggest = { 1: 100_000, 2: 250_000, 3: 400_000, 4: 550_000, 5: 700_000 };
+assert.equal(suggestLevelByExpectedRegular(260_000, totalsSuggest), 2);
+assert.equal(suggestLevelByExpectedRegular(null, totalsSuggest), null);
 
 const spend0 = aggregateWelfareSpendBySource([], 2026, 1, false, [], [], [], [], []);
 const legal0 = allocateYearlyWelfareToLegalCategories(spend0, 0);

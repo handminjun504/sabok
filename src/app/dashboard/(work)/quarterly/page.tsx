@@ -82,14 +82,14 @@ export default async function QuarterlyPage() {
                     <th colSpan={2} className="dash-table-head text-center font-semibold text-[var(--text)]">
                       부모봉양지원금
                     </th>
-                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left">
-                      정액
+                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]">
+                      정액·월세 한도
                     </th>
-                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left">
-                      보험%
+                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]">
+                      보험 한도
                     </th>
-                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left">
-                      이자%
+                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]">
+                      이자 한도
                     </th>
                   </tr>
                   <tr className="border-b-2 border-[var(--border)]">
@@ -124,8 +124,20 @@ export default async function QuarterlyPage() {
                         <td className="py-1.5 pr-2">
                           <CommaWonInput name={`${itemKey}_flat`} defaultValue={r?.flatAmount ?? null} className={INPUT_SM} />
                         </td>
-                        <td className="py-1 pr-2"><input name={`${itemKey}_pins`} defaultValue={r?.percentInsurance != null ? String(r.percentInsurance) : ""} className="w-14 rounded-md border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 text-xs tabular-nums" /></td>
-                        <td className="py-1 pr-2"><input name={`${itemKey}_ploan`} defaultValue={r?.percentLoanInterest != null ? String(r.percentLoanInterest) : ""} className="w-14 rounded-md border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 text-xs tabular-nums" /></td>
+                        <td className="py-1 pr-2">
+                          <CommaWonInput
+                            name={`${itemKey}_pins`}
+                            defaultValue={r?.percentInsurance ?? null}
+                            className={`${INPUT_SM} min-w-[5.5rem]`}
+                          />
+                        </td>
+                        <td className="py-1 pr-2">
+                          <CommaWonInput
+                            name={`${itemKey}_ploan`}
+                            defaultValue={r?.percentLoanInterest ?? null}
+                            className={`${INPUT_SM} min-w-[5.5rem]`}
+                          />
+                        </td>
                       </tr>
                     );
                   })}
