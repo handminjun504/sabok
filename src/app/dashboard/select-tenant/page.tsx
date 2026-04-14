@@ -20,6 +20,8 @@ function mapToCards(tenants: Tenant[]): SelectTenantCard[] {
     clientEntityType: t.clientEntityType,
     operationMode: t.operationMode,
     businessRegNo: t.businessRegNo,
+    approvalNumber: t.approvalNumber,
+    headOfficeCapital: t.headOfficeCapital,
     active: true,
   }));
 }
@@ -32,6 +34,8 @@ function mapAdminRows(rows: TenantWithCounts[]): SelectTenantCard[] {
     clientEntityType: t.clientEntityType,
     operationMode: t.operationMode,
     businessRegNo: t.businessRegNo,
+    approvalNumber: t.approvalNumber,
+    headOfficeCapital: t.headOfficeCapital,
     active: t.active,
     employeeCount: t._count.employees,
   }));

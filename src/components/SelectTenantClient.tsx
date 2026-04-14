@@ -18,6 +18,8 @@ export type SelectTenantCard = {
   clientEntityType: TenantClientEntityType;
   operationMode: TenantOperationMode;
   businessRegNo: string | null;
+  approvalNumber: string | null;
+  headOfficeCapital: number | null;
   active: boolean;
   employeeCount?: number;
 };
@@ -95,15 +97,24 @@ export function SelectTenantClient({ tenants, isPlatformAdmin }: Props) {
                   ) : null}
                 </div>
                 <p className="mt-1 font-mono text-xs text-[var(--muted)]">코드 {t.code}</p>
+                <p className="mt-2 text-xs leading-relaxed text-[var(--text)]">
+                  <span className="font-medium text-[var(--muted)]">적립·운영</span>{" "}
+                  {tenantClientEntityLabel(t.clientEntityType)} · {tenantOperationModeLabel(t.operationMode)}
+                </p>
+                {t.approvalNumber ? (
+                  <p className="mt-1 text-xs text-[var(--muted)]">인가번호 {t.approvalNumber}</p>
+                ) : null}
                 {t.businessRegNo ? (
                   <p className="mt-1 text-xs text-[var(--muted)]">사업자번호 {t.businessRegNo}</p>
+                ) : null}
+                {t.headOfficeCapital != null ? (
+                  <p className="mt-1 text-xs tabular-nums text-[var(--muted)]">
+                    본사 자본금 {t.headOfficeCapital.toLocaleString("ko-KR")}원
+                  </p>
                 ) : null}
                 {isPlatformAdmin && t.employeeCount != null ? (
                   <p className="mt-1 text-xs text-[var(--muted)]">직원 {t.employeeCount}명</p>
                 ) : null}
-                <p className="mt-3 text-xs leading-relaxed text-[var(--muted)]">
-                  {tenantClientEntityLabel(t.clientEntityType)} · {tenantOperationModeLabel(t.operationMode)}
-                </p>
               </div>
 
               {t.active ? (

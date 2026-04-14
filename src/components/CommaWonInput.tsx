@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 function formatWonInput(n: number): string {
   return n.toLocaleString("ko-KR");
@@ -8,6 +8,13 @@ function formatWonInput(n: number): string {
 
 function digitsOnly(s: string): string {
   return s.replace(/[^\d]/g, "");
+}
+
+function numericFromWonString(v: string): number {
+  const d = digitsOnly(v);
+  if (!d) return 0;
+  const n = Number(d);
+  return Number.isFinite(n) ? Math.round(n) : 0;
 }
 
 export type CommaWonInputProps = {
@@ -19,6 +26,9 @@ export type CommaWonInputProps = {
   placeholder?: string;
   disabled?: boolean;
   readOnly?: boolean;
+  /** 입력이 잠시 멈춘 뒤(및 blur 시) 호출 — 자동 저장 등 */
+  onCommitValue?: (value: number) => void;
+  commitDebounceMs?: number;
 };
 
 /** 원 단위 숫자 입력 — 입력 시 콤마 자동 삽입. 제출 값은 `1,234,567` 형태이며 서버에서 콤마 제거 후 파싱하면 됩니다. */
@@ -31,12 +41,63 @@ export function CommaWonInput({
   placeholder,
   disabled,
   readOnly,
+  onCommitValue,
+  commitDebounceMs = 550,
 }: CommaWonInputProps) {
   const init =
     defaultValue != null && Number.isFinite(Number(defaultValue))
       ? formatWonInput(Math.round(Number(defaultValue)))
       : "";
   const [val, setVal] = useState(init);
+  const initialN =
+    defaultValue != null && Number.isFinite(Number(defaultValue)) ? Math.round(Number(defaultValue)) : 0;
+  const lastCommittedRef = useRef(initialN);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushCommit = useCallback(() => {
+    if (!onCommitValue || readOnly || disabled) return;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    const n = numericFromWonString(val);
+    if (n === lastCommittedRef.current) return;
+    lastCommittedRef.current = n;
+    onCommitValue(n);
+  }, [val, onCommitValue, readOnly, disabled]);
+
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    const n =
+      defaultValue != null && Number.isFinite(Number(defaultValue)) ? Math.round(Number(defaultValue)) : 0;
+    lastCommittedRef.current = n;
+    if (defaultValue == null || !Number.isFinite(Number(defaultValue))) {
+      setVal("");
+      return;
+    }
+    setVal(formatWonInput(Math.round(Number(defaultValue))));
+  }, [defaultValue]);
+
+  useEffect(() => {
+    if (!onCommitValue || readOnly || disabled) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      const n = numericFromWonString(val);
+      if (n === lastCommittedRef.current) return;
+      lastCommittedRef.current = n;
+      onCommitValue(n);
+    }, commitDebounceMs);
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+    };
+  }, [val, onCommitValue, readOnly, disabled, commitDebounceMs]);
 
   return (
     <input
@@ -60,6 +121,7 @@ export function CommaWonInput({
         }
         setVal(formatWonInput(Number(d)));
       }}
+      onBlur={flushCommit}
     />
   );
 }

@@ -17,7 +17,7 @@ import {
 } from "@/lib/pb/repository";
 import { isSingleTenantMode, singleTenantIdFromEnv } from "@/lib/single-tenant";
 
-export type TenantActionState = { 오류?: string; 성공?: boolean } | null;
+export type TenantActionState = { 오류?: string; 성공?: boolean; 경고?: string } | null;
 export type TenantDeleteState = { 오류?: string; 성공?: boolean } | null;
 
 const tenantCreateSchema = z.object({
@@ -82,8 +82,9 @@ export async function createTenantAction(
     return { 오류: "같은 코드의 업체가 이미 있습니다." };
   }
 
+  let tenant;
   try {
-    const tenant = await tenantCreate({
+    tenant = await tenantCreate({
       name: parsed.data.name,
       code: parsed.data.code,
       active: true,
@@ -94,25 +95,8 @@ export async function createTenantAction(
       businessRegNo: parsed.data.businessRegNo?.trim() ? parsed.data.businessRegNo.trim() : null,
       headOfficeCapital,
     });
-    await companySettingsCreateForTenant(tenant.id);
-    await writeAudit({
-      userId: session.sub,
-      tenantId: tenant.id,
-      action: "CREATE_TENANT",
-      entity: "Tenant",
-      entityId: tenant.id,
-      payload: {
-        code: parsed.data.code,
-        name: parsed.data.name,
-        clientEntityType: parsed.data.clientEntityType,
-        operationMode: parsed.data.operationMode,
-        approvalNumber: parsed.data.approvalNumber?.trim() || null,
-        businessRegNo: parsed.data.businessRegNo?.trim() || null,
-        headOfficeCapital,
-      },
-    });
   } catch (e) {
-    console.error("[createTenantAction]", e);
+    console.error("[createTenantAction] tenantCreate", e);
     const detail =
       e instanceof ClientResponseError
         ? pocketBaseRecordErrorMessage(e)
@@ -120,10 +104,53 @@ export async function createTenantAction(
           ? e.message
           : String(e);
     return {
-      오류: `생성 실패. ${detail} · 코드 중복·PB 연결·sabok_tenants 필드(clientEntityType, operationMode 등)을 확인하세요.`,
+      오류: `거래처 레코드 생성 실패. ${detail} · 코드 중복·PB 연결·sabok_tenants 필드(clientEntityType, operationMode 등)를 확인하세요.`,
     };
   }
 
+  const auditPayload = {
+    code: parsed.data.code,
+    name: parsed.data.name,
+    clientEntityType: parsed.data.clientEntityType,
+    operationMode: parsed.data.operationMode,
+    approvalNumber: parsed.data.approvalNumber?.trim() || null,
+    businessRegNo: parsed.data.businessRegNo?.trim() || null,
+    headOfficeCapital,
+  };
+
+  try {
+    await companySettingsCreateForTenant(tenant.id);
+  } catch (e) {
+    console.error("[createTenantAction] companySettingsCreateForTenant", e);
+    const detail =
+      e instanceof ClientResponseError
+        ? pocketBaseRecordErrorMessage(e)
+        : e instanceof Error
+          ? e.message
+          : String(e);
+    await writeAudit({
+      userId: session.sub,
+      tenantId: tenant.id,
+      action: "CREATE_TENANT",
+      entity: "Tenant",
+      entityId: tenant.id,
+      payload: { ...auditPayload, companySettingsCreateFailed: true, companySettingsError: detail },
+    });
+    revalidatePath("/dashboard/select-tenant");
+    return {
+      성공: true,
+      경고: `거래처는 등록되었습니다. 다만 전사 기본 설정(sabok_company_settings) 생성에만 실패했습니다: ${detail} PocketBase에서 accrualCurrentMonthPayNext 등 스키마를 확인하세요. 해당 업체는 목록에 보이며, 설정이 없으면 앱 기본값으로 동작합니다.`,
+    };
+  }
+
+  await writeAudit({
+    userId: session.sub,
+    tenantId: tenant.id,
+    action: "CREATE_TENANT",
+    entity: "Tenant",
+    entityId: tenant.id,
+    payload: auditPayload,
+  });
   revalidatePath("/dashboard/select-tenant");
   return { 성공: true };
 }

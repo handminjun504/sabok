@@ -1,9 +1,4 @@
-import {
-  addCustomPaymentEventFormAction,
-  deleteCustomPaymentEventFormAction,
-  saveLevelRulesFormAction,
-} from "@/app/actions/levelRules";
-import { CommaWonInput } from "@/components/CommaWonInput";
+import { addCustomPaymentEventFormAction } from "@/app/actions/levelRules";
 import {
   allPaymentEventKeysForYear,
   customPaymentDefsForYear,
@@ -12,9 +7,7 @@ import {
 import { companySettingsByTenant, levelPaymentRuleList } from "@/lib/pb/repository";
 import { canEditLevelRules } from "@/lib/permissions";
 import { requireTenantContext } from "@/lib/tenant-context";
-
-const INPUT_CLS =
-  "w-[6rem] max-w-[7rem] min-w-[5.5rem] rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm tabular-nums focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
+import { LevelRulesMatrixForm } from "@/components/LevelRulesMatrixForm";
 
 function fmtInt(n: number) {
   return Math.round(n).toLocaleString("ko-KR");
@@ -36,7 +29,18 @@ export default async function LevelsPage() {
   const eventKeys = allPaymentEventKeysForYear(settings, year);
   const canEdit = canEditLevelRules(role);
 
+  const eventLabels = eventKeys.map((ev) => paymentEventLabel(ev, customDefs));
   const customEventKeys = eventKeys.filter((ev) => customDefs.some((c) => c.eventKey === ev));
+  const amountsByLevelEvent: Record<string, number> = {};
+  for (let lv = 1; lv <= 5; lv++) {
+    for (const ev of eventKeys) {
+      amountsByLevelEvent[`${lv}_${ev}`] = Number(ruleMap.get(`${lv}_${ev}`) ?? 0);
+    }
+  }
+  const rulesSignature = [...rules]
+    .sort((a, b) => (a.level !== b.level ? a.level - b.level : a.eventKey.localeCompare(b.eventKey)))
+    .map((r) => `${r.level}:${r.eventKey}:${r.amount}`)
+    .join("|");
 
   return (
     <div className="space-y-2">
@@ -52,42 +56,33 @@ export default async function LevelsPage() {
           <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
         )}
 
-        <div className="surface overflow-x-auto px-2 py-2 sm:px-3 sm:py-2.5">
-          {/* 중첩 form 금지: 삭제는 form 속성으로 연결된 별도 폼만 사용 */}
-          <form action={canEdit ? saveLevelRulesFormAction : undefined} id="level-rules-save" className="space-y-2">
-            <input type="hidden" name="year" value={year} />
+        {canEdit ? (
+          <LevelRulesMatrixForm
+            year={year}
+            eventKeys={eventKeys}
+            eventLabels={eventLabels}
+            amountsByLevelEvent={amountsByLevelEvent}
+            customEventKeys={customEventKeys}
+            rulesSignature={rulesSignature}
+          />
+        ) : (
+          <div className="surface overflow-x-auto px-2 py-2 sm:px-3 sm:py-2.5">
             <table className="min-w-max border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b-2 border-[var(--border-strong)]">
                   <th className="sticky left z-10 bg-[var(--surface)] px-2 py-2 text-left text-sm font-bold text-[var(--text)]">
                     레벨 / 행사
                   </th>
-                  {eventKeys.map((ev, evIdx) => {
-                    const isCustom = customDefs.some((c) => c.eventKey === ev);
-                    return (
-                      <th
-                        key={ev}
-                        className={`max-w-[9rem] whitespace-normal px-2 py-2 text-center text-sm font-semibold leading-snug text-[var(--text)] ${
-                          evIdx === 0 ? "dash-table-vline-strong" : "dash-table-vline"
-                        }`}
-                      >
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="whitespace-pre-line text-[var(--text)]">
-                            {paymentEventLabel(ev, customDefs)}
-                          </span>
-                          {canEdit && isCustom && (
-                            <button
-                              type="submit"
-                              form={`delete-custom-event-${ev}`}
-                              className="text-xs font-normal text-[var(--danger)] hover:underline"
-                            >
-                              삭제
-                            </button>
-                          )}
-                        </div>
-                      </th>
-                    );
-                  })}
+                  {eventKeys.map((ev, evIdx) => (
+                    <th
+                      key={ev}
+                      className={`max-w-[9rem] whitespace-normal px-2 py-2 text-center text-sm font-semibold leading-snug text-[var(--text)] ${
+                        evIdx === 0 ? "dash-table-vline-strong" : "dash-table-vline"
+                      }`}
+                    >
+                      <span className="whitespace-pre-line text-[var(--text)]">{eventLabels[evIdx]}</span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -103,44 +98,17 @@ export default async function LevelsPage() {
                           evIdx === 0 ? "dash-table-vline-strong" : "dash-table-vline"
                         }`}
                       >
-                        {canEdit ? (
-                          <CommaWonInput
-                            name={`amt_${lv}_${ev}`}
-                            defaultValue={Number(ruleMap.get(`${lv}_${ev}`) ?? 0)}
-                            className={INPUT_CLS}
-                          />
-                        ) : (
-                          <span className="inline-block min-w-[5.5rem] font-mono text-sm font-medium tabular-nums text-[var(--text)]">
-                            {fmtInt(Number(ruleMap.get(`${lv}_${ev}`) ?? 0))}
-                          </span>
-                        )}
+                        <span className="inline-block min-w-[5.5rem] font-mono text-sm font-medium tabular-nums text-[var(--text)]">
+                          {fmtInt(Number(ruleMap.get(`${lv}_${ev}`) ?? 0))}
+                        </span>
                       </td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-            {canEdit && (
-              <button type="submit" className="btn btn-primary px-4 py-2 text-sm">
-                저장
-              </button>
-            )}
-          </form>
-        </div>
-
-        {canEdit &&
-          customEventKeys.map((ev) => (
-            <form
-              key={ev}
-              id={`delete-custom-event-${ev}`}
-              action={deleteCustomPaymentEventFormAction}
-              className="hidden"
-              aria-hidden
-            >
-              <input type="hidden" name="year" value={year} />
-              <input type="hidden" name="eventKey" value={ev} />
-            </form>
-          ))}
+          </div>
+        )}
 
         {canEdit && (
           <form

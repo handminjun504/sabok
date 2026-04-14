@@ -1,5 +1,6 @@
 "use server";
 
+import { ClientResponseError } from "pocketbase";
 import { revalidatePath } from "next/cache";
 import {
   allPaymentEventKeysForYear,
@@ -20,8 +21,61 @@ import {
 import { canEditLevelRules } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
+import { pocketBaseNonemptyBlankHint, pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
 
 export type LevelRulesState = { 오류?: string; 성공?: boolean } | null;
+
+export type LevelRuleCellSaveResult = { ok: true } | { ok: false; 오류: string };
+
+/** 레벨·행사 한 칸만 저장 — 자동 저장용 */
+export async function saveLevelPaymentRuleCellAction(
+  year: number,
+  level: number,
+  eventKey: string,
+  amount: number
+): Promise<LevelRuleCellSaveResult> {
+  const ctx = await resolveActionTenant();
+  if (!ctx.ok) return { ok: false, 오류: ctx.message };
+  if (!canEditLevelRules(ctx.role)) return { ok: false, 오류: "레벨 규칙을 수정할 권한이 없습니다." };
+
+  const yearN = Math.round(Number(year));
+  if (!Number.isFinite(yearN) || yearN < 2000 || yearN > 2100) {
+    return { ok: false, 오류: "연도가 올바르지 않습니다." };
+  }
+  const lv = Math.round(Number(level));
+  if (lv < 1 || lv > 5) return { ok: false, 오류: "레벨이 올바르지 않습니다." };
+  const key = String(eventKey ?? "").trim();
+  if (!key) return { ok: false, 오류: "행사 키가 없습니다." };
+  const amt = Number(amount);
+  const amountN = Number.isFinite(amt) ? Math.max(0, Math.round(amt)) : 0;
+
+  const settings = await companySettingsByTenant(ctx.tenantId);
+  const allowed = allPaymentEventKeysForYear(settings, yearN);
+  if (!allowed.includes(key)) return { ok: false, 오류: "유효하지 않은 행사입니다." };
+
+  try {
+    await levelPaymentRuleUpsert({
+      tenantId: ctx.tenantId,
+      year: yearN,
+      level: lv,
+      eventKey: key,
+      amount: amountN,
+    });
+  } catch (e) {
+    console.error(e);
+    if (e instanceof ClientResponseError) {
+      const detail = pocketBaseRecordErrorMessage(e);
+      return { ok: false, 오류: `${detail}${pocketBaseNonemptyBlankHint(detail)}` };
+    }
+    return { ok: false, 오류: "저장에 실패했습니다." };
+  }
+
+  revalidatePath("/dashboard/levels");
+  revalidatePath("/dashboard/schedule");
+  revalidatePath("/dashboard/operating-report");
+  revalidatePath("/dashboard/salary-inclusion-report");
+  return { ok: true };
+}
 
 export async function saveLevelRulesFormAction(formData: FormData): Promise<void> {
   await saveLevelRulesAction(null, formData);
@@ -61,6 +115,10 @@ export async function saveLevelRulesAction(
     }
   } catch (e) {
     console.error(e);
+    if (e instanceof ClientResponseError) {
+      const detail = pocketBaseRecordErrorMessage(e);
+      return { 오류: `${detail}${pocketBaseNonemptyBlankHint(detail)}` };
+    }
     return { 오류: "저장에 실패했습니다." };
   }
 
@@ -112,6 +170,10 @@ export async function saveLevelTargetAction(
     }
   } catch (e) {
     console.error(e);
+    if (e instanceof ClientResponseError) {
+      const detail = pocketBaseRecordErrorMessage(e);
+      return { 오류: `${detail}${pocketBaseNonemptyBlankHint(detail)}` };
+    }
     return { 오류: "목표액 저장 실패" };
   }
 

@@ -385,49 +385,52 @@ export async function companySettingsByTenant(tenantId: string): Promise<Company
   return r ? mapCompanySettings(r) : null;
 }
 
+function companySettingsAccrualNonemptyIssue(detailLower: string): boolean {
+  return (
+    detailLower.includes("accrualcurrentmonthpaynext") &&
+    (detailLower.includes("blank") ||
+      detailLower.includes("missing required") ||
+      detailLower.includes("nonempty") ||
+      detailLower.includes("cannot be blank"))
+  );
+}
+
 export async function companySettingsCreateForTenant(tenantId: string): Promise<void> {
   const pb = await getAdminPb();
-  const withAccrual = {
+  const activeYear = new Date().getFullYear();
+  const payload = (accrualCurrentMonthPayNext: boolean) => ({
     tenantId,
     foundingMonth: 1,
     defaultPayDay: 25,
-    activeYear: 2026,
-    accrualCurrentMonthPayNext: false,
+    activeYear,
+    accrualCurrentMonthPayNext,
     paymentEventDefs: {} as Record<string, unknown>,
-  };
+  });
 
   try {
-    await pb.collection(C.companySettings).create(withAccrual);
+    await pb.collection(C.companySettings).create(payload(false));
     return;
   } catch (e) {
     if (!(e instanceof ClientResponseError)) {
       logPbClientError("companySettingsCreateForTenant", e);
       throw e;
     }
-    const detail = pocketBaseRecordErrorMessage(e).toLowerCase();
-    const accrualRejected =
-      detail.includes("accrualcurrentmonthpaynext") &&
-      (detail.includes("blank") || detail.includes("missing required") || detail.includes("nonempty"));
-    if (!accrualRejected) {
+    const detail = pocketBaseRecordErrorMessage(e);
+    const detailLower = detail.toLowerCase();
+    if (!companySettingsAccrualNonemptyIssue(detailLower)) {
       logPbClientError("companySettingsCreateForTenant", e);
       throw e;
     }
     try {
-      await pb.collection(C.companySettings).create({
-        tenantId,
-        foundingMonth: 1,
-        defaultPayDay: 25,
-        activeYear: 2026,
-        paymentEventDefs: {},
-      });
+      await pb.collection(C.companySettings).create(payload(true));
+      console.warn(
+        "[pb] companySettingsCreateForTenant: accrualCurrentMonthPayNext=false 가 PocketBase Nonempty 등으로 거절되어 true 로 생성했습니다. " +
+          "Admin에서 해당 bool 필드의 Nonempty를 끄면 false 로도 저장할 수 있습니다. 필요하면 전사 설정에서 귀속·지급 옵션을 바꾸세요.",
+      );
     } catch (e2) {
-      logPbClientError("companySettingsCreateForTenant (retry without accrual flag)", e2);
+      logPbClientError("companySettingsCreateForTenant (retry with accrual=true)", e2);
       throw e2;
     }
-    logPbClientError("companySettingsCreateForTenant (false rejected by Nonempty; created without field)", e);
-    console.warn(
-      "[pb] sabok_company_settings.accrualCurrentMonthPayNext: PB Nonempty가 false를 거절해 필드를 생략했습니다. Admin에서 해당 bool의 Nonempty를 끄거나 기본값을 설정하세요.",
-    );
   }
 }
 
@@ -643,10 +646,12 @@ export async function levelPaymentRuleUpsert(data: {
   amount: number;
 }): Promise<void> {
   const f = `tenantId="${esc(data.tenantId)}" && year=${data.year} && level=${data.level} && eventKey="${esc(data.eventKey)}"`;
-  const existing = await firstByFilter(C.levelPaymentRules, f);
   const pb = await getAdminPb();
-  if (existing?.id) {
-    await pb.collection(C.levelPaymentRules).update(String(existing.id), { amount: data.amount });
+  /** `firstByFilter`는 오류 시 null을 반환해 upsert가 잘못된 create를 시도할 수 있음 → 조회 실패는 그대로 전파 */
+  const { items } = await pb.collection(C.levelPaymentRules).getList(1, 1, { filter: f });
+  const hit = items[0];
+  if (hit) {
+    await pb.collection(C.levelPaymentRules).update(String(hit.id), { amount: data.amount });
   } else {
     await pb.collection(C.levelPaymentRules).create(data);
   }
@@ -994,7 +999,6 @@ export async function vendorContributionListByVendor(vendorId: string, limit: nu
 export async function vendorAppendContribution(input: {
   tenantId: string;
   vendorId: string;
-  /** 출연금 C — 해당 월 레벨 1~5 직원 입금 총액 */
   contributionAmount: number;
   note?: string | null;
   occurredAt?: string | null;
@@ -1006,7 +1010,6 @@ export async function vendorAppendContribution(input: {
   }
   const vendor = mapVendorRow(vRow);
   const tenant = await tenantGetById(input.tenantId);
-  /** 거래처 등록 정보(sabok_tenants)를 출연 추가 적립 판단의 기준으로 둔다. */
   const businessType: VendorBusinessType =
     tenant == null ? vendor.businessType : tenant.clientEntityType === "CORPORATE" ? "CORPORATE" : "INDIVIDUAL";
   const workplaceCapitalForCap =

@@ -110,7 +110,7 @@ export function ScheduleEmployeeCards({
               </header>
 
               {focusMonth == null ? (
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                   {MONTHS.map((m) => {
                     const v = r.welfareByMonth[m] ?? 0;
                     const empty = v === 0;
@@ -118,7 +118,7 @@ export function ScheduleEmployeeCards({
                     return (
                       <div
                         key={m}
-                        className={`rounded-lg border px-1.5 py-2 text-center ${
+                        className={`min-w-0 rounded-lg border px-1.5 py-2 text-center ${
                           empty
                             ? "border-[var(--border)]/60 bg-[var(--bg)]/50"
                             : "border-[var(--border)] bg-[var(--surface)]"
@@ -133,16 +133,18 @@ export function ScheduleEmployeeCards({
                           {format(v)}
                         </div>
                         {!empty && lines.length > 0 ? (
-                          <ul className="mt-1 max-h-[5rem] space-y-0.5 overflow-y-auto border-t border-[var(--border)]/50 pt-1 text-left">
+                          <ul className="mt-1.5 max-h-[6.5rem] space-y-1.5 overflow-y-auto border-t border-[var(--border)]/50 pt-1.5 text-left">
                             {lines.map((line, i) => (
                               <li
                                 key={`${line.label}-${i}`}
-                                className="flex items-start justify-between gap-1 text-[0.58rem] leading-snug tabular-nums"
+                                className="border-b border-[var(--border)]/30 pb-1.5 text-[0.58rem] leading-snug last:border-b-0 last:pb-0"
                               >
-                                <span className="min-w-0 flex-1 whitespace-pre-line text-left text-[var(--muted)]">
+                                <span className="block break-words text-[var(--muted)] whitespace-pre-line">
                                   {line.label}
                                 </span>
-                                <span className="shrink-0 font-medium text-[var(--text)]">{format(line.amount)}</span>
+                                <span className="mt-0.5 block text-right text-[0.6rem] font-medium tabular-nums text-[var(--text)]">
+                                  {format(line.amount)}
+                                </span>
                               </li>
                             ))}
                           </ul>
@@ -158,14 +160,18 @@ export function ScheduleEmployeeCards({
                   </p>
                   <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--text)]">{format(focusAmt ?? 0)}원</p>
                   {focusLines.length > 0 ? (
-                    <ul className="mt-4 space-y-2 border-t border-[var(--border)] pt-3 text-left text-xs">
+                    <ul className="mt-4 space-y-3 border-t border-[var(--border)] pt-3 text-left text-xs">
                       {focusLines.map((line, i) => (
                         <li
                           key={`${line.label}-${i}`}
-                          className="flex items-start justify-between gap-3 tabular-nums"
+                          className="flex flex-col gap-1 tabular-nums sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
                         >
-                          <span className="min-w-0 flex-1 whitespace-pre-line text-[var(--muted)]">{line.label}</span>
-                          <span className="shrink-0 font-semibold text-[var(--text)]">{format(line.amount)}원</span>
+                          <span className="min-w-0 break-words whitespace-pre-line text-[var(--muted)]">
+                            {line.label}
+                          </span>
+                          <span className="shrink-0 font-semibold tabular-nums text-[var(--text)] sm:text-right">
+                            {format(line.amount)}원
+                          </span>
                         </li>
                       ))}
                     </ul>

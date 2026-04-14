@@ -211,7 +211,6 @@ export type VendorContribution = {
   id: string;
   tenantId: string;
   vendorId: string;
-  /** 출연금 C — 해당 월 레벨 1~5 직원에게 입금할 총액 */
   contributionAmount: number;
   additionalReserved: number;
   reserveAfter: number;

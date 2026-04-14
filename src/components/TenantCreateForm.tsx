@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import { createTenantAction, type TenantActionState } from "@/app/actions/tenant-admin";
 import { CommaWonInput } from "@/components/CommaWonInput";
 import { TENANT_OPERATION_MODES } from "@/lib/domain/tenant-profile";
-import { CONTRIBUTION_ADDITIONAL_RESERVE_RULE_SUMMARY_KO } from "@/lib/domain/vendor-reserve";
 
 export type TenantCreateFormVariant = "full" | "select";
 
@@ -41,21 +40,20 @@ export function TenantCreateForm({
           <h2 className="text-base font-semibold tracking-tight text-[var(--text)]">
             {onSelectScreen ? "새 거래처(업체) 추가" : "거래처(업체) 등록"}
           </h2>
-          <p className="text-sm text-[var(--muted)]">
-            {onSelectScreen
-              ? "대시보드에서 쓸 거래처를 만듭니다."
-              : "최초 등록 시 개인·법인 적립 구분과 기금 운영 방식을 정합니다."}
-          </p>
+          <p className="text-sm text-[var(--muted)]">대시보드에서 쓸 거래처를 만듭니다.</p>
         </>
       ) : null}
-      {state?.오류 && <p className="text-[0.9375rem] leading-relaxed text-[var(--danger)]">{state.오류}</p>}
-      {state?.성공 && (
+      {state?.오류 ? <p className="text-[0.9375rem] leading-relaxed text-[var(--danger)]">{state.오류}</p> : null}
+      {state?.경고 ? (
+        <p className="text-[0.9375rem] leading-relaxed text-[var(--warn)]">{state.경고}</p>
+      ) : null}
+      {state?.성공 ? (
         <p className="text-[0.9375rem] text-[var(--success)]">
           {onSelectScreen
             ? "등록되었습니다. 목록에서 해당 거래처를 선택해 들어가세요."
             : "등록되었습니다. 거래처 선택 화면에서 확인할 수 있습니다."}
         </p>
-      )}
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-sm font-medium text-[var(--muted)]">거래처 코드 (영문·숫자 권장)</label>
@@ -67,10 +65,7 @@ export function TenantCreateForm({
         </div>
 
         <div className="sm:col-span-2">
-          <span className="mb-1 block text-sm font-medium text-[var(--text)]">개인·법인 적립 구분</span>
-          <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
-            SABOK에 거래처를 <strong>처음 등록할 때만</strong> 정합니다. 이후 적립·한도 등은 이 구분을 따릅니다.
-          </p>
+          <span className="mb-3 block text-sm font-medium text-[var(--text)]">개인·법인 적립 구분</span>
           <div className="flex flex-wrap gap-x-8 gap-y-3 text-[0.9375rem] leading-snug text-[var(--text)]">
             <label className="flex cursor-pointer items-start gap-2.5">
               <input type="radio" name="clientEntityType" value="INDIVIDUAL" defaultChecked className="mt-1" />
@@ -121,9 +116,6 @@ export function TenantCreateForm({
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-[var(--muted)]">본사 자본금 (원)</label>
               <CommaWonInput name="headOfficeCapital" className="input w-full text-xs" placeholder="선택" />
-              <p className="mt-1 text-[11px] leading-snug text-[var(--muted)]">
-                {CONTRIBUTION_ADDITIONAL_RESERVE_RULE_SUMMARY_KO}
-              </p>
             </div>
           </div>
         </div>

@@ -10,7 +10,6 @@ import {
   type TenantClientEntityType,
   type TenantOperationMode,
 } from "@/lib/domain/tenant-profile";
-import { CONTRIBUTION_ADDITIONAL_RESERVE_RULE_SUMMARY_KO } from "@/lib/domain/vendor-reserve";
 import type { Tenant } from "@/types/models";
 
 export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
@@ -185,9 +184,6 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
               className="input w-full text-xs"
               disabled={fieldsLocked}
             />
-            <p className="mt-1 text-[11px] leading-snug text-[var(--muted)]">
-              {CONTRIBUTION_ADDITIONAL_RESERVE_RULE_SUMMARY_KO}
-            </p>
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
             <label className="dash-eyebrow mb-1 block">
