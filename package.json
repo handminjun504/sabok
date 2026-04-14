@@ -6,11 +6,11 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "node run-dev.mjs",
-    "dev:web": "node run-dev.mjs -- -H 0.0.0.0 -p 3000",
+    "dev": "node run-dev.mjs -- -p 10002",
+    "dev:web": "node run-dev.mjs -- -H 0.0.0.0 -p 10002",
     "build": "next build",
-    "start": "next start",
-    "start:web": "next start -H 0.0.0.0 -p 3000",
+    "start": "next start -p 10002",
+    "start:web": "next start -H 0.0.0.0 -p 10002",
     "desktop": "node ./node_modules/electron/cli.js ./electron/main.cjs",
     "lint": "next lint",
     "sheet:parity": "tsx scripts/sheet-parity.ts",

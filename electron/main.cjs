@@ -6,7 +6,7 @@
 
 const { app, BrowserWindow } = require("electron");
 
-const startUrl = process.env.SABOK_URL || "http://localhost:3000";
+const startUrl = process.env.SABOK_URL || "http://localhost:10002";
 
 function createWindow() {
   const win = new BrowserWindow({

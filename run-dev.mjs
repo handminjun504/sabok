@@ -2,8 +2,8 @@
  * 개발 서버: `next dev` 를 셸 없이 기동해 Windows에서 불필요한 CMD/콘솔 창이 뜨는 것을 줄입니다.
  * macOS/Linux 는 기존과 같이 터미널에 로그가 출력됩니다.
  *
- * 사용: npm run dev  |  npm run dev:web
- * 추가 인자: npm run dev -- --turbo
+ * 사용: npm run dev (기본 포트 10002, run-prod·PM2 와 동일 대역) | npm run dev:web
+ * 추가 인자: npm run dev -- --turbo  또는  npm run dev -- -p 3000
  */
 import { spawn } from "node:child_process";
 import path from "node:path";
