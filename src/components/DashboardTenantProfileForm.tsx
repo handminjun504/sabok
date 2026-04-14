@@ -73,6 +73,30 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
         }}
         className="mt-3 space-y-3"
       >
+        {/* 폼에 없으면 저장 시 null 로 덮어써져 인가·사업자번호가 사라짐 — 항상 현재값 전송 */}
+        <input type="hidden" name="approvalNumber" value={tenant.approvalNumber ?? ""} />
+        <input type="hidden" name="businessRegNo" value={tenant.businessRegNo ?? ""} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <p className="dash-eyebrow mb-1">인가번호</p>
+            <p className="font-mono text-sm font-medium text-[var(--text)]">
+              {tenant.approvalNumber?.trim() || "—"}
+            </p>
+          </div>
+          <div>
+            <p className="dash-eyebrow mb-1">사업자등록번호</p>
+            <p className="font-mono text-sm font-medium text-[var(--text)]">
+              {tenant.businessRegNo?.trim() || "—"}
+            </p>
+          </div>
+        </div>
+        <p className="text-xs text-[var(--muted)]">
+          위 항목 수정은{" "}
+          <Link href="/dashboard/operating-report" className="text-[var(--accent)] hover:underline">
+            운영상황 보고
+          </Link>
+          에서 할 수 있습니다.
+        </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label className="dash-eyebrow mb-1 block">
@@ -149,13 +173,6 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
               ))}
             </div>
           </div>
-          <p className="sm:col-span-2 lg:col-span-3 text-xs text-[var(--muted)]">
-            인가번호·사업자등록번호는{" "}
-            <Link href="/dashboard/operating-report" className="text-[var(--accent)] hover:underline">
-              운영상황 보고
-            </Link>
-            에서 수정합니다.
-          </p>
           <div>
             <label className="dash-eyebrow mb-1 block">
               본사 자본금 (원)

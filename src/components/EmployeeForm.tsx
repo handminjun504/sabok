@@ -251,24 +251,39 @@ export function EmployeeForm({
   surveyShowSpouseReceipt?: boolean;
   surveyShowWorkerNet?: boolean;
 }) {
-  const [state, formAction] = useActionState<EmployeeActionState, FormData>(saveEmployeeAction, null);
+  const [state, formAction, savePending] = useActionState<EmployeeActionState, FormData>(
+    saveEmployeeAction,
+    null,
+  );
   const [delState, delFormAction, delPending] = useActionState<EmployeeActionState, FormData>(
     deleteEmployeeFormAction,
     null,
   );
   const router = useRouter();
   const [salaryRangeOk, setSalaryRangeOk] = useState(true);
+  const isNew = !employee;
+  const [editorOpen, setEditorOpen] = useState(!employee);
 
   useEffect(() => {
     if (delState?.성공) router.push("/dashboard/employees");
   }, [delState?.성공, router]);
+
+  useEffect(() => {
+    if (!state?.성공) return;
+    if (isNew) {
+      const t = setTimeout(() => {
+        router.push("/dashboard/employees");
+      }, 900);
+      return () => clearTimeout(t);
+    }
+    setEditorOpen(false);
+    router.refresh();
+  }, [state?.성공, isNew, router]);
   const yy = String(activeYear).slice(-2);
-  const isNew = !employee;
   const positionOptions = employeePositionSelectValues(employee?.position);
   const positionDefault = (employee?.position ?? "").trim();
   const positionNeedsPlaceholder = !positionDefault;
 
-  const [editorOpen, setEditorOpen] = useState(!employee);
   useEffect(() => {
     if (state?.오류) setEditorOpen(true);
   }, [state?.오류]);
@@ -282,15 +297,18 @@ export function EmployeeForm({
         {state.오류}
       </div>
     ) : null}
-    {state?.경고 ? (
-      <div className="rounded-lg border border-amber-200/90 bg-amber-50 p-3 text-sm leading-relaxed text-amber-950">
-        <strong className="font-semibold">저장됨 · 확인</strong>
-        <p className="mt-1">{state.경고}</p>
+    {state?.성공 ? (
+      <div className="rounded-lg border border-[var(--success)] bg-[var(--surface)] p-3 text-sm font-medium text-[var(--success)]">
+        저장되었습니다.
+        {isNew ? (
+          <p className="mt-1 text-xs font-normal text-[var(--muted)]">잠시 후 직원 목록으로 이동합니다.</p>
+        ) : null}
       </div>
     ) : null}
-    {state?.성공 && !state?.경고 ? (
-      <div className="rounded-lg border border-[var(--success)] p-3 text-sm text-[var(--success)]">
-        저장되었습니다.
+    {state?.경고 ? (
+      <div className="rounded-lg border border-amber-200/90 bg-amber-50 p-3 text-sm leading-relaxed text-amber-950">
+        <strong className="font-semibold">확인</strong>
+        <p className="mt-1">{state.경고}</p>
       </div>
     ) : null}
 
@@ -331,7 +349,12 @@ export function EmployeeForm({
       </div>
     ) : null}
 
-    <form action={formAction} className={`space-y-4 ${showEditor ? "" : "hidden"}`} aria-hidden={!showEditor}>
+    <form
+      action={formAction}
+      className={`space-y-4 ${showEditor ? "" : "hidden"}`}
+      aria-hidden={!showEditor}
+      aria-busy={savePending}
+    >
       {employee && <input type="hidden" name="id" value={employee.id} />}
       {employee && showEditor ? (
         <button
@@ -539,8 +562,8 @@ export function EmployeeForm({
         </div>
       </div>
 
-      <button type="submit" className="btn btn-primary px-8 py-2.5">
-        저장
+      <button type="submit" disabled={savePending} className="btn btn-primary px-8 py-2.5 disabled:opacity-60">
+        {savePending ? "저장 중…" : "저장"}
       </button>
       {!salaryRangeOk ? (
         <p className="text-sm text-[var(--danger)]">
@@ -574,6 +597,25 @@ export function EmployeeForm({
       </form>
     ) : null}
     {delState?.오류 ? <p className="text-sm text-[var(--danger)]">{delState.오류}</p> : null}
+
+    {savePending ? (
+      <div
+        className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--text)]/15 backdrop-blur-[2px]"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label="직원 정보 저장 중"
+      >
+        <div className="surface flex max-w-sm flex-col items-center gap-3 rounded-xl border border-[var(--border)] px-8 py-6 shadow-lg">
+          <span
+            className="inline-block size-9 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--text)]"
+            aria-hidden
+          />
+          <p className="text-sm font-medium text-[var(--text)]">저장 중입니다…</p>
+          <p className="text-center text-xs text-[var(--muted)]">잠시만 기다려 주세요.</p>
+        </div>
+      </div>
+    ) : null}
     </div>
   );
 }

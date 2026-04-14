@@ -103,6 +103,15 @@ function mapVendorContributionRow(r: Record<string, unknown>): VendorContributio
   };
 }
 
+/** PB 필드명이 camelCase가 아닐 때(Admin에서 snake_case·한글 등) 대비 */
+function tenantTextField(r: Record<string, unknown>, primary: string, ...aliases: string[]): string | null {
+  for (const k of [primary, ...aliases]) {
+    const v = r[k];
+    if (v != null && String(v).trim() !== "") return String(v).trim();
+  }
+  return null;
+}
+
 function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
   const cap = Number(r.headOfficeCapital);
   return {
@@ -113,8 +122,14 @@ function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
     memo: r.memo == null || r.memo === "" ? null : String(r.memo),
     clientEntityType: parseTenantClientEntityType(r.clientEntityType),
     operationMode: parseTenantOperationMode(r.operationMode),
-    approvalNumber: r.approvalNumber == null || r.approvalNumber === "" ? null : String(r.approvalNumber),
-    businessRegNo: r.businessRegNo == null || r.businessRegNo === "" ? null : String(r.businessRegNo),
+    approvalNumber: tenantTextField(r, "approvalNumber", "approval_number", "인가번호"),
+    businessRegNo: tenantTextField(
+      r,
+      "businessRegNo",
+      "business_reg_no",
+      "businessRegNumber",
+      "사업자등록번호",
+    ),
     headOfficeCapital: Number.isFinite(cap) ? cap : null,
   };
 }

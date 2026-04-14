@@ -191,10 +191,12 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     return o;
   }
 
+  let employeeDetailPath: string | undefined;
   try {
     if (id && existingEmp) {
       const emp = existingEmp;
       await employeeUpdate(emp.id, bodyForUpdate(emp.employeeCode));
+      employeeDetailPath = `/dashboard/employees/${id}`;
       await writeAudit({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
@@ -211,6 +213,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
         tenantId: ctx.tenantId,
         employeeCode,
       });
+      employeeDetailPath = `/dashboard/employees/${created.id}`;
       await writeAudit({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
@@ -236,7 +239,9 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     return { 오류: "저장에 실패했습니다. 서버 로그를 확인하세요." };
   }
 
-  revalidatePath("/dashboard/employees");
+  revalidatePath("/dashboard/employees", "layout");
+  if (employeeDetailPath) revalidatePath(employeeDetailPath);
+  revalidatePath("/dashboard/employees/new");
   revalidatePath("/dashboard/schedule");
   revalidatePath("/dashboard/operating-report");
   revalidatePath("/dashboard/salary-inclusion-report");
@@ -262,7 +267,7 @@ export async function deleteEmployeeAction(employeeId: string): Promise<Employee
     console.error(e);
     return { 오류: "삭제에 실패했습니다." };
   }
-  revalidatePath("/dashboard/employees");
+  revalidatePath("/dashboard/employees", "layout");
   revalidatePath("/dashboard/schedule");
   revalidatePath("/dashboard/operating-report");
   revalidatePath("/dashboard/salary-inclusion-report");
