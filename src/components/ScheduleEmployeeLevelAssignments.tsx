@@ -135,15 +135,15 @@ export function ScheduleEmployeeLevelAssignments({
       ) : null}
 
       <div className="surface overflow-x-auto dash-panel-pad">
-        <table className="min-w-[720px] text-left text-xs">
+        <table className="min-w-[720px] border-collapse text-left text-xs">
           <thead>
             <tr className="border-b-2 border-[var(--border)]">
               <th className="dash-table-th">코드</th>
               <th className="dash-table-th">이름</th>
-              <th className="dash-table-th whitespace-nowrap">지급 예정액(연·원)</th>
-              <th className="dash-table-th text-center">추천</th>
-              <th className="dash-table-th">레벨</th>
-              {canEdit ? <th className="dash-table-th whitespace-nowrap">추천 반영</th> : null}
+              <th className="dash-table-th dash-table-vline-strong whitespace-nowrap">지급 예정액(연·원)</th>
+              <th className="dash-table-th dash-table-vline text-center">추천</th>
+              <th className="dash-table-th dash-table-vline">레벨</th>
+              {canEdit ? <th className="dash-table-th dash-table-vline whitespace-nowrap">추천 반영</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -153,7 +153,7 @@ export function ScheduleEmployeeLevelAssignments({
                 <tr key={r.employeeId} className="border-b border-[var(--border)]">
                   <td className="px-3 py-2 font-mono tabular-nums">{r.employeeCode}</td>
                   <td className="px-3 py-2">{r.name}</td>
-                  <td className="px-3 py-2">
+                  <td className="dash-table-vline-strong px-3 py-2">
                     {canEdit ? (
                       <input
                         className="input w-full max-w-[9rem] tabular-nums"
@@ -179,7 +179,7 @@ export function ScheduleEmployeeLevelAssignments({
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-center tabular-nums">
+                  <td className="dash-table-vline px-3 py-2 text-center tabular-nums">
                     {sug != null ? (
                       <span className="font-medium text-[var(--text)]" title={`규칙 합과의 차이 기준`}>
                         {sug}
@@ -188,7 +188,7 @@ export function ScheduleEmployeeLevelAssignments({
                       <span className="text-[var(--muted)]">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="dash-table-vline px-3 py-2">
                     {canEdit ? (
                       <select
                         className="input w-[4.5rem] py-1 text-xs"
@@ -211,7 +211,7 @@ export function ScheduleEmployeeLevelAssignments({
                     )}
                   </td>
                   {canEdit ? (
-                    <td className="px-3 py-2">
+                    <td className="dash-table-vline px-3 py-2">
                       <button
                         type="button"
                         className="btn btn-secondary text-[0.7rem] py-1"

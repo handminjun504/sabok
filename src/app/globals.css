@@ -427,6 +427,18 @@ main h1 {
     color: var(--text);
   }
 
+  /**
+   * 금액·월별 격자: 열 구분 세로선 (테이블 border-collapse: collapse 권장)
+   * -strong: 블록 시작(텍스트 열 → 숫자 열, 월 그리드 → 요약 등)
+   */
+  .dash-table-vline {
+    border-left: 1px solid var(--border);
+  }
+
+  .dash-table-vline-strong {
+    border-left: 1px solid var(--border-strong);
+  }
+
   /** 폼 필드 라벨 (대시보드 공통) */
   .dash-field-label {
     display: block;

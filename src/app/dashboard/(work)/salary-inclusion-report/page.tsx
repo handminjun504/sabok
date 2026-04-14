@@ -121,17 +121,17 @@ export default async function SalaryInclusionReportPage({
       </div>
 
       <div className="surface overflow-x-auto dash-panel-pad">
-        <table className="min-w-[980px] w-full text-left text-sm">
+        <table className="min-w-[980px] w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-xs text-[var(--muted)]">
               <th className="px-3 py-2">코드</th>
               <th className="px-3 py-2">이름</th>
               <th className="px-3 py-2">레벨</th>
-              <th className="px-3 py-2 text-right">상한</th>
-              <th className="px-3 py-2">상한 기준</th>
-              <th className="px-3 py-2 text-right">누적 실지급</th>
-              {showOver ? <th className="px-3 py-2 text-right">초과(급여 포함)</th> : null}
-              {showUnder ? <th className="px-3 py-2 text-right">미달(급여포함신고)</th> : null}
+              <th className="dash-table-vline-strong px-3 py-2 text-right">상한</th>
+              <th className="dash-table-vline px-3 py-2">상한 기준</th>
+              <th className="dash-table-vline px-3 py-2 text-right">누적 실지급</th>
+              {showOver ? <th className="dash-table-vline px-3 py-2 text-right">초과(급여 포함)</th> : null}
+              {showUnder ? <th className="dash-table-vline px-3 py-2 text-right">미달(급여포함신고)</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -140,11 +140,15 @@ export default async function SalaryInclusionReportPage({
                 <td className="px-3 py-2 font-mono">{emp.employeeCode}</td>
                 <td className="px-3 py-2">{emp.name}</td>
                 <td className="px-3 py-2">{emp.level}</td>
-                <td className="px-3 py-2 text-right">{capVs.hasCap ? format(capVs.cap) : "—"}</td>
-                <td className="px-3 py-2 text-xs text-[var(--muted)]">{salaryInclusionCapLabel(capVs.capSource)}</td>
-                <td className="px-3 py-2 text-right">{format(capVs.actual)}</td>
+                <td className="dash-table-vline-strong px-3 py-2 text-right tabular-nums">
+                  {capVs.hasCap ? format(capVs.cap) : "—"}
+                </td>
+                <td className="dash-table-vline px-3 py-2 text-xs text-[var(--muted)]">
+                  {salaryInclusionCapLabel(capVs.capSource)}
+                </td>
+                <td className="dash-table-vline px-3 py-2 text-right tabular-nums">{format(capVs.actual)}</td>
                 {showOver ? (
-                  <td className="px-3 py-2 text-right">
+                  <td className="dash-table-vline px-3 py-2 text-right tabular-nums">
                     {capVs.hasCap && capVs.overage > 0 ? (
                       <span className="font-medium text-[var(--danger)]">{format(capVs.overage)}</span>
                     ) : (
@@ -153,7 +157,7 @@ export default async function SalaryInclusionReportPage({
                   </td>
                 ) : null}
                 {showUnder ? (
-                  <td className="px-3 py-2 text-right">
+                  <td className="dash-table-vline px-3 py-2 text-right tabular-nums">
                     {capVs.hasCap && capVs.underForSalaryReport > 0 ? (
                       <span className="font-medium text-[var(--warn)]">{format(capVs.underForSalaryReport)}</span>
                     ) : (
@@ -171,14 +175,14 @@ export default async function SalaryInclusionReportPage({
       <div>
         <h2 className="text-lg font-semibold text-[var(--text)]">인센 → 사복 (월별 노트)</h2>
         <div className="surface mt-3 overflow-x-auto dash-panel-pad">
-          <table className="min-w-[820px] w-full text-left text-sm">
+          <table className="min-w-[820px] w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-[var(--border)] text-xs text-[var(--muted)]">
                 <th className="px-3 py-2">코드</th>
                 <th className="px-3 py-2">이름</th>
-                <th className="px-3 py-2 text-right">발생 인센 누적</th>
-                <th className="px-3 py-2 text-right">사복(인센) 지급 누적</th>
-                <th className="px-3 py-2 text-right">차액(급여포함)</th>
+                <th className="dash-table-vline-strong px-3 py-2 text-right">발생 인센 누적</th>
+                <th className="dash-table-vline px-3 py-2 text-right">사복(인센) 지급 누적</th>
+                <th className="dash-table-vline px-3 py-2 text-right">차액(급여포함)</th>
               </tr>
             </thead>
             <tbody>
@@ -186,9 +190,13 @@ export default async function SalaryInclusionReportPage({
                 <tr key={`inc-${emp.id}`} className="border-b border-[var(--border)]">
                   <td className="px-3 py-2 font-mono">{emp.employeeCode}</td>
                   <td className="px-3 py-2">{emp.name}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{format(incentiveWelfare.accrualYtd)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{format(incentiveWelfare.welfarePaymentYtd)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  <td className="dash-table-vline-strong px-3 py-2 text-right tabular-nums">
+                    {format(incentiveWelfare.accrualYtd)}
+                  </td>
+                  <td className="dash-table-vline px-3 py-2 text-right tabular-nums">
+                    {format(incentiveWelfare.welfarePaymentYtd)}
+                  </td>
+                  <td className="dash-table-vline px-3 py-2 text-right tabular-nums">
                     {incentiveWelfare.excessForSalary > 0 ? (
                       <span className="font-medium text-[var(--danger)]">{format(incentiveWelfare.excessForSalary)}</span>
                     ) : (

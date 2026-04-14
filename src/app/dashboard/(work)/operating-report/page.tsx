@@ -100,12 +100,12 @@ export default async function OperatingReportPage() {
 
       <div className="surface overflow-x-auto dash-panel-pad">
         <h2 className="text-sm font-bold tracking-normal text-[var(--text)]">연간 지급액 — 복지비 구분(자동 배분)</h2>
-        <table className="mt-4 w-full min-w-[520px] text-left text-sm">
+        <table className="mt-4 w-full min-w-[520px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th className="dash-table-head text-left">코드</th>
               <th className="dash-table-head text-left">구분</th>
-              <th className="dash-table-head text-right">금액(원)</th>
+              <th className="dash-table-head dash-table-vline-strong text-right">금액(원)</th>
             </tr>
           </thead>
           <tbody>
@@ -113,14 +113,18 @@ export default async function OperatingReportPage() {
               <tr key={row.code} className="border-b border-[var(--border)]">
                 <td className="px-3 py-2 tabular-nums text-[var(--muted)]">{row.code}</td>
                 <td className="px-3 py-2">{row.label}</td>
-                <td className="px-3 py-2 text-right font-mono tabular-nums">{format(legalAlloc.get(row.code) ?? 0)}</td>
+                <td className="dash-table-vline-strong px-3 py-2 text-right font-mono tabular-nums">
+                  {format(legalAlloc.get(row.code) ?? 0)}
+                </td>
               </tr>
             ))}
             <tr className="bg-[var(--surface-hover)]/50 font-semibold">
               <td className="px-3 py-2 text-[var(--muted)]" colSpan={2}>
                 합계
               </td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums">{format(summary.totalYearlyWelfare)}</td>
+              <td className="dash-table-vline-strong px-3 py-2 text-right font-mono tabular-nums">
+                {format(summary.totalYearlyWelfare)}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -150,14 +154,14 @@ export default async function OperatingReportPage() {
         <p className="mt-1 text-xs text-[var(--muted)]">
           귀속·지급: {summary.accrualCurrentMonthPayNext ? "당월 귀속·익월 지급" : "귀속·지급 동월"}
         </p>
-        <table className="mt-4 w-full min-w-[520px] text-left text-sm">
+        <table className="mt-4 w-full min-w-[520px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th className="dash-table-head text-left">레벨</th>
-              <th className="dash-table-head text-right">인원</th>
-              <th className="dash-table-head text-right">연간 기금 합계</th>
-              <th className="dash-table-head text-right">목표(설정)</th>
-              <th className="dash-table-head text-right">차이</th>
+              <th className="dash-table-head dash-table-vline-strong text-right">인원</th>
+              <th className="dash-table-head dash-table-vline text-right">연간 기금 합계</th>
+              <th className="dash-table-head dash-table-vline text-right">목표(설정)</th>
+              <th className="dash-table-head dash-table-vline text-right">차이</th>
             </tr>
           </thead>
           <tbody>
@@ -169,10 +173,12 @@ export default async function OperatingReportPage() {
               return (
                 <tr key={row.level} className="border-b border-[var(--border)]">
                   <td className="px-3 py-2 font-medium">{row.level}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{row.count}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{format(row.yearlyWelfareSum)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-[var(--muted)]">{format(target)}</td>
-                  <td className={`px-3 py-2 text-right font-medium tabular-nums ${deltaCls}`}>
+                  <td className="dash-table-vline-strong px-3 py-2 text-right tabular-nums">{row.count}</td>
+                  <td className="dash-table-vline px-3 py-2 text-right tabular-nums">{format(row.yearlyWelfareSum)}</td>
+                  <td className="dash-table-vline px-3 py-2 text-right tabular-nums text-[var(--muted)]">
+                    {format(target)}
+                  </td>
+                  <td className={`dash-table-vline px-3 py-2 text-right font-medium tabular-nums ${deltaCls}`}>
                     {delta > 0 ? "+" : ""}
                     {format(delta)}
                   </td>

@@ -78,10 +78,10 @@ export default async function EmployeesPage() {
               <th className="dash-table-head min-w-[6.5rem] max-w-[10rem] border-r-2 border-[var(--border-strong)] bg-[var(--bg)] text-left">
                 직급
               </th>
-              <th className="dash-table-head whitespace-nowrap text-right">기존연봉</th>
-              <th className="dash-table-head whitespace-nowrap text-right">조정급여</th>
-              <th className="dash-table-head whitespace-nowrap text-right">사복지급분</th>
-              <th className="dash-table-head whitespace-nowrap text-right">알아서금액</th>
+              <th className="dash-table-head dash-table-vline-strong whitespace-nowrap text-right">기존연봉</th>
+              <th className="dash-table-head dash-table-vline whitespace-nowrap text-right">조정급여</th>
+              <th className="dash-table-head dash-table-vline whitespace-nowrap text-right">사복지급분</th>
+              <th className="dash-table-head dash-table-vline whitespace-nowrap text-right">알아서금액</th>
               {colRepReturn ? <th className="dash-table-head text-center">대표반환</th> : null}
               {colSpouseReceipt ? <th className="dash-table-head text-center">배우자수령</th> : null}
               {colWorkerNet ? (
@@ -97,12 +97,12 @@ export default async function EmployeesPage() {
               <th className="dash-table-head text-center">청소년</th>
               <th className="dash-table-head text-center">부모님</th>
               <th className="dash-table-head text-center">시부모님</th>
-              <th className="dash-table-head whitespace-nowrap text-right">보험료</th>
-              <th className="dash-table-head whitespace-nowrap text-right">대출이자</th>
-              <th className="dash-table-head whitespace-nowrap text-right">월세</th>
+              <th className="dash-table-head dash-table-vline-strong whitespace-nowrap text-right">보험료</th>
+              <th className="dash-table-head dash-table-vline whitespace-nowrap text-right">대출이자</th>
+              <th className="dash-table-head dash-table-vline whitespace-nowrap text-right">월세</th>
               <th className="dash-table-head text-center">급여일</th>
               <th className="dash-table-head text-center">레벨</th>
-              <th className="dash-table-head whitespace-nowrap text-right">예상 인센</th>
+              <th className="dash-table-head dash-table-vline-strong whitespace-nowrap text-right">예상 인센</th>
               <th className="sticky right-0 z-10 border-l border-[var(--border)] bg-[var(--bg)] px-2 py-2.5"> </th>
             </tr>
           </thead>
@@ -118,10 +118,18 @@ export default async function EmployeesPage() {
                 <td className="max-w-[10rem] border-r-2 border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2.5 text-[var(--text)] group-hover:bg-[var(--bg)]">
                   <span className="block break-words leading-snug">{e.position}</span>
                 </td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.baseSalary)}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.adjustedSalary)}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.welfareAllocation)}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.discretionaryAmount)}</td>
+                <td className="dash-table-vline-strong whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">
+                  {formatWon(e.baseSalary)}
+                </td>
+                <td className="dash-table-vline whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">
+                  {formatWon(e.adjustedSalary)}
+                </td>
+                <td className="dash-table-vline whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">
+                  {formatWon(e.welfareAllocation)}
+                </td>
+                <td className="dash-table-vline whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">
+                  {formatWon(e.discretionaryAmount)}
+                </td>
                 {colRepReturn ? <td className="px-3 py-2.5 text-center tabular-nums">{yn(e.flagRepReturn)}</td> : null}
                 {colSpouseReceipt ? <td className="px-3 py-2.5 text-center tabular-nums">{yn(e.flagSpouseReceipt)}</td> : null}
                 {colWorkerNet ? <td className="px-3 py-2.5 text-center tabular-nums">{yn(e.flagWorkerNet)}</td> : null}
@@ -133,12 +141,20 @@ export default async function EmployeesPage() {
                 <td className="px-3 py-2.5 text-center tabular-nums">{e.childrenTeen}</td>
                 <td className="px-3 py-2.5 text-center tabular-nums">{e.parentsCount}</td>
                 <td className="px-3 py-2.5 text-center tabular-nums">{e.parentsInLawCount}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.insurancePremium)}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.loanInterest)}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.monthlyRentAmount)}</td>
+                <td className="dash-table-vline-strong whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">
+                  {formatWon(e.insurancePremium)}
+                </td>
+                <td className="dash-table-vline whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">
+                  {formatWon(e.loanInterest)}
+                </td>
+                <td className="dash-table-vline whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">
+                  {formatWon(e.monthlyRentAmount)}
+                </td>
                 <td className="px-3 py-2.5 text-center tabular-nums">{e.payDay ?? "—"}</td>
                 <td className="px-3 py-2.5 text-center tabular-nums">{e.level}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">{formatWon(e.incentiveAmount)}</td>
+                <td className="dash-table-vline-strong whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-[var(--text)]">
+                  {formatWon(e.incentiveAmount)}
+                </td>
                 <td className="sticky right-0 z-[1] border-l border-[var(--border)] bg-[var(--surface)] px-2 py-2.5 text-sm group-hover:bg-[var(--bg)]">
                   <Link href={`/dashboard/employees/${e.id}`} className="text-[var(--accent)] hover:underline">
                     상세

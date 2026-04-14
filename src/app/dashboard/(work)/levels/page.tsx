@@ -62,12 +62,14 @@ export default async function LevelsPage() {
                   <th className="dash-table-th sticky left z-10 bg-[var(--surface)] text-left">
                     레벨 / 행사
                   </th>
-                  {eventKeys.map((ev) => {
+                  {eventKeys.map((ev, evIdx) => {
                     const isCustom = customDefs.some((c) => c.eventKey === ev);
                     return (
                       <th
                         key={ev}
-                        className="dash-table-th max-w-[7.5rem] whitespace-normal text-center leading-tight"
+                        className={`dash-table-th max-w-[7.5rem] whitespace-normal text-center leading-tight ${
+                          evIdx === 0 ? "dash-table-vline-strong" : "dash-table-vline"
+                        }`}
                       >
                         <div className="flex flex-col items-center gap-0.5">
                           <span>{paymentEventLabel(ev, customDefs)}</span>
@@ -92,8 +94,13 @@ export default async function LevelsPage() {
                     <td className="sticky left z-[1] bg-[var(--surface)] px-3 py-2.5 text-left text-[0.6875rem] font-medium tracking-normal whitespace-nowrap text-[var(--text)]">
                       레벨 {lv}
                     </td>
-                    {eventKeys.map((ev) => (
-                      <td key={ev} className="px-0.5 py-0.5 text-center">
+                    {eventKeys.map((ev, evIdx) => (
+                      <td
+                        key={ev}
+                        className={`px-0.5 py-0.5 text-center ${
+                          evIdx === 0 ? "dash-table-vline-strong" : "dash-table-vline"
+                        }`}
+                      >
                         {canEdit ? (
                           <CommaWonInput
                             name={`amt_${lv}_${ev}`}

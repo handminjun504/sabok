@@ -67,7 +67,7 @@ export default async function QuarterlyPage() {
           <form action={saveQuarterlyRatesFormAction} className="space-y-4">
             <input type="hidden" name="year" value={year} />
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-full border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)]">
                     <th
@@ -82,19 +82,31 @@ export default async function QuarterlyPage() {
                     <th colSpan={2} className="dash-table-head text-center font-semibold text-[var(--text)]">
                       부모봉양지원금
                     </th>
-                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]">
+                    <th
+                      rowSpan={2}
+                      className="dash-table-th-md dash-table-vline-strong border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]"
+                    >
                       정액·월세 한도
                     </th>
-                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]">
+                    <th
+                      rowSpan={2}
+                      className="dash-table-th-md dash-table-vline border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]"
+                    >
                       보험 한도
                     </th>
-                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]">
+                    <th
+                      rowSpan={2}
+                      className="dash-table-th-md dash-table-vline border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]"
+                    >
                       이자 한도
                     </th>
                   </tr>
                   <tr className="border-b-2 border-[var(--border)]">
-                    {["영유아 단가", "미취학 단가", "청소년 단가", "부모 단가", "시부모 단가"].map((h) => (
-                      <th key={h} className="dash-table-th-md text-left">
+                    {["영유아 단가", "미취학 단가", "청소년 단가", "부모 단가", "시부모 단가"].map((h, i) => (
+                      <th
+                        key={h}
+                        className={`dash-table-th-md text-left ${i === 0 ? "dash-table-vline-strong" : "dash-table-vline"}`}
+                      >
                         {h}
                       </th>
                     ))}
@@ -106,32 +118,32 @@ export default async function QuarterlyPage() {
                     return (
                       <tr key={itemKey} className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]">
                         <td className="py-2 pr-4 text-sm font-medium">{QUARTERLY_ITEM_LABELS[itemKey]}</td>
-                        <td className="py-1.5 pr-2">
+                        <td className="dash-table-vline-strong py-1.5 pr-2">
                           <CommaWonInput name={`${itemKey}_infant`} defaultValue={r?.amountPerInfant ?? null} className={INPUT_SM} />
                         </td>
-                        <td className="py-1.5 pr-2">
+                        <td className="dash-table-vline py-1.5 pr-2">
                           <CommaWonInput name={`${itemKey}_pre`} defaultValue={r?.amountPerPreschool ?? null} className={INPUT_SM} />
                         </td>
-                        <td className="py-1.5 pr-2">
+                        <td className="dash-table-vline py-1.5 pr-2">
                           <CommaWonInput name={`${itemKey}_teen`} defaultValue={r?.amountPerTeen ?? null} className={INPUT_SM} />
                         </td>
-                        <td className="py-1.5 pr-2">
+                        <td className="dash-table-vline py-1.5 pr-2">
                           <CommaWonInput name={`${itemKey}_par`} defaultValue={r?.amountPerParent ?? null} className={INPUT_SM} />
                         </td>
-                        <td className="py-1.5 pr-2">
+                        <td className="dash-table-vline py-1.5 pr-2">
                           <CommaWonInput name={`${itemKey}_inlaw`} defaultValue={r?.amountPerInLaw ?? null} className={INPUT_SM} />
                         </td>
-                        <td className="py-1.5 pr-2">
+                        <td className="dash-table-vline-strong py-1.5 pr-2">
                           <CommaWonInput name={`${itemKey}_flat`} defaultValue={r?.flatAmount ?? null} className={INPUT_SM} />
                         </td>
-                        <td className="py-1 pr-2">
+                        <td className="dash-table-vline py-1 pr-2">
                           <CommaWonInput
                             name={`${itemKey}_pins`}
                             defaultValue={r?.percentInsurance ?? null}
                             className={`${INPUT_SM} min-w-[5.5rem]`}
                           />
                         </td>
-                        <td className="py-1 pr-2">
+                        <td className="dash-table-vline py-1 pr-2">
                           <CommaWonInput
                             name={`${itemKey}_ploan`}
                             defaultValue={r?.percentLoanInterest ?? null}
@@ -222,11 +234,16 @@ export default async function QuarterlyPage() {
             {configs.length === 0 ? (
               <p className="py-4 text-sm text-[var(--muted)]">설정된 분기 지급이 없습니다.</p>
             ) : (
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-full border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b-2 border-[var(--border)]">
-                    {["직원", "항목", "지급 월", "금액"].map((h) => (
-                      <th key={h} className="dash-table-th-md text-left">{h}</th>
+                    {(["직원", "항목", "지급 월", "금액"] as const).map((h) => (
+                      <th
+                        key={h}
+                        className={`dash-table-th-md text-left ${h === "금액" ? "dash-table-vline-strong" : ""}`}
+                      >
+                        {h}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -240,7 +257,9 @@ export default async function QuarterlyPage() {
                         <td className="py-2 pr-4 tabular-nums">
                           {c.paymentMonths.length ? `${c.paymentMonths.join("·")}월` : "—"}
                         </td>
-                        <td className="py-2 font-mono">{Number(c.amount).toLocaleString("ko-KR")}</td>
+                        <td className="dash-table-vline-strong py-2 text-right font-mono tabular-nums">
+                          {Number(c.amount).toLocaleString("ko-KR")}
+                        </td>
                       </tr>
                     );
                   })}

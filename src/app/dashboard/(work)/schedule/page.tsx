@@ -6,7 +6,6 @@ import {
   employeeListByTenantCodeAsc,
   level5OverrideListByEmployeeIdsYear,
   levelPaymentRuleList,
-  levelTargetList,
   monthlyNoteListByTenantYear,
   quarterlyEmployeeConfigListByTenantYear,
 } from "@/lib/pb/repository";
@@ -48,15 +47,13 @@ export default async function SchedulePage() {
   const employees = await employeeListByTenantCodeAsc(tenantId);
   const ids = employees.map((e) => e.id);
 
-  const [rules, overrides, quarterly, notes, targets] = await Promise.all([
+  const [rules, overrides, quarterly, notes] = await Promise.all([
     levelPaymentRuleList(tenantId, year),
     level5OverrideListByEmployeeIdsYear(ids, year),
     quarterlyEmployeeConfigListByTenantYear(tenantId, year, ids),
     monthlyNoteListByTenantYear(tenantId, year, ids),
-    levelTargetList(tenantId, year),
   ]);
 
-  const targetByLevel = new Map(targets.map((t) => [t.level, Number(t.targetAmount)]));
   const regularTotalsByLevel = regularAnnualTotalsByLevel(rules, year);
 
   type Row = {
@@ -99,57 +96,13 @@ export default async function SchedulePage() {
     return { emp, welfareByMonth, yearlyWelfare, salaryMonth: monthlySalaryPortion(emp), capVs };
   });
 
-  const levelAgg = new Map<number, { cnt: number; sum: number; target: number }>();
-  for (let lv = 1; lv <= 5; lv++) {
-    const em = rows.filter((r) => Number(r.emp.level) === lv);
-    const sum = em.reduce((s, r) => s + r.yearlyWelfare, 0);
-    levelAgg.set(lv, { cnt: em.length, sum, target: targetByLevel.get(lv) ?? 0 });
-  }
-
   const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   const canNote = canEditEmployees(role);
-
-  /** Tabs(클라이언트)의 content prop 밖에 두어 금액이 항상 서버 트리에서 렌더되도록 함 */
-  const levelSummarySection = (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-      {[1, 2, 3, 4, 5].map((lv) => {
-        const a = levelAgg.get(lv)!;
-        const ruleAnnual = regularTotalsByLevel[lv] ?? 0;
-        const delta = a.sum - a.target;
-        const deltaColor =
-          delta > 0 ? "text-[var(--danger)]" : delta < 0 ? "text-[var(--warn)]" : "text-[var(--success)]";
-        return (
-          <div key={lv} className="surface dash-panel-pad">
-            <p className="dash-eyebrow">레벨 {lv}</p>
-            <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{a.cnt}명</p>
-            <div className="mt-2 space-y-1 text-xs">
-              <p>
-                <span className="text-[var(--muted)]">정기(규칙) 연간 </span>
-                <span className="font-medium tabular-nums text-[var(--text)]">{format(ruleAnnual)}원</span>
-              </p>
-              <p>
-                <span className="text-[var(--muted)]">연간 실적 </span>
-                <span className="font-medium tabular-nums text-[var(--text)]">{format(a.sum)}원</span>
-              </p>
-              <p>
-                <span className="text-[var(--muted)]">목표 </span>
-                <span className="font-medium tabular-nums text-[var(--text)]">{format(a.target)}원</span>
-              </p>
-              <p className={`font-medium tabular-nums ${deltaColor}`}>
-                차이 {delta > 0 ? "+" : ""}
-                {format(delta)}원
-              </p>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
 
   const scheduleTab = (
     <div className="space-y-5">
       <div className="surface overflow-x-auto dash-panel-pad">
-        <table className="min-w-[1100px] text-left text-xs">
+        <table className="min-w-[1100px] border-collapse text-left text-xs">
           <thead>
             <tr className="border-b-2 border-[var(--border)]">
               <th className="dash-table-th sticky left-0 z-10 bg-[var(--surface)]">코드</th>
@@ -158,18 +111,20 @@ export default async function SchedulePage() {
               {months.map((m) => (
                 <th
                   key={m}
-                  className="dash-table-th dash-table-th--compact max-w-[4.5rem] text-center leading-tight"
+                  className={`dash-table-th dash-table-th--compact max-w-[4.5rem] text-center leading-tight ${
+                    m === 1 ? "dash-table-vline-strong" : "dash-table-vline"
+                  }`}
                   title="정기 행사는 귀속월, 분기·선택 복지는 지급월"
                 >
                   {m}월
                 </th>
               ))}
-              <th className="dash-table-th text-left">급여(월)</th>
-              <th className="dash-table-th whitespace-nowrap text-left">급여+기금(월평)</th>
-              <th className="dash-table-th whitespace-nowrap text-left">연간 기금 합계</th>
-              <th className="dash-table-th whitespace-nowrap text-left">상한</th>
-              {showCapOver ? <th className="dash-table-th text-left">초과</th> : null}
-              {showCapUnder ? <th className="dash-table-th text-left">미달</th> : null}
+              <th className="dash-table-th dash-table-vline-strong text-left">급여(월)</th>
+              <th className="dash-table-th dash-table-vline whitespace-nowrap text-left">급여+기금(월평)</th>
+              <th className="dash-table-th dash-table-vline whitespace-nowrap text-left">연간 기금 합계</th>
+              <th className="dash-table-th dash-table-vline whitespace-nowrap text-left">상한</th>
+              {showCapOver ? <th className="dash-table-th dash-table-vline text-left">초과</th> : null}
+              {showCapUnder ? <th className="dash-table-th dash-table-vline text-left">미달</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -182,18 +137,29 @@ export default async function SchedulePage() {
                   <td className="px-3 py-2.5 tracking-normal">{r.emp.name}</td>
                   <td className="px-3 py-2.5 text-center tabular-nums tracking-normal">{r.emp.level}</td>
                   {months.map((m) => (
-                    <td key={m} className="px-1.5 py-2.5 text-right tabular-nums tracking-normal">
+                    <td
+                      key={m}
+                      className={`px-1.5 py-2.5 text-right tabular-nums tracking-normal ${
+                        m === 1 ? "dash-table-vline-strong" : "dash-table-vline"
+                      }`}
+                    >
                       {format(r.welfareByMonth.get(m) ?? 0)}
                     </td>
                   ))}
-                  <td className="px-3 py-2.5 text-right tabular-nums tracking-normal">{format(r.salaryMonth)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums tracking-normal">{format(Math.round(avgTotal))}</td>
-                  <td className="px-3 py-2.5 text-right font-medium tabular-nums tracking-normal">{format(r.yearlyWelfare)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums tracking-normal text-[var(--muted)]">
+                  <td className="dash-table-vline-strong px-3 py-2.5 text-right tabular-nums tracking-normal">
+                    {format(r.salaryMonth)}
+                  </td>
+                  <td className="dash-table-vline px-3 py-2.5 text-right tabular-nums tracking-normal">
+                    {format(Math.round(avgTotal))}
+                  </td>
+                  <td className="dash-table-vline px-3 py-2.5 text-right font-medium tabular-nums tracking-normal">
+                    {format(r.yearlyWelfare)}
+                  </td>
+                  <td className="dash-table-vline px-3 py-2.5 text-right tabular-nums tracking-normal text-[var(--muted)]">
                     {r.capVs.hasCap ? format(r.capVs.cap) : "—"}
                   </td>
                   {showCapOver ? (
-                    <td className="px-3 py-2.5 text-right tracking-normal">
+                    <td className="dash-table-vline px-3 py-2.5 text-right tracking-normal">
                       {r.capVs.hasCap && r.capVs.overage > 0 ? (
                         <span className="font-medium text-[var(--danger)]">{format(r.capVs.overage)}</span>
                       ) : (
@@ -202,7 +168,7 @@ export default async function SchedulePage() {
                     </td>
                   ) : null}
                   {showCapUnder ? (
-                    <td className="px-3 py-2.5 text-right tracking-normal">
+                    <td className="dash-table-vline px-3 py-2.5 text-right tracking-normal">
                       {r.capVs.hasCap && r.capVs.underForSalaryReport > 0 ? (
                         <span className="font-medium text-[var(--warn)]">{format(r.capVs.underForSalaryReport)}</span>
                       ) : (
@@ -291,9 +257,9 @@ export default async function SchedulePage() {
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">{year}년</p>
-      </div>
-      <div className="space-y-3">
-        {levelSummarySection}
+        <p className="mt-2 max-w-xl text-xs text-[var(--muted)]">
+          레벨 규칙·예정액·레벨 변경은 「레벨·예정액」 탭, 행사별 금액·목표는 「레벨/행사」 메뉴입니다.
+        </p>
       </div>
       <Tabs
         tabs={[
