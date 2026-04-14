@@ -63,17 +63,6 @@ main table {
   line-height: 1.5;
 }
 
-/* 직원 목록: 본문과 동일 글꼴·크기, 숫자만 탭ular 정렬 */
-main table.employee-directory-table {
-  font-size: 0.8125rem;
-  line-height: 1.45;
-}
-
-main table.employee-directory-table th,
-main table.employee-directory-table td {
-  font-family: inherit;
-}
-
 main h1 {
   letter-spacing: -0.02em;
 }
