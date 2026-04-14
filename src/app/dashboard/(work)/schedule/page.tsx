@@ -29,10 +29,7 @@ import { CommaWonInput } from "@/components/CommaWonInput";
 import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
 import { Tabs } from "@/components/Tabs";
 import { ScheduleEmployeeLevelAssignments } from "@/components/ScheduleEmployeeLevelAssignments";
-
-function format(n: number) {
-  return n.toLocaleString("ko-KR");
-}
+import { ScheduleEmployeeCards } from "@/components/ScheduleEmployeeCards";
 
 export default async function SchedulePage() {
   const { tenantId, role } = await requireTenantContext();
@@ -96,92 +93,42 @@ export default async function SchedulePage() {
     return { emp, welfareByMonth, yearlyWelfare, salaryMonth: monthlySalaryPortion(emp), capVs };
   });
 
-  const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   const canNote = canEditEmployees(role);
+
+  const scheduleCardRows = rows.map((r) => {
+    const welfareByMonth: Record<number, number> = {};
+    for (let m = 1; m <= 12; m++) {
+      welfareByMonth[m] = r.welfareByMonth.get(m) ?? 0;
+    }
+    return {
+      employeeId: r.emp.id,
+      employeeCode: r.emp.employeeCode,
+      name: r.emp.name,
+      level: r.emp.level,
+      welfareByMonth,
+      yearlyWelfare: r.yearlyWelfare,
+      salaryMonth: r.salaryMonth,
+      capVs: {
+        hasCap: r.capVs.hasCap,
+        cap: r.capVs.cap,
+        overage: r.capVs.overage,
+        underForSalaryReport: r.capVs.underForSalaryReport,
+      },
+    };
+  });
 
   const scheduleTab = (
     <div className="space-y-5">
-      <div className="surface overflow-x-auto dash-panel-pad">
-        <table className="min-w-[1100px] border-collapse text-left text-xs">
-          <thead>
-            <tr className="border-b-2 border-[var(--border)]">
-              <th className="dash-table-th sticky left-0 z-10 bg-[var(--surface)]">코드</th>
-              <th className="dash-table-th text-left">이름</th>
-              <th className="dash-table-th text-left">레벨</th>
-              {months.map((m) => (
-                <th
-                  key={m}
-                  className={`dash-table-th dash-table-th--compact max-w-[4.5rem] text-center leading-tight ${
-                    m === 1 ? "dash-table-vline-strong" : "dash-table-vline"
-                  }`}
-                  title="정기 행사는 귀속월, 분기·선택 복지는 지급월"
-                >
-                  {m}월
-                </th>
-              ))}
-              <th className="dash-table-th dash-table-vline-strong text-left">급여(월)</th>
-              <th className="dash-table-th dash-table-vline whitespace-nowrap text-left">급여+기금(월평)</th>
-              <th className="dash-table-th dash-table-vline whitespace-nowrap text-left">연간 기금 합계</th>
-              <th className="dash-table-th dash-table-vline whitespace-nowrap text-left">상한</th>
-              {showCapOver ? <th className="dash-table-th dash-table-vline text-left">초과</th> : null}
-              {showCapUnder ? <th className="dash-table-th dash-table-vline text-left">미달</th> : null}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const avgWelfare = r.yearlyWelfare / 12;
-              const avgTotal = r.salaryMonth + avgWelfare;
-              return (
-                <tr key={r.emp.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]">
-                  <td className="sticky left-0 z-[1] bg-[var(--surface)] px-3 py-2.5 font-mono tracking-normal group-hover:bg-[var(--surface-hover)]">{r.emp.employeeCode}</td>
-                  <td className="px-3 py-2.5 tracking-normal">{r.emp.name}</td>
-                  <td className="px-3 py-2.5 text-center tabular-nums tracking-normal">{r.emp.level}</td>
-                  {months.map((m) => (
-                    <td
-                      key={m}
-                      className={`px-1.5 py-2.5 text-right tabular-nums tracking-normal ${
-                        m === 1 ? "dash-table-vline-strong" : "dash-table-vline"
-                      }`}
-                    >
-                      {format(r.welfareByMonth.get(m) ?? 0)}
-                    </td>
-                  ))}
-                  <td className="dash-table-vline-strong px-3 py-2.5 text-right tabular-nums tracking-normal">
-                    {format(r.salaryMonth)}
-                  </td>
-                  <td className="dash-table-vline px-3 py-2.5 text-right tabular-nums tracking-normal">
-                    {format(Math.round(avgTotal))}
-                  </td>
-                  <td className="dash-table-vline px-3 py-2.5 text-right font-medium tabular-nums tracking-normal">
-                    {format(r.yearlyWelfare)}
-                  </td>
-                  <td className="dash-table-vline px-3 py-2.5 text-right tabular-nums tracking-normal text-[var(--muted)]">
-                    {r.capVs.hasCap ? format(r.capVs.cap) : "—"}
-                  </td>
-                  {showCapOver ? (
-                    <td className="dash-table-vline px-3 py-2.5 text-right tracking-normal">
-                      {r.capVs.hasCap && r.capVs.overage > 0 ? (
-                        <span className="font-medium text-[var(--danger)]">{format(r.capVs.overage)}</span>
-                      ) : (
-                        <span className="text-[var(--muted)]">—</span>
-                      )}
-                    </td>
-                  ) : null}
-                  {showCapUnder ? (
-                    <td className="dash-table-vline px-3 py-2.5 text-right tracking-normal">
-                      {r.capVs.hasCap && r.capVs.underForSalaryReport > 0 ? (
-                        <span className="font-medium text-[var(--warn)]">{format(r.capVs.underForSalaryReport)}</span>
-                      ) : (
-                        <span className="text-[var(--muted)]">—</span>
-                      )}
-                    </td>
-                  ) : null}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {rows.length === 0 && <p className="p-6 text-sm text-[var(--muted)]">직원 데이터가 없습니다.</p>}
+      <div className="surface dash-panel-pad">
+        <p className="mb-4 text-xs leading-relaxed text-[var(--muted)]">
+          정기 행사는 귀속 월, 분기·선택 복지는 설정한 지급 월 열에 표시됩니다. (기존 시트 「월별지급스케줄」과 동일 규칙)
+        </p>
+        <ScheduleEmployeeCards
+          year={year}
+          rows={scheduleCardRows}
+          showCapOver={showCapOver}
+          showCapUnder={showCapUnder}
+        />
       </div>
     </div>
   );

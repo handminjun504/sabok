@@ -15,8 +15,11 @@ import {
 import { CommaWonInput } from "@/components/CommaWonInput";
 import { Tabs } from "@/components/Tabs";
 
-const INPUT_SM =
-  "w-[4.25rem] rounded-md border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 text-xs tabular-nums focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-soft)]";
+/** 요율 표: 셀 가운데·조금 큰 입력 */
+const INPUT_QTR =
+  "mx-auto block w-full min-w-[5.75rem] max-w-[7.5rem] rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-center text-sm tabular-nums focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
+const INPUT_QTR_WIDE =
+  "mx-auto block w-full min-w-[6.75rem] max-w-[8.5rem] rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-center text-sm tabular-nums focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
 
 const MONTHS_1_12 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 const DEFAULT_QUARTER_PAY_MONTHS: readonly number[] = [3, 6, 9, 12];
@@ -24,18 +27,18 @@ const DEFAULT_QUARTER_PAY_MONTHS: readonly number[] = [3, 6, 9, 12];
 function PayMonthCheckboxes({ defaultMonths }: { defaultMonths: readonly number[] }) {
   const selected = new Set(defaultMonths);
   return (
-    <div className="flex flex-wrap gap-x-3 gap-y-2">
+    <div className="flex flex-wrap justify-center gap-x-4 gap-y-2.5">
       {MONTHS_1_12.map((m) => (
         <label
           key={m}
-          className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-[var(--text)]"
+          className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-sm font-medium text-[var(--text)] shadow-[var(--shadow-card)]"
         >
           <input
             type="checkbox"
             name="payMonth"
             value={String(m)}
             defaultChecked={selected.has(m)}
-            className="rounded border-[var(--border)]"
+            className="size-4 rounded border-[var(--border)]"
           />
           {m}월
         </label>
@@ -67,7 +70,7 @@ export default async function QuarterlyPage() {
           <form action={saveQuarterlyRatesFormAction} className="space-y-4">
             <input type="hidden" name="year" value={year} />
             <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse text-left text-sm">
+              <table className="min-w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)]">
                     <th
@@ -84,19 +87,19 @@ export default async function QuarterlyPage() {
                     </th>
                     <th
                       rowSpan={2}
-                      className="dash-table-th-md dash-table-vline-strong border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]"
+                      className="dash-table-th-md dash-table-vline-strong border-b-2 border-[var(--border)] align-bottom text-center max-w-[8rem]"
                     >
                       정액·월세 한도
                     </th>
                     <th
                       rowSpan={2}
-                      className="dash-table-th-md dash-table-vline border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]"
+                      className="dash-table-th-md dash-table-vline border-b-2 border-[var(--border)] align-bottom text-center max-w-[8rem]"
                     >
                       보험 한도
                     </th>
                     <th
                       rowSpan={2}
-                      className="dash-table-th-md dash-table-vline border-b-2 border-[var(--border)] align-bottom text-left max-w-[7rem]"
+                      className="dash-table-th-md dash-table-vline border-b-2 border-[var(--border)] align-bottom text-center max-w-[8rem]"
                     >
                       이자 한도
                     </th>
@@ -105,7 +108,7 @@ export default async function QuarterlyPage() {
                     {["영유아 단가", "미취학 단가", "청소년 단가", "부모 단가", "시부모 단가"].map((h, i) => (
                       <th
                         key={h}
-                        className={`dash-table-th-md text-left ${i === 0 ? "dash-table-vline-strong" : "dash-table-vline"}`}
+                        className={`dash-table-th-md text-center ${i === 0 ? "dash-table-vline-strong" : "dash-table-vline"}`}
                       >
                         {h}
                       </th>
@@ -117,37 +120,37 @@ export default async function QuarterlyPage() {
                     const r = rateMap.get(itemKey);
                     return (
                       <tr key={itemKey} className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]">
-                        <td className="py-2 pr-4 text-sm font-medium">{QUARTERLY_ITEM_LABELS[itemKey]}</td>
-                        <td className="dash-table-vline-strong py-1.5 pr-2">
-                          <CommaWonInput name={`${itemKey}_infant`} defaultValue={r?.amountPerInfant ?? null} className={INPUT_SM} />
+                        <td className="py-2.5 pr-4 text-left text-sm font-medium">{QUARTERLY_ITEM_LABELS[itemKey]}</td>
+                        <td className="dash-table-vline-strong px-2 py-2.5 text-center align-middle">
+                          <CommaWonInput name={`${itemKey}_infant`} defaultValue={r?.amountPerInfant ?? null} className={INPUT_QTR} />
                         </td>
-                        <td className="dash-table-vline py-1.5 pr-2">
-                          <CommaWonInput name={`${itemKey}_pre`} defaultValue={r?.amountPerPreschool ?? null} className={INPUT_SM} />
+                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
+                          <CommaWonInput name={`${itemKey}_pre`} defaultValue={r?.amountPerPreschool ?? null} className={INPUT_QTR} />
                         </td>
-                        <td className="dash-table-vline py-1.5 pr-2">
-                          <CommaWonInput name={`${itemKey}_teen`} defaultValue={r?.amountPerTeen ?? null} className={INPUT_SM} />
+                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
+                          <CommaWonInput name={`${itemKey}_teen`} defaultValue={r?.amountPerTeen ?? null} className={INPUT_QTR} />
                         </td>
-                        <td className="dash-table-vline py-1.5 pr-2">
-                          <CommaWonInput name={`${itemKey}_par`} defaultValue={r?.amountPerParent ?? null} className={INPUT_SM} />
+                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
+                          <CommaWonInput name={`${itemKey}_par`} defaultValue={r?.amountPerParent ?? null} className={INPUT_QTR} />
                         </td>
-                        <td className="dash-table-vline py-1.5 pr-2">
-                          <CommaWonInput name={`${itemKey}_inlaw`} defaultValue={r?.amountPerInLaw ?? null} className={INPUT_SM} />
+                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
+                          <CommaWonInput name={`${itemKey}_inlaw`} defaultValue={r?.amountPerInLaw ?? null} className={INPUT_QTR} />
                         </td>
-                        <td className="dash-table-vline-strong py-1.5 pr-2">
-                          <CommaWonInput name={`${itemKey}_flat`} defaultValue={r?.flatAmount ?? null} className={INPUT_SM} />
+                        <td className="dash-table-vline-strong px-2 py-2.5 text-center align-middle">
+                          <CommaWonInput name={`${itemKey}_flat`} defaultValue={r?.flatAmount ?? null} className={INPUT_QTR} />
                         </td>
-                        <td className="dash-table-vline py-1 pr-2">
+                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
                           <CommaWonInput
                             name={`${itemKey}_pins`}
                             defaultValue={r?.percentInsurance ?? null}
-                            className={`${INPUT_SM} min-w-[5.5rem]`}
+                            className={INPUT_QTR_WIDE}
                           />
                         </td>
-                        <td className="dash-table-vline py-1 pr-2">
+                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
                           <CommaWonInput
                             name={`${itemKey}_ploan`}
                             defaultValue={r?.percentLoanInterest ?? null}
-                            className={`${INPUT_SM} min-w-[5.5rem]`}
+                            className={INPUT_QTR_WIDE}
                           />
                         </td>
                       </tr>
@@ -167,24 +170,31 @@ export default async function QuarterlyPage() {
 
       {canRates && (
         <div className="surface dash-panel-pad">
-          <h3 className="mb-4 text-sm font-semibold tracking-normal text-[var(--text)]">직원에게 요율 일괄 적용</h3>
-          <form action={applyQuarterlyTemplateFormAction} className="flex flex-wrap items-end gap-3">
+          <h3 className="mb-4 text-center text-sm font-semibold tracking-normal text-[var(--text)]">
+            직원에게 요율 일괄 적용
+          </h3>
+          <form
+            action={applyQuarterlyTemplateFormAction}
+            className="mx-auto flex max-w-3xl flex-col items-center gap-4 sm:flex-row sm:flex-wrap sm:justify-center"
+          >
             <input type="hidden" name="year" value={year} />
-            <div>
-              <label className="dash-field-label">직원</label>
-              <select name="employeeId" className="input w-full max-w-md text-xs">
+            <div className="w-full min-w-[12rem] max-w-md sm:w-auto">
+              <label className="dash-field-label text-center sm:text-left">직원</label>
+              <select name="employeeId" className="input mt-1 w-full text-sm">
                 {employees.map((e) => (
                   <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
                 ))}
               </select>
             </div>
-            <div className="min-w-0 flex-1 basis-full sm:basis-auto">
-              <label className="dash-field-label">지급 월</label>
+            <div className="w-full">
+              <label className="dash-field-label mb-2 block text-center">지급 월</label>
               <PayMonthCheckboxes defaultMonths={DEFAULT_QUARTER_PAY_MONTHS} />
             </div>
-            <button type="submit" className="btn btn-outline">
-              일괄 채우기
-            </button>
+            <div className="flex w-full justify-center sm:w-auto sm:shrink-0">
+              <button type="submit" className="btn btn-outline px-6 py-2 text-sm">
+                일괄 채우기
+              </button>
+            </div>
           </form>
         </div>
       )}
@@ -196,36 +206,45 @@ export default async function QuarterlyPage() {
       {canCfg ? (
         <>
           <div className="surface dash-panel-pad">
-            <h3 className="mb-4 text-sm font-semibold tracking-normal text-[var(--text)]">항목·지급 월 추가</h3>
-            <form action={saveQuarterlyEmployeeConfigFormAction} className="grid gap-4 sm:grid-cols-4">
+            <h3 className="mb-4 text-center text-sm font-semibold tracking-normal text-[var(--text)]">
+              항목·지급 월 추가
+            </h3>
+            <form
+              action={saveQuarterlyEmployeeConfigFormAction}
+              className="mx-auto flex max-w-2xl flex-col items-center gap-4"
+            >
               <input type="hidden" name="year" value={year} />
-              <div className="sm:col-span-2">
-                <label className="dash-field-label">직원</label>
-                <select name="employeeId" className="input w-full max-w-md text-xs" required>
+              <div className="w-full max-w-md">
+                <label className="dash-field-label text-center">직원</label>
+                <select name="employeeId" className="input mt-1 w-full text-sm" required>
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="dash-field-label">항목</label>
-                <select name="itemKey" className="input w-full max-w-xs text-xs">
+              <div className="w-full max-w-md">
+                <label className="dash-field-label text-center">항목</label>
+                <select name="itemKey" className="input mt-1 w-full text-sm">
                   {items.map((k) => (
                     <option key={k} value={k}>{QUARTERLY_ITEM_LABELS[k]}</option>
                   ))}
                 </select>
               </div>
-              <div className="sm:col-span-4">
-                <label className="dash-field-label">지급 월</label>
+              <div className="w-full">
+                <label className="dash-field-label mb-2 block text-center">지급 월</label>
                 <PayMonthCheckboxes defaultMonths={DEFAULT_QUARTER_PAY_MONTHS} />
               </div>
-              <div>
-                <label className="dash-field-label">금액</label>
-                <CommaWonInput name="amount" className="input max-w-[11rem] text-xs" required />
+              <div className="flex w-full max-w-md flex-col items-center">
+                <label className="dash-field-label text-center">금액</label>
+                <CommaWonInput
+                  name="amount"
+                  className="input mt-1 w-full max-w-[14rem] py-2.5 text-center text-sm tabular-nums"
+                  required
+                />
               </div>
-              <div className="flex items-end sm:col-span-4">
-                <button type="submit" className="btn btn-primary">저장</button>
-              </div>
+              <button type="submit" className="btn btn-primary px-8 py-2 text-sm">
+                저장
+              </button>
             </form>
           </div>
 

@@ -61,14 +61,15 @@ export const PAYMENT_EVENT = {
 export type PaymentEventKey = (typeof PAYMENT_EVENT)[keyof typeof PAYMENT_EVENT];
 
 export const PAYMENT_EVENT_LABELS: Record<PaymentEventKey, string> = {
-  NEW_YEAR_FEB: "2월 연초·신년",
-  FAMILY_MAY: "5월 근로자의 날·가정의 달",
-  CHUSEOK_AUG: "8월 추석",
-  YEAR_END_NOV: "11월 연말",
-  HIRE_MONTH: "입사축하(입사월)",
-  FOUNDING_MONTH: "창립기념 월",
-  BIRTH_MONTH: "생일 월",
-  WEDDING_MONTH: "결혼기념 월",
+  NEW_YEAR_FEB: "연초·신년",
+  /** UI에서 whitespace-pre-line 등으로 줄바꿈 표시 */
+  FAMILY_MAY: "근로자의 날\n가정의 달",
+  CHUSEOK_AUG: "추석",
+  YEAR_END_NOV: "연말",
+  HIRE_MONTH: "입사축하\n(입사월)",
+  FOUNDING_MONTH: "창립기념",
+  BIRTH_MONTH: "생일",
+  WEDDING_MONTH: "결혼기념",
 };
 
 /** 고정 월 이벤트 → 귀속 월 */

@@ -32,6 +32,11 @@ export function paymentEventLabel(eventKey: string, customDefs: CustomPaymentEve
   return c?.label ?? eventKey;
 }
 
+/** `<option>` 등 한 줄 표기 — 라벨 내 `\n` 제거 */
+export function paymentEventLabelSingleLine(eventKey: string, customDefs: CustomPaymentEventDef[]): string {
+  return paymentEventLabel(eventKey, customDefs).replace(/\s*\n\s*/g, " ").trim();
+}
+
 export function customPaymentScheduleRows(
   settings: CompanySettings | null,
   year: number

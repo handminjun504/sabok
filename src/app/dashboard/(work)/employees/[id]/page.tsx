@@ -9,11 +9,11 @@ import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
 import { EmployeeForm } from "@/components/EmployeeForm";
-import { PAYMENT_EVENT_LABELS } from "@/lib/business-rules";
 import {
   customPaymentDefsForYear,
   orderedBuiltinPaymentEventKeys,
   paymentEventLabel,
+  paymentEventLabelSingleLine,
 } from "@/lib/domain/payment-events";
 import { deleteLevel5OverrideFormAction, saveLevel5OverrideFormAction } from "@/app/actions/levelRules";
 import { CommaWonInput } from "@/components/CommaWonInput";
@@ -41,12 +41,12 @@ async function OverrideForm({
           <select name="eventKey" className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm" required>
             {builtinKeys.map((k) => (
               <option key={k} value={k}>
-                {PAYMENT_EVENT_LABELS[k]}
+                {paymentEventLabelSingleLine(k, customDefs)}
               </option>
             ))}
             {customDefs.map((d) => (
               <option key={d.eventKey} value={d.eventKey}>
-                {d.label}
+                {paymentEventLabelSingleLine(d.eventKey, customDefs)}
               </option>
             ))}
           </select>
@@ -68,7 +68,7 @@ async function OverrideForm({
       <ul className="mt-4 space-y-2 text-sm">
         {existing.map((o) => (
           <li key={o.id} className="flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2">
-            <span>
+            <span className="whitespace-pre-line">
               {paymentEventLabel(o.eventKey, customDefs)}:{" "}
               <strong>{o.amount.toLocaleString("ko-KR")}</strong> 원
             </span>
