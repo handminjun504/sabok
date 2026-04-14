@@ -20,6 +20,7 @@ import {
 } from "@/lib/domain/schedule";
 import { saveMonthlyNoteFormAction } from "@/app/actions/quarterly";
 import { CommaWonInput } from "@/components/CommaWonInput";
+import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
 import { Tabs } from "@/components/Tabs";
 
 function format(n: number) {
@@ -106,8 +107,8 @@ export default async function SchedulePage() {
           const deltaColor =
             delta > 0 ? "text-[var(--danger)]" : delta < 0 ? "text-[var(--warn)]" : "text-[var(--success)]";
           return (
-            <div key={lv} className="surface p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">레벨 {lv}</p>
+            <div key={lv} className="surface dash-panel-pad">
+              <p className="dash-eyebrow">레벨 {lv}</p>
               <p className="mt-1 text-lg font-bold text-[var(--text)]">{a.cnt}명</p>
               <div className="mt-2 space-y-0.5 text-xs text-[var(--muted)]">
                 <p>연간 {format(a.sum)}</p>
@@ -122,27 +123,27 @@ export default async function SchedulePage() {
       </div>
 
       {/* 월별 스케줄 표 */}
-      <div className="surface overflow-x-auto p-2">
+      <div className="surface overflow-x-auto dash-panel-pad">
         <table className="min-w-[1100px] text-left text-xs">
           <thead>
             <tr className="border-b-2 border-[var(--border)]">
-              <th className="sticky left-0 bg-[var(--surface)] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">코드</th>
-              <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">이름</th>
-              <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">레벨</th>
+              <th className="dash-table-th sticky left-0 z-10 bg-[var(--surface)]">코드</th>
+              <th className="dash-table-th text-left">이름</th>
+              <th className="dash-table-th text-left">레벨</th>
               {months.map((m) => (
                 <th
                   key={m}
-                  className="max-w-[4.5rem] px-1.5 py-2.5 text-[10px] font-semibold leading-tight tracking-wide text-[var(--muted)]"
+                  className="dash-table-th dash-table-th--compact max-w-[4.5rem] text-center leading-tight"
                   title="정기 행사는 귀속월, 분기·선택 복지는 지급월"
                 >
                   {m}월
                 </th>
               ))}
-              <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">급여(월)</th>
-              <th className="whitespace-nowrap px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">급여+기금(월평)</th>
-              <th className="whitespace-nowrap px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">연간 기금 합계</th>
-              <th className="whitespace-nowrap px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">상한</th>
-              <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">초과</th>
+              <th className="dash-table-th text-left">급여(월)</th>
+              <th className="dash-table-th whitespace-nowrap text-left">급여+기금(월평)</th>
+              <th className="dash-table-th whitespace-nowrap text-left">연간 기금 합계</th>
+              <th className="dash-table-th whitespace-nowrap text-left">상한</th>
+              <th className="dash-table-th text-left">초과</th>
             </tr>
           </thead>
           <tbody>
@@ -151,21 +152,21 @@ export default async function SchedulePage() {
               const avgTotal = r.salaryMonth + avgWelfare;
               return (
                 <tr key={r.emp.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]">
-                  <td className="sticky left-0 bg-[var(--surface)] px-3 py-2 font-mono group-hover:bg-[var(--surface-hover)]">{r.emp.employeeCode}</td>
-                  <td className="px-3 py-2">{r.emp.name}</td>
-                  <td className="px-3 py-2 text-center">{r.emp.level}</td>
+                  <td className="sticky left-0 z-[1] bg-[var(--surface)] px-3 py-2.5 font-mono tracking-normal group-hover:bg-[var(--surface-hover)]">{r.emp.employeeCode}</td>
+                  <td className="px-3 py-2.5 tracking-normal">{r.emp.name}</td>
+                  <td className="px-3 py-2.5 text-center tabular-nums tracking-normal">{r.emp.level}</td>
                   {months.map((m) => (
-                    <td key={m} className="px-1.5 py-2 text-right tabular-nums">
+                    <td key={m} className="px-1.5 py-2.5 text-right tabular-nums tracking-normal">
                       {format(r.welfareByMonth.get(m) ?? 0)}
                     </td>
                   ))}
-                  <td className="px-3 py-2 text-right tabular-nums">{format(r.salaryMonth)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{format(Math.round(avgTotal))}</td>
-                  <td className="px-3 py-2 text-right font-medium tabular-nums">{format(r.yearlyWelfare)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-[var(--muted)]">
+                  <td className="px-3 py-2.5 text-right tabular-nums tracking-normal">{format(r.salaryMonth)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums tracking-normal">{format(Math.round(avgTotal))}</td>
+                  <td className="px-3 py-2.5 text-right font-medium tabular-nums tracking-normal">{format(r.yearlyWelfare)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums tracking-normal text-[var(--muted)]">
                     {r.capVs.hasCap ? format(r.capVs.cap) : "—"}
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-3 py-2.5 text-right tracking-normal">
                     {r.capVs.hasCap && r.capVs.overage > 0 ? (
                       <span className="font-medium text-[var(--danger)]">{format(r.capVs.overage)}</span>
                     ) : (
@@ -183,17 +184,18 @@ export default async function SchedulePage() {
   );
 
   const noteTab = canNote ? (
-    <div className="surface p-3 sm:p-4">
-      <p className="mb-3 text-xs text-[var(--muted)] sm:text-sm">
-        선택 복지는 여기서만 입력 · 해당 월 합계에 더해집니다.
-        인센을 사복으로 지급하는 경우 같은 직원·연도·월에 <strong className="text-[var(--text)]">발생 인센</strong>과{" "}
-        <strong className="text-[var(--text)]">사복으로 지급할 인센</strong>을 넣으면, 급여포함신고 화면에서 누적 차액을 봅니다.
-      </p>
+    <CollapsibleEditorPanel
+      title="선택적 복지·메모"
+      description="해당 월 지급 합계에 반영됩니다. 인센·사복 지급은 급여포함신고와 연계됩니다."
+      triggerLabel="작성·수정 열기"
+      defaultOpen={false}
+      summary={<p className="text-sm text-[var(--muted)]">필요할 때만 펼쳐 입력하세요.</p>}
+    >
       <form action={saveMonthlyNoteFormAction} className="space-y-3">
         <input type="hidden" name="year" value={year} />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-[var(--text)]">직원</label>
+            <label className="dash-field-label">직원</label>
             <select name="employeeId"
               className="input w-full max-w-md text-xs"
               required>
@@ -203,32 +205,32 @@ export default async function SchedulePage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-[var(--text)]">월</label>
+            <label className="dash-field-label">월</label>
             <input name="month" type="number" min={1} max={12}
               className="input w-[4.5rem] text-xs"
               required />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-[var(--text)]">선택적 복지 금액</label>
+            <label className="dash-field-label">선택적 복지 금액</label>
             <CommaWonInput name="optionalExtraAmount" className="input w-full max-w-xs text-xs" placeholder="원 단위" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-[var(--text)]">발생 인센 (선택)</label>
+            <label className="dash-field-label">발생 인센 (선택)</label>
             <CommaWonInput name="incentiveAccrualAmount" className="input w-full max-w-xs text-xs" placeholder="그 달 귀속" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-[var(--text)]">사복으로 지급할 인센 (선택)</label>
+            <label className="dash-field-label">사복으로 지급할 인센 (선택)</label>
             <CommaWonInput name="incentiveWelfarePaymentAmount" className="input w-full max-w-xs text-xs" placeholder="그 달 사복 지급분" />
           </div>
           <div className="sm:col-span-2 lg:col-span-4">
-            <label className="mb-1 block text-xs font-medium text-[var(--text)]">메모 (선택)</label>
+            <label className="dash-field-label">메모 (선택)</label>
             <input name="optionalWelfareText"
               className="input w-full text-xs" />
           </div>
         </div>
         <button type="submit" className="btn btn-primary">저장</button>
       </form>
-    </div>
+    </CollapsibleEditorPanel>
   ) : (
     <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
   );

@@ -10,7 +10,7 @@ import {
   type EmployeeActionState,
 } from "@/app/actions/employee";
 
-const fieldLabelClass = "mb-1 block text-xs font-semibold text-[var(--muted)]";
+const fieldLabelClass = "dash-field-label";
 
 /** 직원 폼 전역: `.input`과 동일 계열(0.8125rem)로 목록·상세 타이포 통일 */
 const inputClass = "input w-full min-w-0 text-[0.8125rem] leading-normal text-[var(--text)]";
@@ -277,36 +277,90 @@ export function EmployeeForm({
   const positionDefault = (employee?.position ?? "").trim();
   const positionNeedsPlaceholder = !positionDefault;
 
+  const [editorOpen, setEditorOpen] = useState(!employee);
+  useEffect(() => {
+    if (state?.오류) setEditorOpen(true);
+  }, [state?.오류]);
+
+  const showEditor = !employee || editorOpen;
+
   return (
     <div className="space-y-4">
-    <form action={formAction} className="space-y-4">
+    {state?.오류 ? (
+      <div className="rounded-lg border border-[var(--danger)] bg-[var(--surface)] p-3 text-sm text-[var(--danger)]">
+        {state.오류}
+      </div>
+    ) : null}
+    {state?.경고 ? (
+      <div className="rounded-lg border border-amber-200/90 bg-amber-50 p-3 text-sm leading-relaxed text-amber-950">
+        <strong className="font-semibold">저장됨 · 확인</strong>
+        <p className="mt-1">{state.경고}</p>
+      </div>
+    ) : null}
+    {state?.성공 && !state?.경고 ? (
+      <div className="rounded-lg border border-[var(--success)] p-3 text-sm text-[var(--success)]">
+        저장되었습니다.
+      </div>
+    ) : null}
+
+    {employee && !showEditor ? (
+      <div className="surface dash-panel-pad">
+        <p className="text-sm font-semibold text-[var(--text)]">등록 정보 요약</p>
+        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">코드</dt>
+            <dd className="mt-1 tabular-nums font-medium text-[var(--text)]">{employee.employeeCode}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">이름</dt>
+            <dd className="mt-1 font-medium text-[var(--text)]">{employee.name}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">직급</dt>
+            <dd className="mt-1 text-[var(--text)]">{employee.position}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">레벨</dt>
+            <dd className="mt-1 tabular-nums">{employee.level}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">기존연봉</dt>
+            <dd className="mt-1 tabular-nums">{employee.baseSalary.toLocaleString("ko-KR")}원</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">조정급여</dt>
+            <dd className="mt-1 tabular-nums">
+              {employee.adjustedSalary > 0 ? `${employee.adjustedSalary.toLocaleString("ko-KR")}원` : "—"}
+            </dd>
+          </div>
+        </dl>
+        <button type="button" className="btn btn-primary mt-5 text-sm" onClick={() => setEditorOpen(true)}>
+          정보 수정·삭제
+        </button>
+      </div>
+    ) : null}
+
+    <form action={formAction} className={`space-y-4 ${showEditor ? "" : "hidden"}`} aria-hidden={!showEditor}>
       {employee && <input type="hidden" name="id" value={employee.id} />}
-      {state?.오류 && (
-        <div className="rounded-lg border border-[var(--danger)] bg-[var(--surface)] p-3 text-sm text-[var(--danger)]">
-          {state.오류}
-        </div>
-      )}
-      {state?.경고 && (
-        <div className="rounded-lg border border-amber-200/90 bg-amber-50 p-3 text-sm leading-relaxed text-amber-950">
-          <strong className="font-semibold">저장됨 · 확인</strong>
-          <p className="mt-1">{state.경고}</p>
-        </div>
-      )}
-      {state?.성공 && !state?.경고 ? (
-        <div className="rounded-lg border border-[var(--success)] p-3 text-sm text-[var(--success)]">
-          저장되었습니다.
-        </div>
+      {employee && showEditor ? (
+        <button
+          type="button"
+          className="btn btn-outline text-xs"
+          onClick={() => setEditorOpen(false)}
+        >
+          요약만 보기
+        </button>
       ) : null}
 
-      <div className="surface overflow-x-auto p-4 sm:p-5">
-        <p className="border-b border-[var(--border)] pb-2 text-base font-semibold tracking-tight text-[var(--text)]">
+      <div className="surface overflow-x-auto dash-panel-pad">
+        <p className="border-b border-[var(--border)] pb-2 text-base font-semibold tracking-normal text-[var(--text)]">
           &lt;{yy}년 사복 진행 조사표&gt;
         </p>
         <p className="mt-2 text-sm text-[var(--muted)]">창립월 {foundingMonth}월.</p>
 
         <div className="mt-5 space-y-8 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5">
           <section className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--accent)]">기본 정보</h3>
+            <h3 className="dash-form-section-title">기본 정보</h3>
             <div className="divide-y divide-[var(--border)] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]">
               <div className="flex flex-col gap-1.5 px-3 py-3 sm:flex-row sm:items-baseline sm:gap-6">
                 <span className="shrink-0 text-xs font-semibold text-[var(--muted)] sm:w-24">코드</span>
@@ -357,7 +411,7 @@ export function EmployeeForm({
           </section>
 
           <section className="space-y-3 border-t border-[var(--border)] pt-6">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--accent)]">기존·조정 연봉</h3>
+            <h3 className="dash-form-section-title">기존·조정 연봉</h3>
             <SalaryPairFields
               defaultBase={employee?.baseSalary}
               defaultAdjusted={employee?.adjustedSalary}
@@ -367,7 +421,7 @@ export function EmployeeForm({
           </section>
 
           <section className="space-y-3 border-t border-[var(--border)] pt-6">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--accent)]">복지·금액</h3>
+            <h3 className="dash-form-section-title">복지·금액</h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             <CommaNumberInput
               className="sm:col-span-2"
@@ -440,7 +494,7 @@ export function EmployeeForm({
           </section>
 
           <section className="space-y-3 border-t border-[var(--border)] pt-6">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--accent)]">일정·가족·보험</h3>
+            <h3 className="dash-form-section-title">일정·가족·보험</h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             <Cell label="입사 월" name="hireMonth" type="number" defaultValue={employee?.hireMonth ?? ""} />
             <Cell label="퇴사 월" name="resignMonth" type="number" defaultValue={employee?.resignMonth ?? ""} />
@@ -494,7 +548,7 @@ export function EmployeeForm({
       ) : null}
     </form>
 
-    {employee ? (
+    {employee && showEditor ? (
       <form
         action={delFormAction}
         className="flex flex-wrap items-center gap-4"

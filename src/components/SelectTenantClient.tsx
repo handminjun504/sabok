@@ -89,7 +89,7 @@ export function SelectTenantClient({ tenants, isPlatformAdmin }: Props) {
                     {t.name}
                   </p>
                   {isPlatformAdmin && !t.active ? (
-                    <span className="shrink-0 rounded-md bg-[var(--surface-hover)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    <span className="dash-eyebrow shrink-0 rounded-md bg-[var(--surface-hover)] px-2 py-0.5 normal-case">
                       비활성
                     </span>
                   ) : null}
@@ -121,7 +121,7 @@ export function SelectTenantClient({ tenants, isPlatformAdmin }: Props) {
 
               {isPlatformAdmin ? (
                 <div className="mt-4 border-t border-[var(--border)] pt-3">
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">관리</p>
+                  <p className="dash-eyebrow mb-2">관리</p>
                   <form action={setTenantActiveFormAction}>
                     <input type="hidden" name="tenantId" value={t.id} />
                     <input type="hidden" name="active" value={t.active ? "false" : "true"} />

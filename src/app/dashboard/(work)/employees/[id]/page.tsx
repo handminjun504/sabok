@@ -17,6 +17,7 @@ import {
 } from "@/lib/domain/payment-events";
 import { deleteLevel5OverrideFormAction, saveLevel5OverrideFormAction } from "@/app/actions/levelRules";
 import { CommaWonInput } from "@/components/CommaWonInput";
+import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
 
 async function OverrideForm({
   employeeId,
@@ -31,10 +32,8 @@ async function OverrideForm({
   const builtinKeys = orderedBuiltinPaymentEventKeys();
 
   return (
-    <div className="surface p-4">
-      <h2 className="text-sm font-semibold">레벨 5 전용: 이벤트별 금액 오버라이드</h2>
-      <p className="mt-1 text-xs text-[var(--muted)]">여기 금액이 레벨 공통보다 우선. 삭제 시 공통.</p>
-      <form action={saveLevel5OverrideFormAction} className="mt-4 grid gap-3 sm:grid-cols-2">
+    <div className="space-y-4">
+      <form action={saveLevel5OverrideFormAction} className="grid gap-3 sm:grid-cols-2">
         <input type="hidden" name="employeeId" value={employeeId} />
         <input type="hidden" name="year" value={year} />
         <div className="sm:col-span-2">
@@ -117,7 +116,15 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
       )}
 
       {emp.level === 5 && canEditLevelRules(role) && (
-        <OverrideForm employeeId={emp.id} year={year} customDefs={customPaymentDefsForYear(settings, year)} />
+        <CollapsibleEditorPanel
+          title="레벨 5 · 이벤트별 금액 오버라이드"
+          description="직원별 금액이 레벨 공통보다 우선합니다. 삭제하면 공통 금액이 다시 적용됩니다."
+          triggerLabel="오버라이드 열기"
+          defaultOpen={false}
+          summary={<p className="text-sm text-[var(--muted)]">직원별 정기 지급액을 레벨 공통보다 우선 적용합니다.</p>}
+        >
+          <OverrideForm employeeId={emp.id} year={year} customDefs={customPaymentDefsForYear(settings, year)} />
+        </CollapsibleEditorPanel>
       )}
     </div>
   );

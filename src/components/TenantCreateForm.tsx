@@ -107,7 +107,7 @@ export function TenantCreateForm({
         </div>
 
         <div className="sm:col-span-2">
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">사업자·등록 정보 (선택)</p>
+          <p className="dash-eyebrow mb-2">사업자·등록 정보 (선택)</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-[var(--muted)]">인가번호</label>

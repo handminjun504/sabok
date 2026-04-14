@@ -41,8 +41,8 @@ export default async function EmployeesPage() {
         </div>
       </div>
 
-      <div className="surface p-3 text-sm">
-        <p className="font-semibold tracking-tight">&lt;{yy}년 사복 진행 조사표&gt;</p>
+      <div className="surface dash-panel-pad text-sm">
+        <p className="font-semibold tracking-normal text-[var(--text)]">&lt;{yy}년 사복 진행 조사표&gt;</p>
         <p className="mt-1 text-xs text-[var(--muted)]">
           창립월 {foundingMonth}월 · CODE 순 · 시트 매핑은 저장소 docs/sheet-mapping.md
         </p>
@@ -54,7 +54,7 @@ export default async function EmployeesPage() {
             <tr className="border-b-2 border-[var(--border-strong)] bg-[var(--surface-hover)]/40 text-[var(--muted)]">
               <th
                 colSpan={3}
-                className="sticky left-0 z-10 border-r-2 border-[var(--border-strong)] bg-[var(--surface-hover)] px-3 py-2 text-left text-xs font-bold text-[var(--text)]"
+                className="dash-table-group-th sticky left-0 z-10 border-r-2 border-[var(--border-strong)] bg-[var(--surface-hover)] text-left"
               >
                 기본 정보
               </th>
@@ -65,47 +65,47 @@ export default async function EmployeesPage() {
                   (colSpouseReceipt ? 1 : 0) +
                   (colWorkerNet ? 1 : 0)
                 }
-                className="px-3 py-2 text-left text-xs font-bold text-[var(--text)]"
+                className="dash-table-group-th text-left"
               >
                 급여·복지·가족
               </th>
-              <th className="sticky right-0 z-10 w-14 min-w-[3.5rem] border-l border-[var(--border)] bg-[var(--surface-hover)] px-2 py-2" />
+              <th className="sticky right-0 z-10 w-14 min-w-[3.5rem] border-l border-[var(--border)] bg-[var(--surface-hover)] px-2 py-2.5" />
             </tr>
-            <tr className="border-b border-[var(--border)] bg-[var(--surface-hover)]/40 text-xs font-semibold text-[var(--muted)]">
-              <th className="sticky left-0 z-10 min-w-[4.5rem] border-r border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-left">
+            <tr className="border-b border-[var(--border)] bg-[var(--surface-hover)]/40">
+              <th className="dash-table-head sticky left-0 z-10 min-w-[4.5rem] border-r border-[var(--border)] bg-[var(--bg)] text-left">
                 코드
               </th>
-              <th className="sticky left-[4.5rem] z-10 min-w-[7.5rem] border-r border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-left">
+              <th className="dash-table-head sticky left-[4.5rem] z-10 min-w-[7.5rem] border-r border-[var(--border)] bg-[var(--bg)] text-left">
                 이름
               </th>
-              <th className="min-w-[6.5rem] max-w-[10rem] border-r-2 border-[var(--border-strong)] bg-[var(--bg)] px-3 py-2 text-left">
+              <th className="dash-table-head min-w-[6.5rem] max-w-[10rem] border-r-2 border-[var(--border-strong)] bg-[var(--bg)] text-left">
                 직급
               </th>
-              <th className="whitespace-nowrap px-3 py-2 text-right">기존연봉</th>
-              <th className="whitespace-nowrap px-3 py-2 text-right">조정급여</th>
-              <th className="whitespace-nowrap px-3 py-2 text-right">사복지급분</th>
-              <th className="whitespace-nowrap px-3 py-2 text-right">알아서금액</th>
-              {colRepReturn ? <th className="px-3 py-2 text-center">대표반환</th> : null}
-              {colSpouseReceipt ? <th className="px-3 py-2 text-center">배우자수령</th> : null}
+              <th className="dash-table-head whitespace-nowrap text-right">기존연봉</th>
+              <th className="dash-table-head whitespace-nowrap text-right">조정급여</th>
+              <th className="dash-table-head whitespace-nowrap text-right">사복지급분</th>
+              <th className="dash-table-head whitespace-nowrap text-right">알아서금액</th>
+              {colRepReturn ? <th className="dash-table-head text-center">대표반환</th> : null}
+              {colSpouseReceipt ? <th className="dash-table-head text-center">배우자수령</th> : null}
               {colWorkerNet ? (
-                <th className="max-w-[5.5rem] whitespace-normal px-3 py-2 text-center leading-tight">
+                <th className="dash-table-head max-w-[5.5rem] whitespace-normal text-center leading-tight">
                   근로자 실질 수령(반환분 제외)
                 </th>
               ) : null}
-              <th className="px-3 py-2 text-center">입사 월</th>
-              <th className="px-3 py-2 text-center">생일 월</th>
-              <th className="px-3 py-2 text-center">결혼기념월</th>
-              <th className="px-3 py-2 text-center">영유아</th>
-              <th className="px-3 py-2 text-center">미취학</th>
-              <th className="px-3 py-2 text-center">청소년</th>
-              <th className="px-3 py-2 text-center">부모님</th>
-              <th className="px-3 py-2 text-center">시부모님</th>
-              <th className="whitespace-nowrap px-3 py-2 text-right">보험료</th>
-              <th className="whitespace-nowrap px-3 py-2 text-right">대출이자</th>
-              <th className="px-3 py-2 text-center">급여일</th>
-              <th className="px-3 py-2 text-center">레벨</th>
-              <th className="whitespace-nowrap px-3 py-2 text-right">예상 인센</th>
-              <th className="sticky right-0 z-10 border-l border-[var(--border)] bg-[var(--bg)] px-2 py-2"> </th>
+              <th className="dash-table-head text-center">입사 월</th>
+              <th className="dash-table-head text-center">생일 월</th>
+              <th className="dash-table-head text-center">결혼기념월</th>
+              <th className="dash-table-head text-center">영유아</th>
+              <th className="dash-table-head text-center">미취학아동</th>
+              <th className="dash-table-head text-center">청소년</th>
+              <th className="dash-table-head text-center">부모님</th>
+              <th className="dash-table-head text-center">시부모님</th>
+              <th className="dash-table-head whitespace-nowrap text-right">보험료</th>
+              <th className="dash-table-head whitespace-nowrap text-right">대출이자</th>
+              <th className="dash-table-head text-center">급여일</th>
+              <th className="dash-table-head text-center">레벨</th>
+              <th className="dash-table-head whitespace-nowrap text-right">예상 인센</th>
+              <th className="sticky right-0 z-10 border-l border-[var(--border)] bg-[var(--bg)] px-2 py-2.5"> </th>
             </tr>
           </thead>
           <tbody>

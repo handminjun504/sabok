@@ -5,6 +5,8 @@ import type { Employee } from "@/types/models";
 const ALIASES: Record<string, string> = {
   code: "employeeCode",
   CODE: "employeeCode",
+  /** 취합 탭 등 시트 오타 헤더 */
+  CDOE: "employeeCode",
   직원코드: "employeeCode",
   이름: "name",
   직급: "position",
@@ -27,6 +29,7 @@ const ALIASES: Record<string, string> = {
   "결혼기념월(예정월)": "weddingMonth",
   영유아: "childrenInfant",
   미취학아동: "childrenPreschool",
+  미취학: "childrenPreschool",
   청소년: "childrenTeen",
   부모님: "parentsCount",
   시부모님: "parentsInLawCount",

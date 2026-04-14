@@ -89,36 +89,36 @@ export default async function OperatingReportPage() {
         </p>
       </div>
 
-      <div className="surface p-4 sm:p-5">
-        <h2 className="text-sm font-bold text-[var(--text)]">보고서 상단 정보</h2>
+      <div className="surface dash-panel-pad">
+        <h2 className="text-sm font-bold tracking-normal text-[var(--text)]">보고서 상단 정보</h2>
         <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">업체 이름</dt>
+            <dt className="dash-eyebrow">업체 이름</dt>
             <dd className="mt-1 font-medium text-[var(--text)]">{tenantName}</dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">인가번호</dt>
+            <dt className="dash-eyebrow">인가번호</dt>
             <dd className="mt-1 font-mono text-[var(--text)]">{approvalNumber}</dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">사업자등록번호</dt>
+            <dt className="dash-eyebrow">사업자등록번호</dt>
             <dd className="mt-1 font-mono text-[var(--text)]">{businessRegNo}</dd>
           </div>
         </dl>
         {tenant ? <OperatingReportTenantIdentifiersForm tenant={tenant} /> : null}
       </div>
 
-      <div className="surface overflow-x-auto p-4">
-        <h2 className="text-sm font-bold text-[var(--text)]">연간 지급액 — 복지비 구분(자동 배분)</h2>
+      <div className="surface overflow-x-auto dash-panel-pad">
+        <h2 className="text-sm font-bold tracking-normal text-[var(--text)]">연간 지급액 — 복지비 구분(자동 배분)</h2>
         <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
           정기·분기·선택 복지 원천을 구분 코드에 매핑한 뒤, 한 항목에만 몰리지 않도록 상한(연간 합계의 약 34%)을 넘는 금액은 다른 구분으로 나눕니다. 58·61·65 등 데이터에 없는 구분은 재분배 과정에서 채워질 수 있습니다. 합계는 위 「연간 기금 합계」와 동일합니다.
         </p>
         <table className="mt-4 w-full min-w-[520px] text-left text-sm">
           <thead>
-            <tr className="border-b border-[var(--border)] text-xs text-[var(--muted)]">
-              <th className="px-3 py-2">코드</th>
-              <th className="px-3 py-2">구분</th>
-              <th className="px-3 py-2 text-right">금액(원)</th>
+            <tr className="border-b border-[var(--border)]">
+              <th className="dash-table-head text-left">코드</th>
+              <th className="dash-table-head text-left">구분</th>
+              <th className="dash-table-head text-right">금액(원)</th>
             </tr>
           </thead>
           <tbody>
@@ -140,37 +140,37 @@ export default async function OperatingReportPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="surface-prominent p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">기준 연도</p>
+        <div className="surface-prominent dash-panel-pad">
+          <p className="dash-eyebrow">기준 연도</p>
           <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text)]">{summary.year}</p>
         </div>
-        <div className="surface-prominent p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">창립월</p>
+        <div className="surface-prominent dash-panel-pad">
+          <p className="dash-eyebrow">창립월</p>
           <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text)]">{summary.foundingMonth}월</p>
         </div>
-        <div className="surface-prominent p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">등록 직원</p>
+        <div className="surface-prominent dash-panel-pad">
+          <p className="dash-eyebrow">등록 직원</p>
           <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text)]">{summary.employeeCount}명</p>
         </div>
-        <div className="surface-prominent p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">연간 기금 합계</p>
+        <div className="surface-prominent dash-panel-pad">
+          <p className="dash-eyebrow">연간 기금 합계</p>
           <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text)]">{format(summary.totalYearlyWelfare)}원</p>
         </div>
       </div>
 
-      <div className="surface overflow-x-auto p-4">
-        <h2 className="text-sm font-bold text-[var(--text)]">레벨별 (참고 시트 LEVEL 1~5 · 취합과 동일 의미)</h2>
+      <div className="surface overflow-x-auto dash-panel-pad">
+        <h2 className="text-sm font-bold tracking-normal text-[var(--text)]">레벨별 (참고 시트 LEVEL 1~5 · 취합과 동일 의미)</h2>
         <p className="mt-1 text-xs text-[var(--muted)]">
           귀속·지급: {summary.accrualCurrentMonthPayNext ? "당월 귀속·익월 지급" : "귀속·지급 동월"}
         </p>
         <table className="mt-4 w-full min-w-[520px] text-left text-sm">
           <thead>
-            <tr className="border-b border-[var(--border)] text-xs text-[var(--muted)]">
-              <th className="px-3 py-2">레벨</th>
-              <th className="px-3 py-2 text-right">인원</th>
-              <th className="px-3 py-2 text-right">연간 기금 합계</th>
-              <th className="px-3 py-2 text-right">목표(설정)</th>
-              <th className="px-3 py-2 text-right">차이</th>
+            <tr className="border-b border-[var(--border)]">
+              <th className="dash-table-head text-left">레벨</th>
+              <th className="dash-table-head text-right">인원</th>
+              <th className="dash-table-head text-right">연간 기금 합계</th>
+              <th className="dash-table-head text-right">목표(설정)</th>
+              <th className="dash-table-head text-right">차이</th>
             </tr>
           </thead>
           <tbody>
@@ -196,8 +196,8 @@ export default async function OperatingReportPage() {
         </table>
       </div>
 
-      <div className="surface p-5">
-        <h2 className="text-sm font-bold text-[var(--text)]">급여·상한 힌트 (직원 마스터 합)</h2>
+      <div className="surface dash-panel-pad">
+        <h2 className="text-sm font-bold tracking-normal text-[var(--text)]">급여·상한 힌트 (직원 마스터 합)</h2>
         <ul className="mt-3 space-y-2 text-sm text-[var(--muted)]">
           <li>
             기존연봉 합: <span className="font-mono text-[var(--text)]">{format(summary.sumBaseSalary)}</span>원

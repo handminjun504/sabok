@@ -21,7 +21,7 @@ export default async function GlPage() {
         <p className="mt-1 text-sm text-[var(--muted)]">요청만 큐에 넣습니다. GL 연동은 추후.</p>
       </div>
 
-      <form action={requestGlSyncFormAction} className="surface space-y-4 p-6">
+      <form action={requestGlSyncFormAction} className="surface dash-panel-pad space-y-4">
         <div>
           <label className="text-xs text-[var(--muted)]">연도</label>
           <input name="year" type="number" defaultValue={year} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2" />
@@ -35,7 +35,7 @@ export default async function GlPage() {
         </button>
       </form>
 
-      <div className="surface p-4">
+      <div className="surface dash-panel-pad">
         <h2 className="text-sm font-semibold">최근 작업</h2>
         <ul className="mt-3 space-y-2 text-xs text-[var(--muted)]">
           {jobs.map((j) => (

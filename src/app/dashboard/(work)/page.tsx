@@ -44,9 +44,9 @@ export default async function DashboardHomePage() {
           요약 지표
         </h2>
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="surface-prominent p-6">
-            <p className="text-[0.65rem] font-bold uppercase tracking-[0.1em] text-[var(--muted)]">등록 직원</p>
-            <p className="mt-3 text-4xl font-extrabold tabular-nums tracking-tight text-[var(--text)]">{empCount}</p>
+          <div className="surface-prominent p-5 sm:p-6 lg:p-8">
+            <p className="dash-eyebrow">등록 직원</p>
+            <p className="mt-3 text-4xl font-extrabold tabular-nums tracking-normal text-[var(--text)]">{empCount}</p>
             <Link
               href="/dashboard/employees"
               className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[var(--accent)] hover:gap-2 hover:underline"
@@ -54,9 +54,9 @@ export default async function DashboardHomePage() {
               직원 관리 <span aria-hidden>→</span>
             </Link>
           </div>
-          <div className="surface-prominent p-6">
-            <p className="text-[0.65rem] font-bold uppercase tracking-[0.1em] text-[var(--muted)]">기준 연도</p>
-            <p className="mt-3 text-4xl font-extrabold tabular-nums tracking-tight text-[var(--text)]">{year}</p>
+          <div className="surface-prominent p-5 sm:p-6 lg:p-8">
+            <p className="dash-eyebrow">기준 연도</p>
+            <p className="mt-3 text-4xl font-extrabold tabular-nums tracking-normal text-[var(--text)]">{year}</p>
             <Link
               href="/dashboard/settings"
               className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[var(--accent)] hover:gap-2 hover:underline"
@@ -64,9 +64,9 @@ export default async function DashboardHomePage() {
               전사 설정 <span aria-hidden>→</span>
             </Link>
           </div>
-          <div className="surface-prominent p-6">
-            <p className="text-[0.65rem] font-bold uppercase tracking-[0.1em] text-[var(--muted)]">창립월</p>
-            <p className="mt-3 text-4xl font-extrabold tabular-nums tracking-tight text-[var(--text)]">
+          <div className="surface-prominent p-5 sm:p-6 lg:p-8">
+            <p className="dash-eyebrow">창립월</p>
+            <p className="mt-3 text-4xl font-extrabold tabular-nums tracking-normal text-[var(--text)]">
               {settings?.foundingMonth ?? "—"}
               <span className="text-2xl font-bold text-[var(--muted)]">월</span>
             </p>

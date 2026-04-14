@@ -14,6 +14,7 @@
     "desktop": "electron electron/main.cjs",
     "lint": "next lint",
     "sheet:parity": "tsx scripts/sheet-parity.ts",
+    "sheet:snapshots": "bash scripts/refresh-sheet-snapshots.sh",
     "pb:seed": "tsx scripts/pb-seed.ts",
     "pb:create-user": "tsx scripts/pb-create-user.ts",
     "pb:fix-employees-schema": "node scripts/pb-fix-employees-schema.mjs",

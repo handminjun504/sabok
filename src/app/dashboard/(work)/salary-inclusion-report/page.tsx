@@ -105,7 +105,7 @@ export default async function SalaryInclusionReportPage({
         {monthLinks}
       </div>
 
-      <div className="overflow-x-auto surface p-2">
+      <div className="surface overflow-x-auto dash-panel-pad">
         <table className="min-w-[980px] w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-xs text-[var(--muted)]">
@@ -157,7 +157,7 @@ export default async function SalaryInclusionReportPage({
           넣습니다. 지급월 1~{throughMonth}월 누적 발생이 누적 사복(인센) 지급보다 크면, 차액은 급여에 포함해 신고합니다.
           (예: 1월 발생 307,000 + 2월 발생 203,100 = 510,100, 2월 사복 지급 500,000 → 차액 10,100)
         </p>
-        <div className="mt-3 overflow-x-auto surface p-2">
+        <div className="surface mt-3 overflow-x-auto dash-panel-pad">
           <table className="min-w-[820px] w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[var(--border)] text-xs text-[var(--muted)]">

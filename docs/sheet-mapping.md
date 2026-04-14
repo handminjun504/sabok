@@ -14,6 +14,21 @@
 | 월별지급스케줄    | `/dashboard/schedule` |
 | 반환분 / 적립액 / 인수 | 미연결 — 시트 수식·정의 확보 후 도메인 추가 검토 |
 
+### 탭별 `gid` 및 스냅샷 (익명 CSV 보내기)
+
+원본이 **링크 공개(보기)** 이면 `export?format=csv&gid={gid}` 로 내려받을 수 있다.  
+레포에 고정 복사본은 [sheet-snapshots/README.md](./sheet-snapshots/README.md) 참고.
+
+| `gid` | 스냅샷 파일 | 비고 |
+|-------|-------------|------|
+| `0` | `gid-0.csv` | 직원정보 |
+| `1123805955` | `gid-1123805955.csv` | 월별 지급 격자(간단) |
+| `1301218006` | `gid-1301218006.csv` | 월별지급스케줄(+검증·문구) |
+| `232333075` … `680592227` | `gid-*.csv` | LEVEL 1~5에 대응하는 규정/직원 격자(탭 순서는 시트 UI와 동일하게 두었음) |
+| `659543130` | `gid-659543130.csv` | 취합형 직원별 합계. **1행 헤더 오타 `CDOE` → `CODE` 의미** |
+| `798565535` | `gid-798565535.csv` | 자본금·적립 월별(앱 미연결) |
+| `645153880` | `gid-645153880.csv` | 빈 보내기(0바이트) — 빈/숨김 탭 가능 |
+
 > 공개 HTML에는 **수식 텍스트가 포함되지 않음**. 엑셀보내기 또는 수식 복사로 역설계 시 이 문서의 「수식」절을 갱신한다.
 
 ## 직원정보 탭 — 열 ↔ 모델
@@ -34,6 +49,7 @@
 | 생일 월만입력 | `birthMonth` |
 | 결혼기념월(예정월) | `weddingMonth` |
 | 영유아 ~ 시부모님 | `childrenInfant` … `parentsInLawCount` |
+| 미취학아동 | `childrenPreschool` — 시트 헤더 문구(직원 목록 UI·CSV 보내기와 동일). 표시만 `미취학`이면 시트와 어긋남 |
 | 보험료 | `insurancePremium` |
 | 대출이자 | `loanInterest` |
 | 급여일 | `payDay` |
@@ -52,6 +68,18 @@
 | 인센→사복 차액 | `computeIncentiveWelfareSalaryInclusionYtd` + 월별 노트 필드 |
 | 운영 요약(레벨별 연간 기금 합) | `computeLevelWelfareAggregates` — [sheet-aggregate.ts](../src/lib/domain/sheet-aggregate.ts) |
 
+## 시트 대비 앱 차이 요약 (2026 스냅샷 기준)
+
+| 구분 | 시트 | 앱 |
+|------|------|-----|
+| 직원 마스터 | `레벨` 열 없음(LEVEL 탭에서 금액) | `level`, `incentiveAmount` 필드 |
+| 직원 CSV 헤더 행 | 3행이 `CODE` 헤더 | 가져오기 시 1행 헤더 |
+| 취합 탭 | `CDOE` 오타 컬럼명 | 해당 탭 구조 미러 없음(운영보고는 PB 집계) |
+| 적립·자본금 탭 | `gid-798565535` 월별 적립 등 | 미연결 |
+| 월별 스케줄 | 일부 셀에 안내 문장(여러 줄) | 숫자 그리드만 |
+
 ## CSV 가져오기
 
 헤더 별칭: [csv-import.ts](../src/lib/csv-import.ts) `ALIASES`. 보내기 헤더 순서: `SHEET_EMPLOYEE_EXPORT_HEADERS`.
+
+**직원정보 탭 원본 CSV:** 1~2행은 표 제목·창립월 등 메타이고, **헤더는 3행**(첫 셀 `CODE`). 앱 CSV 가져오기는 **첫 줄이 헤더**인 파일을 기대하므로, 시트에서 가져올 때는 해당 행만 남기거나 범위를 `CODE` 행부터 보내기한다.

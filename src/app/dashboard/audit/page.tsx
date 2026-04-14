@@ -14,7 +14,7 @@ export default async function AuditPage() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">감사 로그</h1>
       <p className="text-sm text-[var(--muted)]">플랫폼 관리자 · 최근 200건 (업체 구분은 tenantId 기준)</p>
-      <div className="overflow-x-auto surface p-2">
+      <div className="surface overflow-x-auto dash-panel-pad">
         <table className="min-w-full text-left text-xs">
           <thead>
             <tr className="border-b border-[var(--border)] text-[var(--muted)]">

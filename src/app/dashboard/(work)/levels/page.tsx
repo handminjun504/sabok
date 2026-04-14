@@ -52,14 +52,14 @@ export default async function LevelsPage() {
           <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
         )}
 
-        <div className="surface overflow-x-auto p-2 sm:p-3">
+        <div className="surface overflow-x-auto dash-panel-pad">
           {/* 중첩 form 금지: 삭제는 form 속성으로 연결된 별도 폼만 사용 */}
           <form action={canEdit ? saveLevelRulesFormAction : undefined} id="level-rules-save" className="space-y-2">
             <input type="hidden" name="year" value={year} />
             <table className="min-w-max border-collapse text-left text-xs">
               <thead>
                 <tr className="border-b border-[var(--border-strong)]">
-                  <th className="sticky left z-10 bg-[var(--surface)] py-1.5 pr-2 pl-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  <th className="dash-table-th sticky left z-10 bg-[var(--surface)] text-left">
                     레벨 / 행사
                   </th>
                   {eventKeys.map((ev) => {
@@ -67,7 +67,7 @@ export default async function LevelsPage() {
                     return (
                       <th
                         key={ev}
-                        className="max-w-[7.5rem] whitespace-normal px-1 py-1.5 text-center text-[10px] font-semibold leading-tight tracking-wide text-[var(--muted)]"
+                        className="dash-table-th max-w-[7.5rem] whitespace-normal text-center leading-tight"
                       >
                         <div className="flex flex-col items-center gap-0.5">
                           <span>{paymentEventLabel(ev, customDefs)}</span>
@@ -89,7 +89,7 @@ export default async function LevelsPage() {
               <tbody>
                 {[1, 2, 3, 4, 5].map((lv) => (
                   <tr key={lv} className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]">
-                    <td className="sticky left z-[1] bg-[var(--surface)] py-1 pr-2 pl-0.5 text-[11px] font-medium whitespace-nowrap">
+                    <td className="sticky left z-[1] bg-[var(--surface)] px-3 py-2.5 text-left text-[0.6875rem] font-medium tracking-normal whitespace-nowrap text-[var(--text)]">
                       레벨 {lv}
                     </td>
                     {eventKeys.map((ev) => (
@@ -136,11 +136,11 @@ export default async function LevelsPage() {
         {canEdit && (
           <form
             action={addCustomPaymentEventFormAction}
-            className="surface flex flex-wrap items-end gap-2 p-2 sm:p-3"
+            className="surface dash-panel-pad flex flex-wrap items-end gap-3"
           >
             <input type="hidden" name="year" value={year} />
             <div>
-              <label className="mb-1 block text-xs text-[var(--muted)]">추가 행사명</label>
+              <label className="dash-field-label">추가 행사명</label>
               <input
                 name="label"
                 required
@@ -149,7 +149,7 @@ export default async function LevelsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--muted)]">귀속 월</label>
+              <label className="dash-field-label">귀속 월</label>
               <select
                 name="accrualMonth"
                 required

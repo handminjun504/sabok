@@ -37,7 +37,7 @@ function NavBody({
     <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
       {groups.map((g) => (
         <div key={g.title}>
-          <p className="mb-2 px-2 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+          <p className="dash-eyebrow mb-2 px-2">
             {g.title}
           </p>
           <ul className="flex flex-col gap-0.5">
@@ -90,7 +90,7 @@ export function DashboardShell({
       <div className="min-h-screen bg-transparent">
         <header className="neu-topbar sticky top-0 z-30 mx-auto flex w-full max-w-[var(--content-max)] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div className="min-w-0">
-            <p className="text-[0.625rem] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">거래처 선택</p>
+            <p className="dash-eyebrow">거래처 선택</p>
             <p className="neu-title-gradient mt-1 text-base font-bold tracking-tight">사내근로복지기금</p>
             <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">업체를 고르면 직원·지급·설정 메뉴가 열립니다.</p>
           </div>
@@ -113,7 +113,7 @@ export function DashboardShell({
       {/* 데스크톱 사이드바 */}
       <aside className="neu-sidebar sticky top-3 z-20 mx-3 hidden h-[calc(100vh-1.5rem)] w-[var(--sidebar-w)] shrink-0 flex-col md:flex">
         <div className="px-4 py-4">
-          <p className="text-[0.625rem] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">SABOK</p>
+          <p className="dash-eyebrow">SABOK</p>
           <p className="neu-title-gradient mt-1 text-base font-bold tracking-tight">사내근로복지기금</p>
           {tenantLine ? (
             <div className="mt-3 space-y-2 rounded-xl border border-[var(--accent-soft)] bg-[var(--accent-soft)]/40 px-3 py-2.5">

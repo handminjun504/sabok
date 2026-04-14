@@ -30,7 +30,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
   }
 
   return (
-    <section className="surface-prominent p-4 sm:p-5" aria-labelledby="tenant-reg-info">
+    <section className="surface-prominent dash-panel-pad" aria-labelledby="tenant-reg-info">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="tenant-reg-info" className="text-sm font-bold text-[var(--text)]">
@@ -61,7 +61,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
+            <label className="dash-eyebrow mb-1 block">
               거래처명
             </label>
             <input
@@ -73,7 +73,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
+            <label className="dash-eyebrow mb-1 block">
               코드
             </label>
             <div className="input w-full cursor-default border-[var(--border)] bg-[var(--surface-hover)] py-[0.3rem] font-mono text-xs text-[var(--text)]">
@@ -82,7 +82,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             <p className="mt-1 text-[10px] text-[var(--muted)]">코드는 변경할 수 없습니다.</p>
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
-            <span className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
+            <span className="dash-eyebrow mb-1 block">
               개인·법인 적립 구분
             </span>
             <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-[var(--text)]">
@@ -140,7 +140,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             에서 수정합니다.
           </p>
           <div>
-            <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
+            <label className="dash-eyebrow mb-1 block">
               본사 자본금 (원)
             </label>
             <CommaWonInput
@@ -151,7 +151,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             />
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
-            <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
+            <label className="dash-eyebrow mb-1 block">
               메모
             </label>
             <textarea

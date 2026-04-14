@@ -37,7 +37,7 @@ export default async function QuarterlyPage() {
   const ratesTab = (
     <div className="space-y-4">
       {canRates ? (
-        <div className="surface p-5">
+        <div className="surface dash-panel-pad">
           <form action={saveQuarterlyRatesFormAction} className="space-y-4">
             <input type="hidden" name="year" value={year} />
             <div className="overflow-x-auto">
@@ -46,47 +46,29 @@ export default async function QuarterlyPage() {
                   <tr className="border-b border-[var(--border)]">
                     <th
                       rowSpan={2}
-                      className="border-b-2 border-[var(--border)] py-2 pr-4 align-bottom text-xs font-semibold uppercase tracking-wide text-[var(--muted)]"
+                      className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left"
                     >
                       항목
                     </th>
-                    <th
-                      colSpan={3}
-                      className="py-2 pr-2 text-center text-xs font-semibold tracking-wide text-[var(--text)]"
-                    >
+                    <th colSpan={3} className="dash-table-head text-center font-semibold text-[var(--text)]">
                       자녀장학금
                     </th>
-                    <th
-                      colSpan={2}
-                      className="py-2 pr-2 text-center text-xs font-semibold tracking-wide text-[var(--text)]"
-                    >
+                    <th colSpan={2} className="dash-table-head text-center font-semibold text-[var(--text)]">
                       부모봉양지원금
                     </th>
-                    <th
-                      rowSpan={2}
-                      className="border-b-2 border-[var(--border)] py-2 pr-2 align-bottom text-xs font-semibold uppercase tracking-wide text-[var(--muted)]"
-                    >
+                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left">
                       정액
                     </th>
-                    <th
-                      rowSpan={2}
-                      className="border-b-2 border-[var(--border)] py-2 pr-2 align-bottom text-xs font-semibold uppercase tracking-wide text-[var(--muted)]"
-                    >
+                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left">
                       보험%
                     </th>
-                    <th
-                      rowSpan={2}
-                      className="border-b-2 border-[var(--border)] py-2 pr-2 align-bottom text-xs font-semibold uppercase tracking-wide text-[var(--muted)]"
-                    >
+                    <th rowSpan={2} className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left">
                       이자%
                     </th>
                   </tr>
                   <tr className="border-b-2 border-[var(--border)]">
                     {["영유아 단가", "미취학 단가", "청소년 단가", "부모 단가", "시부모 단가"].map((h) => (
-                      <th
-                        key={h}
-                        className="py-2 pr-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]"
-                      >
+                      <th key={h} className="dash-table-th-md text-left">
                         {h}
                       </th>
                     ))}
@@ -134,12 +116,12 @@ export default async function QuarterlyPage() {
       )}
 
       {canRates && (
-        <div className="surface p-5">
-          <h3 className="mb-4 text-sm font-semibold text-[var(--text)]">직원에게 요율 일괄 적용</h3>
+        <div className="surface dash-panel-pad">
+          <h3 className="mb-4 text-sm font-semibold tracking-normal text-[var(--text)]">직원에게 요율 일괄 적용</h3>
           <form action={applyQuarterlyTemplateFormAction} className="flex flex-wrap items-end gap-3">
             <input type="hidden" name="year" value={year} />
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">직원</label>
+              <label className="dash-field-label">직원</label>
               <select name="employeeId" className="input w-full max-w-md text-xs">
                 {employees.map((e) => (
                   <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
@@ -147,7 +129,7 @@ export default async function QuarterlyPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">기본 지급월</label>
+              <label className="dash-field-label">기본 지급월</label>
               <input name="paymentMonth" type="number" min={1} max={12} defaultValue={3}
                 className={INPUT_SM} />
             </div>
@@ -164,12 +146,12 @@ export default async function QuarterlyPage() {
     <div className="space-y-4">
       {canCfg ? (
         <>
-          <div className="surface p-5">
-            <h3 className="mb-4 text-sm font-semibold text-[var(--text)]">항목·지급 월 추가</h3>
+          <div className="surface dash-panel-pad">
+            <h3 className="mb-4 text-sm font-semibold tracking-normal text-[var(--text)]">항목·지급 월 추가</h3>
             <form action={saveQuarterlyEmployeeConfigFormAction} className="grid gap-4 sm:grid-cols-4">
               <input type="hidden" name="year" value={year} />
               <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">직원</label>
+                <label className="dash-field-label">직원</label>
                 <select name="employeeId" className="input w-full max-w-md text-xs" required>
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
@@ -177,7 +159,7 @@ export default async function QuarterlyPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">항목</label>
+                <label className="dash-field-label">항목</label>
                 <select name="itemKey" className="input w-full max-w-xs text-xs">
                   {items.map((k) => (
                     <option key={k} value={k}>{QUARTERLY_ITEM_LABELS[k]}</option>
@@ -185,11 +167,11 @@ export default async function QuarterlyPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">지급 월</label>
+                <label className="dash-field-label">지급 월</label>
                 <input name="paymentMonth" type="number" min={1} max={12} defaultValue={3} className="input w-[4.5rem] text-xs" required />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">금액</label>
+                <label className="dash-field-label">금액</label>
                 <CommaWonInput name="amount" className="input max-w-[11rem] text-xs" required />
               </div>
               <div className="flex items-end sm:col-span-4">
@@ -198,8 +180,8 @@ export default async function QuarterlyPage() {
             </form>
           </div>
 
-          <div className="surface overflow-x-auto p-4">
-            <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">설정 목록</h3>
+          <div className="surface overflow-x-auto dash-panel-pad">
+            <h3 className="mb-3 text-sm font-semibold tracking-normal text-[var(--text)]">설정 목록</h3>
             {configs.length === 0 ? (
               <p className="py-4 text-sm text-[var(--muted)]">설정된 분기 지급이 없습니다.</p>
             ) : (
@@ -207,7 +189,7 @@ export default async function QuarterlyPage() {
                 <thead>
                   <tr className="border-b-2 border-[var(--border)]">
                     {["직원", "항목", "지급월", "금액"].map((h) => (
-                      <th key={h} className="py-2 pr-4 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{h}</th>
+                      <th key={h} className="dash-table-th-md text-left">{h}</th>
                     ))}
                   </tr>
                 </thead>
