@@ -80,10 +80,13 @@ export function buildMonthlyBreakdown(
   const qByPaidMonth = new Map<number, { itemKey: string; amount: number }[]>();
   for (const q of quarterly) {
     if (q.year !== year) continue;
-    const m = q.paymentMonth;
-    const list = qByPaidMonth.get(m) ?? [];
-    list.push({ itemKey: q.itemKey, amount: toNum(q.amount) });
-    qByPaidMonth.set(m, list);
+    const months = q.paymentMonths.length > 0 ? q.paymentMonths : [];
+    for (const m of months) {
+      if (m < 1 || m > 12) continue;
+      const list = qByPaidMonth.get(m) ?? [];
+      list.push({ itemKey: q.itemKey, amount: toNum(q.amount) });
+      qByPaidMonth.set(m, list);
+    }
   }
 
   const months: MonthBreakdown[] = [];
@@ -112,10 +115,18 @@ export function buildMonthlyBreakdown(
   return months;
 }
 
-export function validateQuarterlyMonth(paymentMonth: number): { ok: boolean; message?: string } {
-  if (paymentMonth < 1 || paymentMonth > 12) {
-    return { ok: false, message: "지급 월은 1~12 사이여야 합니다." };
+export function normalizeQuarterlyPaymentMonths(months: readonly number[]): number[] {
+  const s = new Set<number>();
+  for (const x of months) {
+    const n = Math.round(Number(x));
+    if (n >= 1 && n <= 12) s.add(n);
   }
+  return [...s].sort((a, b) => a - b);
+}
+
+export function validateQuarterlyPaymentMonths(months: number[]): { ok: boolean; message?: string } {
+  const n = normalizeQuarterlyPaymentMonths(months);
+  if (n.length === 0) return { ok: false, message: "지급 월을 1개 이상 선택하세요." };
   return { ok: true };
 }
 

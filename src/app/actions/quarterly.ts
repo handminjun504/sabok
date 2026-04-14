@@ -12,7 +12,7 @@ import {
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { QUARTERLY_ITEM, type QuarterlyItemKey } from "@/lib/business-rules";
-import { validateQuarterlyMonth } from "@/lib/domain/schedule";
+import { normalizeQuarterlyPaymentMonths, validateQuarterlyPaymentMonths } from "@/lib/domain/schedule";
 import { resolveActionTenant } from "@/lib/tenant-context";
 
 function dec(s: string) {
@@ -89,9 +89,14 @@ const cfgSchema = z.object({
   employeeId: z.string().min(1),
   year: z.coerce.number(),
   itemKey: z.string().min(1),
-  paymentMonth: z.coerce.number().min(1).max(12),
   amount: z.string(),
 });
+
+function paymentMonthsFromForm(formData: FormData): number[] {
+  return normalizeQuarterlyPaymentMonths(
+    formData.getAll("payMonth").map((v) => parseInt(String(v), 10))
+  );
+}
 
 export async function saveQuarterlyEmployeeConfigAction(_: QState, formData: FormData): Promise<QState> {
   const ctx = await resolveActionTenant();
@@ -102,12 +107,12 @@ export async function saveQuarterlyEmployeeConfigAction(_: QState, formData: For
     employeeId: formData.get("employeeId"),
     year: formData.get("year"),
     itemKey: formData.get("itemKey"),
-    paymentMonth: formData.get("paymentMonth"),
     amount: formData.get("amount"),
   });
   if (!parsed.success) return { 오류: "입력값을 확인하세요." };
 
-  const v = validateQuarterlyMonth(parsed.data.paymentMonth);
+  const paymentMonths = paymentMonthsFromForm(formData);
+  const v = validateQuarterlyPaymentMonths(paymentMonths);
   if (!v.ok) return { 오류: v.message ?? "지급 월 오류" };
 
   const emp = await employeeFindFirst(parsed.data.employeeId, ctx.tenantId);
@@ -118,7 +123,7 @@ export async function saveQuarterlyEmployeeConfigAction(_: QState, formData: For
     employeeId: emp.id,
     year: parsed.data.year,
     itemKey: parsed.data.itemKey,
-    paymentMonth: parsed.data.paymentMonth,
+    paymentMonths,
     amount,
   });
   await writeAudit({
@@ -140,7 +145,9 @@ export async function applyQuarterlyTemplateAction(_: QState, formData: FormData
 
   const year = parseInt(String(formData.get("year") ?? ""), 10);
   const employeeId = String(formData.get("employeeId") ?? "");
-  const paymentMonth = parseInt(String(formData.get("paymentMonth") ?? "3"), 10);
+  const paymentMonths = paymentMonthsFromForm(formData);
+  const mv = validateQuarterlyPaymentMonths(paymentMonths);
+  if (!mv.ok) return { 오류: mv.message ?? "지급 월 오류" };
   if (!Number.isFinite(year) || !employeeId) return { 오류: "연도·직원을 확인하세요." };
 
   const emp = await employeeFindFirst(employeeId, ctx.tenantId);
@@ -160,7 +167,7 @@ export async function applyQuarterlyTemplateAction(_: QState, formData: FormData
       employeeId: emp.id,
       year,
       itemKey,
-      paymentMonth,
+      paymentMonths,
       amount: amountN,
     });
   }
@@ -171,7 +178,7 @@ export async function applyQuarterlyTemplateAction(_: QState, formData: FormData
     action: "BULK_APPLY",
     entity: "QuarterlyEmployeeConfig",
     entityId: emp.id,
-    payload: { year, paymentMonth },
+    payload: { year, paymentMonths },
   });
   revalidatePath("/dashboard/quarterly");
   revalidatePath("/dashboard/schedule");

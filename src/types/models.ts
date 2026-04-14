@@ -81,7 +81,8 @@ export type QuarterlyEmployeeConfig = {
   employeeId: string;
   year: number;
   itemKey: string;
-  paymentMonth: number;
+  /** 지급이 반영되는 달(1~12), 정렬·중복 제거됨 */
+  paymentMonths: number[];
   amount: number;
 };
 

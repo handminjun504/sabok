@@ -106,7 +106,7 @@ const qRow: QuarterlyEmployeeConfig = {
   employeeId: "e1",
   year: 2026,
   itemKey: "INFANT_SCHOLARSHIP",
-  paymentMonth: 6,
+  paymentMonths: [6],
   amount: 30_000,
 };
 const brGrid = buildMonthlyBreakdown(empGrid, 2026, 1, [febRule], [], [qRow], true, []);

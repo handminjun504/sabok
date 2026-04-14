@@ -26,7 +26,6 @@ export function OperatingReportTenantIdentifiersForm({ tenant }: { tenant: Tenan
   return (
     <CollapsibleEditorPanel
       title="인가번호 · 사업자등록번호 수정"
-      description="저장하면 이 화면 상단 표시와 대시보드 거래처 정보에 반영됩니다."
       triggerLabel="수정하기"
       defaultOpen={false}
       summary={

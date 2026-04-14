@@ -119,13 +119,48 @@ export function mapQuarterlyRate(r: Record<string, unknown>): QuarterlyRate {
   };
 }
 
+function parsePaymentMonthsField(r: Record<string, unknown>, legacyMonth: number): number[] {
+  const raw = r.paymentMonths;
+  const pushValid = (arr: number[]) => {
+    const s = new Set<number>();
+    for (const x of arr) {
+      const n = Math.round(Number(x));
+      if (n >= 1 && n <= 12) s.add(n);
+    }
+    return [...s].sort((a, b) => a - b);
+  };
+  if (Array.isArray(raw)) {
+    const out = pushValid(raw as number[]);
+    if (out.length > 0) return out;
+  }
+  if (raw != null && typeof raw === "string" && raw.trim()) {
+    try {
+      const j = JSON.parse(raw) as unknown;
+      if (Array.isArray(j)) {
+        const out = pushValid(j as number[]);
+        if (out.length > 0) return out;
+      }
+    } catch {
+      const out = pushValid(
+        raw
+          .split(/[,\s]+/)
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n))
+      );
+      if (out.length > 0) return out;
+    }
+  }
+  return legacyMonth >= 1 && legacyMonth <= 12 ? [legacyMonth] : [];
+}
+
 export function mapQuarterlyCfg(r: Record<string, unknown>): QuarterlyEmployeeConfig {
+  const legacy = num(r.paymentMonth);
   return {
     id: String(r.id),
     employeeId: String(r.employeeId),
     year: num(r.year),
     itemKey: String(r.itemKey),
-    paymentMonth: num(r.paymentMonth),
+    paymentMonths: parsePaymentMonthsField(r, legacy),
     amount: num(r.amount),
   };
 }

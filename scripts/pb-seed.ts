@@ -221,13 +221,18 @@ async function main() {
   const qf = `employeeId="${esc(empId)}" && year=${year} && itemKey="PRESCHOOL_SCHOLARSHIP"`;
   const qx = await firstByFilter(C.quarterlyEmployeeConfigs, qf);
   if (qx?.id) {
-    await pb.collection(C.quarterlyEmployeeConfigs).update(String(qx.id), { paymentMonth: 3, amount: 250_000 });
+    await pb.collection(C.quarterlyEmployeeConfigs).update(String(qx.id), {
+      paymentMonth: 3,
+      paymentMonths: [3],
+      amount: 250_000,
+    });
   } else {
     await pb.collection(C.quarterlyEmployeeConfigs).create({
       employeeId: empId,
       year,
       itemKey: "PRESCHOOL_SCHOLARSHIP",
       paymentMonth: 3,
+      paymentMonths: [3],
       amount: 250_000,
     });
   }

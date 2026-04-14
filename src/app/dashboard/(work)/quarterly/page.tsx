@@ -18,6 +18,32 @@ import { Tabs } from "@/components/Tabs";
 const INPUT_SM =
   "w-[4.25rem] rounded-md border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 text-xs tabular-nums focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-soft)]";
 
+const MONTHS_1_12 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+const DEFAULT_QUARTER_PAY_MONTHS: readonly number[] = [3, 6, 9, 12];
+
+function PayMonthCheckboxes({ defaultMonths }: { defaultMonths: readonly number[] }) {
+  const selected = new Set(defaultMonths);
+  return (
+    <div className="flex flex-wrap gap-x-3 gap-y-2">
+      {MONTHS_1_12.map((m) => (
+        <label
+          key={m}
+          className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-[var(--text)]"
+        >
+          <input
+            type="checkbox"
+            name="payMonth"
+            value={String(m)}
+            defaultChecked={selected.has(m)}
+            className="rounded border-[var(--border)]"
+          />
+          {m}월
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export default async function QuarterlyPage() {
   const { tenantId, role } = await requireTenantContext();
   const settings = await companySettingsByTenant(tenantId);
@@ -128,10 +154,9 @@ export default async function QuarterlyPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="dash-field-label">기본 지급월</label>
-              <input name="paymentMonth" type="number" min={1} max={12} defaultValue={3}
-                className={INPUT_SM} />
+            <div className="min-w-0 flex-1 basis-full sm:basis-auto">
+              <label className="dash-field-label">지급 월</label>
+              <PayMonthCheckboxes defaultMonths={DEFAULT_QUARTER_PAY_MONTHS} />
             </div>
             <button type="submit" className="btn btn-outline">
               일괄 채우기
@@ -166,9 +191,9 @@ export default async function QuarterlyPage() {
                   ))}
                 </select>
               </div>
-              <div>
+              <div className="sm:col-span-4">
                 <label className="dash-field-label">지급 월</label>
-                <input name="paymentMonth" type="number" min={1} max={12} defaultValue={3} className="input w-[4.5rem] text-xs" required />
+                <PayMonthCheckboxes defaultMonths={DEFAULT_QUARTER_PAY_MONTHS} />
               </div>
               <div>
                 <label className="dash-field-label">금액</label>
@@ -188,7 +213,7 @@ export default async function QuarterlyPage() {
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b-2 border-[var(--border)]">
-                    {["직원", "항목", "지급월", "금액"].map((h) => (
+                    {["직원", "항목", "지급 월", "금액"].map((h) => (
                       <th key={h} className="dash-table-th-md text-left">{h}</th>
                     ))}
                   </tr>
@@ -200,7 +225,9 @@ export default async function QuarterlyPage() {
                       <tr key={c.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]">
                         <td className="py-2 pr-4">{e ? `${e.employeeCode} ${e.name}` : c.employeeId}</td>
                         <td className="py-2 pr-4">{QUARTERLY_ITEM_LABELS[c.itemKey as QuarterlyItemKey] ?? c.itemKey}</td>
-                        <td className="py-2 pr-4">{c.paymentMonth}월</td>
+                        <td className="py-2 pr-4 tabular-nums">
+                          {c.paymentMonths.length ? `${c.paymentMonths.join("·")}월` : "—"}
+                        </td>
                         <td className="py-2 font-mono">{Number(c.amount).toLocaleString("ko-KR")}</td>
                       </tr>
                     );
@@ -220,9 +247,7 @@ export default async function QuarterlyPage() {
     <div className="space-y-6">
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">분기 지원금</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          기준 연도 <strong>{year}</strong> · 3개월 주기, 직원별 지급 월
-        </p>
+        <p className="mt-1 text-sm text-[var(--muted)]">{year}년</p>
       </div>
       <Tabs
         tabs={[

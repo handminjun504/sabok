@@ -737,19 +737,32 @@ export async function quarterlyEmployeeConfigUpsert(data: {
   employeeId: string;
   year: number;
   itemKey: string;
-  paymentMonth: number;
+  paymentMonths: number[];
   amount: number;
 }): Promise<void> {
+  const months = [...new Set(data.paymentMonths.map((m) => Math.round(Number(m))))]
+    .filter((m) => m >= 1 && m <= 12)
+    .sort((a, b) => a - b);
+  if (months.length === 0) {
+    throw new Error("quarterlyEmployeeConfigUpsert: paymentMonths 비어 있음");
+  }
   const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && itemKey="${esc(data.itemKey)}"`;
   const existing = await firstByFilter(C.quarterlyEmployeeConfigs, f);
   const pb = await getAdminPb();
+  const body = {
+    paymentMonth: months[0],
+    paymentMonths: months,
+    amount: data.amount,
+  };
   if (existing?.id) {
-    await pb.collection(C.quarterlyEmployeeConfigs).update(String(existing.id), {
-      paymentMonth: data.paymentMonth,
-      amount: data.amount,
-    });
+    await pb.collection(C.quarterlyEmployeeConfigs).update(String(existing.id), body);
   } else {
-    await pb.collection(C.quarterlyEmployeeConfigs).create(data);
+    await pb.collection(C.quarterlyEmployeeConfigs).create({
+      employeeId: data.employeeId,
+      year: data.year,
+      itemKey: data.itemKey,
+      ...body,
+    });
   }
 }
 

@@ -96,7 +96,7 @@ export default async function SchedulePage() {
 
   const levelAgg = new Map<number, { cnt: number; sum: number; target: number }>();
   for (let lv = 1; lv <= 5; lv++) {
-    const em = rows.filter((r) => r.emp.level === lv);
+    const em = rows.filter((r) => Number(r.emp.level) === lv);
     const sum = em.reduce((s, r) => s + r.yearlyWelfare, 0);
     levelAgg.set(lv, { cnt: em.length, sum, target: targetByLevel.get(lv) ?? 0 });
   }
@@ -104,32 +104,40 @@ export default async function SchedulePage() {
   const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   const canNote = canEditEmployees(role);
 
+  /** Tabs(클라이언트)의 content prop 밖에 두어 금액이 항상 서버 트리에서 렌더되도록 함 */
+  const levelSummarySection = (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      {[1, 2, 3, 4, 5].map((lv) => {
+        const a = levelAgg.get(lv)!;
+        const delta = a.sum - a.target;
+        const deltaColor =
+          delta > 0 ? "text-[var(--danger)]" : delta < 0 ? "text-[var(--warn)]" : "text-[var(--success)]";
+        return (
+          <div key={lv} className="surface dash-panel-pad">
+            <p className="dash-eyebrow">레벨 {lv}</p>
+            <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{a.cnt}명</p>
+            <div className="mt-2 space-y-1 text-xs">
+              <p>
+                <span className="text-[var(--muted)]">연간 </span>
+                <span className="font-medium tabular-nums text-[var(--text)]">{format(a.sum)}원</span>
+              </p>
+              <p>
+                <span className="text-[var(--muted)]">목표 </span>
+                <span className="font-medium tabular-nums text-[var(--text)]">{format(a.target)}원</span>
+              </p>
+              <p className={`font-medium tabular-nums ${deltaColor}`}>
+                차이 {delta > 0 ? "+" : ""}
+                {format(delta)}원
+              </p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   const scheduleTab = (
     <div className="space-y-5">
-      {/* 레벨별 요약 */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {[1, 2, 3, 4, 5].map((lv) => {
-          const a = levelAgg.get(lv)!;
-          const delta = a.sum - a.target;
-          const deltaColor =
-            delta > 0 ? "text-[var(--danger)]" : delta < 0 ? "text-[var(--warn)]" : "text-[var(--success)]";
-          return (
-            <div key={lv} className="surface dash-panel-pad">
-              <p className="dash-eyebrow">레벨 {lv}</p>
-              <p className="mt-1 text-lg font-bold text-[var(--text)]">{a.cnt}명</p>
-              <div className="mt-2 space-y-0.5 text-xs text-[var(--muted)]">
-                <p>연간 {format(a.sum)}</p>
-                <p>목표 {format(a.target)}</p>
-                <p className={`font-medium ${deltaColor}`}>
-                  차이 {delta > 0 ? "+" : ""}{format(delta)}
-                </p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 월별 스케줄 표 */}
       <div className="surface overflow-x-auto dash-panel-pad">
         <table className="min-w-[1100px] text-left text-xs">
           <thead>
@@ -257,6 +265,9 @@ export default async function SchedulePage() {
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">{year}년</p>
+      </div>
+      <div className="space-y-3">
+        {levelSummarySection}
       </div>
       <Tabs
         tabs={[
