@@ -3,7 +3,8 @@
 import { useActionState, useEffect, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { employeePositionSelectValues } from "@/lib/domain/employee-positions";
-import type { Employee } from "@/types/models";
+import type { Employee, SalaryInclusionVarianceMode } from "@/types/models";
+import { SALARY_INCLUSION_VARIANCE_MODES } from "@/lib/domain/salary-inclusion-display";
 import {
   deleteEmployeeFormAction,
   saveEmployeeAction,
@@ -238,6 +239,7 @@ export function EmployeeForm({
   activeYear,
   foundingMonth,
   minimumAnnualSalaryWon,
+  tenantSalaryInclusionVarianceMode,
   surveyShowRepReturn = false,
   surveyShowSpouseReceipt = false,
   surveyShowWorkerNet = false,
@@ -246,6 +248,8 @@ export function EmployeeForm({
   activeYear: number;
   foundingMonth: number;
   minimumAnnualSalaryWon: number;
+  /** 전사 기본 급여포함신고 표시 방식 — 직원이 비우면 동일 적용 */
+  tenantSalaryInclusionVarianceMode: SalaryInclusionVarianceMode;
   /** 전사 설정 — 꺼지면 해당 체크는 폼에 없고 저장 시 DB 값 유지 */
   surveyShowRepReturn?: boolean;
   surveyShowSpouseReceipt?: boolean;
@@ -331,6 +335,23 @@ export function EmployeeForm({
           <div>
             <dt className="text-xs font-semibold text-[var(--muted)]">레벨</dt>
             <dd className="mt-1 tabular-nums">{employee.level}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">급여포함신고 표시</dt>
+            <dd className="mt-1 text-[var(--text)]">
+              {employee.salaryInclusionVarianceMode == null ? (
+                <>
+                  전사와 동일{" "}
+                  <span className="text-[var(--muted)]">
+                    (
+                    {SALARY_INCLUSION_VARIANCE_MODES.find((x) => x.value === tenantSalaryInclusionVarianceMode)?.label}
+                    )
+                  </span>
+                </>
+              ) : (
+                SALARY_INCLUSION_VARIANCE_MODES.find((x) => x.value === employee.salaryInclusionVarianceMode)?.label
+              )}
+            </dd>
           </div>
           <div>
             <dt className="text-xs font-semibold text-[var(--muted)]">기존연봉</dt>
@@ -508,6 +529,32 @@ export function EmployeeForm({
                 조사표 플래그는 <strong className="text-[var(--text)]">전사 설정</strong>에서 켠 뒤 여기서 표시됩니다.
               </p>
             ) : null}
+          </section>
+
+          <section className="space-y-3 border-t border-[var(--border)] pt-6">
+            <h3 className="dash-form-section-title">급여포함신고</h3>
+            <p className="text-xs leading-relaxed text-[var(--muted)]">
+              월별 스케줄·<strong className="text-[var(--text)]">급여포함신고</strong> 화면에서 상한 대비{" "}
+              <strong className="text-[var(--text)]">초과·미달</strong> 숫자를 어떻게 보일지 정합니다. 비우면 전사
+              기본(
+              {SALARY_INCLUSION_VARIANCE_MODES.find((x) => x.value === tenantSalaryInclusionVarianceMode)?.label})과
+              동일합니다.
+            </p>
+            <div className="max-w-md">
+              <label className={fieldLabelClass}>표시 방식</label>
+              <select
+                name="salaryInclusionVarianceMode"
+                className={inputClass}
+                defaultValue={employee?.salaryInclusionVarianceMode ?? ""}
+              >
+                <option value="">전사 설정과 동일</option>
+                {SALARY_INCLUSION_VARIANCE_MODES.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </section>
 
           <section className="space-y-3 border-t border-[var(--border)] pt-6">

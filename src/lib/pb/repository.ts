@@ -450,9 +450,50 @@ export async function companySettingsUpsert(
   const existing = await companySettingsByTenant(tenantId);
   const pb = await getAdminPb();
   if (existing) {
-    await pb.collection(C.companySettings).update(existing.id, data);
-  } else {
+    try {
+      await pb.collection(C.companySettings).update(existing.id, data);
+    } catch (e) {
+      if (!(e instanceof ClientResponseError)) throw e;
+      const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
+      if (companySettingsAccrualNonemptyIssue(detailLower)) {
+        throw new Error(
+          "accrualCurrentMonthPayNext=false 가 PocketBase에서 거절되었습니다(보통 bool 필드에 Nonempty·required 조합). " +
+            "PocketBase Admin에서 해당 필드의 Nonempty를 끄거나, 서버에서 `npm run pb:fix-company-settings-schema` 를 실행한 뒤 다시 저장하세요. " +
+            "(surveyShow* 등 다른 bool도 동일할 수 있습니다.)",
+        );
+      }
+      throw e;
+    }
+    return;
+  }
+
+  try {
     await pb.collection(C.companySettings).create({ tenantId, ...data, paymentEventDefs: {} });
+  } catch (e) {
+    if (!(e instanceof ClientResponseError)) {
+      logPbClientError("companySettingsUpsert(create)", e);
+      throw e;
+    }
+    const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
+    if (!companySettingsAccrualNonemptyIssue(detailLower)) {
+      logPbClientError("companySettingsUpsert(create)", e);
+      throw e;
+    }
+    try {
+      await pb.collection(C.companySettings).create({
+        tenantId,
+        ...data,
+        accrualCurrentMonthPayNext: true,
+        paymentEventDefs: {},
+      });
+      console.warn(
+        "[pb] companySettingsUpsert(create): accrualCurrentMonthPayNext=false 가 Nonempty 등으로 거절되어 true 로 생성했습니다. " +
+          "`npm run pb:fix-company-settings-schema` 로 스키마를 고치면 false 로도 저장할 수 있습니다.",
+      );
+    } catch (e2) {
+      logPbClientError("companySettingsUpsert(create, retry accrual=true)", e2);
+      throw e2;
+    }
   }
 }
 

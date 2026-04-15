@@ -22,7 +22,7 @@ export function LevelRulesMatrixForm({
   eventLabels: string[];
   amountsByLevelEvent: Record<string, number>;
   customEventKeys: string[];
-  /** 서버 스냅샷이 바뀌면 폼을 다시 붙여 입력값을 맞춤 */
+  /** 연도·행사 열·규칙 행 수가 바뀔 때만 바뀌는 키(금액 변경만으로는 바뀌지 않음 → 자동 저장 후에도 입력 유지) */
   rulesSignature: string;
 }) {
   const [cellError, setCellError] = useState<string | null>(null);
@@ -110,6 +110,7 @@ export function LevelRulesMatrixForm({
                         name={`amt_${lv}_${ev}`}
                         defaultValue={amountsByLevelEvent[`${lv}_${ev}`] ?? 0}
                         className={INPUT_CLS}
+                        commitDebounceMs={1200}
                         onCommitValue={commitCell(lv, ev)}
                       />
                     </td>

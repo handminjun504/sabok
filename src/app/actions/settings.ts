@@ -51,9 +51,11 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
         : e instanceof Error
           ? e.message
           : String(e);
-    return {
-      오류: `${detail} · PocketBase sabok_company_settings 스키마(특히 salaryInclusionVarianceMode 필드)를 확인하세요.`,
-    };
+    const schemaHint =
+      /accrualcurrentmonthpaynext|surveyshow|nonempty|cannot be blank|missing required/i.test(detail)
+        ? " sabok_company_settings 의 bool·number에 Nonempty가 켜져 있으면 false·0이 거절됩니다. `npm run pb:fix-company-settings-schema` 실행 후 다시 저장하세요."
+        : " salaryInclusionVarianceMode 값(BOTH/OVER_ONLY/UNDER_ONLY)·필드 타입·PB 훅을 확인하세요.";
+    return { 오류: `${detail} ·${schemaHint}` };
   }
 
   await writeAudit({

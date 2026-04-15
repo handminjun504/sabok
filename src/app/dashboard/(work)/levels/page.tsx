@@ -37,10 +37,8 @@ export default async function LevelsPage() {
       amountsByLevelEvent[`${lv}_${ev}`] = Number(ruleMap.get(`${lv}_${ev}`) ?? 0);
     }
   }
-  const rulesSignature = [...rules]
-    .sort((a, b) => (a.level !== b.level ? a.level - b.level : a.eventKey.localeCompare(b.eventKey)))
-    .map((r) => `${r.level}:${r.eventKey}:${r.amount}`)
-    .join("|");
+  /** 금액은 제외: 자동 저장 후 금액만 바뀌면 signature가 같아져 입력 칸이 리마운트되지 않음(포커스·입력 유지) */
+  const rulesSignature = `${year}|${eventKeys.join(",")}|${rules.length}`;
 
   return (
     <div className="space-y-2">

@@ -42,7 +42,9 @@ export function pocketBaseNonemptyBlankHint(detail: string): string {
     return "";
   }
   return (
-    " · Nonempty: number·bool에 required=true이면 0·false가 거절됩니다. `npm run pb:fix-employees-schema`로 이미 required=false인데도 동일하면 " +
-    "앱과 스크립트의 POCKETBASE_URL이 같은 PB인지, create/update 규칙·훅, number 필드 null 전송을 확인하세요. (저장 실패 시 서버 로그에 PB 응답 전체가 기록됩니다.)"
+    " · Nonempty: number·bool에 required=true이면 0·false가 거절됩니다. " +
+    "`amount`는 직원뿐 아니라 분기 직원 설정·레벨 행사 금액·레벨5 오버라이드에도 있습니다. " +
+    "직원: `npm run pb:fix-employees-schema` · 분기: `npm run pb:fix-quarterly-schema` · 레벨 규칙: `npm run pb:fix-level-rules-schema` · 레벨5: `npm run pb:fix-level5-schema`. " +
+    "그래도 동일하면 POCKETBASE_URL이 앱·스크립트·PB Admin이 가리키는 인스턴스와 같은지, PB 훅·규칙을 확인하세요. (저장 실패 시 서버 로그에 PB 응답이 기록됩니다.)"
   );
 }

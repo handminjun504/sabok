@@ -5,7 +5,7 @@ import { useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@reversep.local");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -111,14 +111,6 @@ export default function LoginPage() {
               </button>
             </form>
           </div>
-          <p className="mt-6 text-center text-xs leading-relaxed text-[var(--muted)] sm:text-sm">
-            시드 계정: admin@reversep.local · senior@reversep.local · junior@reversep.local
-            <br />
-            기본 비밀번호 <span className="font-mono text-[var(--text)]">Reversep2026!</span>
-            <span className="text-[var(--muted)]"> · 운영은 </span>
-            <span className="font-mono text-[0.7rem] text-[var(--text)]">SABOK_SEED_PASSWORD</span>
-            <span className="text-[var(--muted)]"> 로 시드 시 지정</span>
-          </p>
         </div>
       </section>
     </main>

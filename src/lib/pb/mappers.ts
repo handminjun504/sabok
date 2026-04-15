@@ -1,4 +1,4 @@
-import { parseSalaryInclusionVarianceMode } from "@/lib/domain/salary-inclusion-display";
+import { parseSalaryInclusionVarianceMode, parseSalaryInclusionVarianceModeOrNull } from "@/lib/domain/salary-inclusion-display";
 import type {
   CompanySettings,
   CustomPaymentEventDef,
@@ -70,6 +70,7 @@ export function mapEmployee(r: Record<string, unknown>): Employee {
   flagRepReturn: bool(r.flagRepReturn),
   flagSpouseReceipt: bool(r.flagSpouseReceipt),
   flagWorkerNet: bool(r.flagWorkerNet),
+  salaryInclusionVarianceMode: parseSalaryInclusionVarianceModeOrNull(r.salaryInclusionVarianceMode),
   };
 }
 

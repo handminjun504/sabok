@@ -21,6 +21,7 @@ export default async function NewEmployeePage() {
         activeYear={activeYear}
         foundingMonth={foundingMonth}
         minimumAnnualSalaryWon={minimumAnnualSalaryWon}
+        tenantSalaryInclusionVarianceMode={settings?.salaryInclusionVarianceMode ?? "BOTH"}
         surveyShowRepReturn={settings?.surveyShowRepReturn ?? false}
         surveyShowSpouseReceipt={settings?.surveyShowSpouseReceipt ?? false}
         surveyShowWorkerNet={settings?.surveyShowWorkerNet ?? false}

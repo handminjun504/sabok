@@ -56,6 +56,7 @@ function minimalEmployee(over: Partial<Employee> = {}): Employee {
     flagRepReturn: false,
     flagSpouseReceipt: false,
     flagWorkerNet: false,
+    salaryInclusionVarianceMode: null,
     ...over,
   };
 }

@@ -110,6 +110,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           activeYear={year}
           foundingMonth={settings?.foundingMonth ?? 1}
           minimumAnnualSalaryWon={minimumAnnualSalaryWon}
+          tenantSalaryInclusionVarianceMode={settings?.salaryInclusionVarianceMode ?? "BOTH"}
           surveyShowRepReturn={settings?.surveyShowRepReturn ?? false}
           surveyShowSpouseReceipt={settings?.surveyShowSpouseReceipt ?? false}
           surveyShowWorkerNet={settings?.surveyShowWorkerNet ?? false}

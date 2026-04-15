@@ -68,6 +68,7 @@ export async function POST(req: Request) {
       flagRepReturn: Boolean(f.flagRepReturn),
       flagSpouseReceipt: Boolean(f.flagSpouseReceipt),
       flagWorkerNet: Boolean(f.flagWorkerNet),
+      salaryInclusionVarianceMode: null,
     };
     try {
       await employeeUpsertByTenantCode(tenantId, code, { ...create, tenantId, employeeCode: code }, create);

@@ -20,6 +20,7 @@ import {
   pocketBaseNonemptyBlankHint,
   pocketBaseRecordErrorMessage,
 } from "@/lib/pb/client-error-log";
+import { parseSalaryInclusionVarianceModeOrNull } from "@/lib/domain/salary-inclusion-display";
 
 function d(v: FormDataEntryValue | null): number {
   const s = v == null || v === "" ? "0" : String(v).replace(/,/g, "");
@@ -146,6 +147,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     flagRepReturn,
     flagSpouseReceipt,
     flagWorkerNet,
+    salaryInclusionVarianceMode: parseSalaryInclusionVarianceModeOrNull(formData.get("salaryInclusionVarianceMode")),
   };
 
   /** 신규 생성 시 선택 필드가 null이면 키 자체를 빼서 PB 검증 오류를 줄임 */
@@ -163,6 +165,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
       "resignMonth",
       "weddingMonth",
       "payDay",
+      "salaryInclusionVarianceMode",
     ] as const;
     for (const k of dropIfNull) {
       if (o[k] === null) delete o[k];

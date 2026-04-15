@@ -3,13 +3,21 @@
  * 덜 지급해도 되는 업체는 미달 열을 숨기고, 더 지급하면 안 되는 경우만 초과를 본다 등.
  */
 
-import type { SalaryInclusionVarianceMode } from "@/types/models";
+import type { Employee, SalaryInclusionVarianceMode } from "@/types/models";
 
 export function parseSalaryInclusionVarianceMode(v: unknown): SalaryInclusionVarianceMode {
   const u = String(v ?? "").trim().toUpperCase().replace(/-/g, "_");
   if (u === "OVER_ONLY" || u === "OVER") return "OVER_ONLY";
   if (u === "UNDER_ONLY" || u === "UNDER") return "UNDER_ONLY";
   return "BOTH";
+}
+
+/** 빈 값·미정의 → null(전사 설정과 동일). PB 선택 필드용 */
+export function parseSalaryInclusionVarianceModeOrNull(v: unknown): SalaryInclusionVarianceMode | null {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  if (s === "") return null;
+  return parseSalaryInclusionVarianceMode(v);
 }
 
 export const SALARY_INCLUSION_VARIANCE_MODES: {
@@ -40,4 +48,12 @@ export function salaryInclusionShowOverage(mode: SalaryInclusionVarianceMode): b
 
 export function salaryInclusionShowShortfall(mode: SalaryInclusionVarianceMode): boolean {
   return mode === "BOTH" || mode === "UNDER_ONLY";
+}
+
+/** 직원에 개별 값이 없으면 전사 설정(`tenantDefault`)을 사용 */
+export function effectiveSalaryInclusionVarianceMode(
+  employee: Pick<Employee, "salaryInclusionVarianceMode">,
+  tenantDefault: SalaryInclusionVarianceMode
+): SalaryInclusionVarianceMode {
+  return employee.salaryInclusionVarianceMode ?? tenantDefault;
 }

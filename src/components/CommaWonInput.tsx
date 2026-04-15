@@ -53,6 +53,7 @@ export function CommaWonInput({
     defaultValue != null && Number.isFinite(Number(defaultValue)) ? Math.round(Number(defaultValue)) : 0;
   const lastCommittedRef = useRef(initialN);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const flushCommit = useCallback(() => {
     if (!onCommitValue || readOnly || disabled) return;
@@ -67,6 +68,10 @@ export function CommaWonInput({
   }, [val, onCommitValue, readOnly, disabled]);
 
   useEffect(() => {
+    /** 부모 RSC 리프레시 시 서버 defaultValue가 오지만, 입력 중이면 덮어쓰지 않음(포커스·입력 끊김 방지) */
+    if (typeof document !== "undefined" && document.activeElement === inputRef.current) {
+      return;
+    }
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
       debounceRef.current = null;
@@ -101,6 +106,7 @@ export function CommaWonInput({
 
   return (
     <input
+      ref={inputRef}
       id={id}
       name={name}
       type="text"

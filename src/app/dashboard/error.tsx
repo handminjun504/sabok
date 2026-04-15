@@ -25,6 +25,14 @@ export default function DashboardError({
         </code>
         를 확인한 뒤 PM2 로그를 보세요.
       </p>
+      {error.message ? (
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
+          <p className="mb-1 text-xs font-semibold text-[var(--muted)]">서버 메시지 (원인 파악용)</p>
+          <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-xs text-[var(--text)]">
+            {error.message.length > 1200 ? `${error.message.slice(0, 1200)}…` : error.message}
+          </pre>
+        </div>
+      ) : null}
       {error.digest != null && (
         <p className="font-mono text-sm text-[var(--muted)]">Digest: {String(error.digest)}</p>
       )}

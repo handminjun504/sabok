@@ -18,7 +18,11 @@
     "pb:create-user": "tsx scripts/pb-create-user.ts",
     "pb:fix-employees-schema": "node scripts/pb-fix-employees-schema.mjs",
     "pb:fix-employees-schema:verbose": "cross-env PB_VERBOSE=1 node scripts/pb-fix-employees-schema.mjs",
-    "pb:fix-employees-schema:dry": "cross-env DRY_RUN=1 node scripts/pb-fix-employees-schema.mjs"
+    "pb:fix-employees-schema:dry": "cross-env DRY_RUN=1 node scripts/pb-fix-employees-schema.mjs",
+    "pb:fix-quarterly-schema": "cross-env PB_FIX_COLLECTION=sabok_quarterly_employee_configs node scripts/pb-fix-employees-schema.mjs",
+    "pb:fix-level-rules-schema": "cross-env PB_FIX_COLLECTION=sabok_level_payment_rules node scripts/pb-fix-employees-schema.mjs",
+    "pb:fix-level5-schema": "cross-env PB_FIX_COLLECTION=sabok_level5_overrides node scripts/pb-fix-employees-schema.mjs",
+    "pb:fix-company-settings-schema": "cross-env PB_FIX_COLLECTION=sabok_company_settings node scripts/pb-fix-employees-schema.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.3",

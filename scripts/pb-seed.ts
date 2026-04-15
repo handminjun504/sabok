@@ -261,10 +261,28 @@ async function main() {
     });
   }
 
-  const pwHint = process.env.SABOK_SEED_PASSWORD?.trim() ? "(SABOK_SEED_PASSWORD)" : "Reversep2026!";
-  console.log(
-    `PB 시드 완료 — 계정: admin@reversep.local · senior@reversep.local · junior@reversep.local / 비밀번호: ${pwHint} / 업체 코드 demo`,
-  );
+  const usedCustomSeedPw = Boolean(process.env.SABOK_SEED_PASSWORD?.trim());
+  const passwordExplain = usedCustomSeedPw
+    ? "앱 로그인 비밀번호: .env 의 SABOK_SEED_PASSWORD 에 넣은 값과 동일합니다."
+    : "앱 로그인 비밀번호(평문): Reversep2026!";
+
+  console.log(`
+================================================================
+PB 시드 완료 — 사복 앱 로그인 안내
+----------------------------------------------------------------
+이메일 (세 계정 중 아무거나):
+  admin@reversep.local
+  senior@reversep.local
+  junior@reversep.local
+${passwordExplain}
+업체 코드: demo (로그인 후 업체 선택 시)
+----------------------------------------------------------------
+비밀번호를 잊었을 때:
+  .env 에 SABOK_SEED_PASSWORD=<새비밀번호> 를 넣고 시드를 다시 실행하면
+  위 세 계정 비밀번호가 모두 그 값으로 바뀝니다.
+한 명만 바꾸려면: npm run pb:create-user -- <이메일> <새비밀번호> ...
+================================================================
+`.trim());
 }
 
 main().catch((e: unknown) => {

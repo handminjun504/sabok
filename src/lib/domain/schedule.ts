@@ -663,7 +663,9 @@ export function computeSalaryInclusionCapBlocks(
     ];
   }
 
-  const legacy = computeSalaryInclusionVsActual(employee, yearlyWelfareActual);
+  const { source: capSource } = resolveSalaryInclusionCap(employee);
+  const legacyActual = capSource === "incentive" ? incentivePaid : yearlyWelfareActual;
+  const legacy = computeSalaryInclusionVsActual(employee, legacyActual);
   const singleTitle =
     legacy.capSource === "incentive"
       ? "예상 인센 상한"
@@ -672,10 +674,12 @@ export function computeSalaryInclusionCapBlocks(
         : "상한";
   const singleActualLabel =
     legacy.capSource === "incentive"
-      ? "연간 기금 실적"
-      : legacy.capSource === "welfare"
+      ? lastPaidMonthInclusive >= 12
+        ? "인센 사복 지급(월 노트) 합"
+        : `인센 사복 지급 합(~${lastPaidMonthInclusive}월)`
+      : lastPaidMonthInclusive >= 12
         ? "연간 기금 실적"
-        : "연간 기금 실적";
+        : `기금 실적(~${lastPaidMonthInclusive}월)`;
   return [
     {
       key: "single",

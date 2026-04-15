@@ -27,6 +27,9 @@ export type ScheduleCardRow = {
   yearlyWelfare: number;
   salaryMonth: number;
   capBlocks: ScheduleCapBlock[];
+  /** 급여포함신고 초과·미달 표시 — 직원별(없으면 전사 설정) */
+  showCapOver: boolean;
+  showCapUnder: boolean;
 };
 
 function format(n: number) {
@@ -35,17 +38,7 @@ function format(n: number) {
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
-export function ScheduleEmployeeCards({
-  year,
-  rows,
-  showCapOver,
-  showCapUnder,
-}: {
-  year: number;
-  rows: ScheduleCardRow[];
-  showCapOver: boolean;
-  showCapUnder: boolean;
-}) {
+export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: ScheduleCardRow[] }) {
   const [focusMonth, setFocusMonth] = useState<number | null>(null);
 
   const hint = useMemo(
@@ -95,6 +88,7 @@ export function ScheduleEmployeeCards({
 
       <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
         {rows.map((r) => {
+          const { showCapOver, showCapUnder } = r;
           const avgWelfare = r.yearlyWelfare / 12;
           const avgTotal = r.salaryMonth + avgWelfare;
           const focusAmt = focusMonth != null ? (r.welfareByMonth[focusMonth] ?? 0) : null;

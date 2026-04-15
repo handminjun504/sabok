@@ -79,7 +79,8 @@ Unique: `(userId, tenantId)`
 | surveyShowWorkerNet | bool | no | **근로자 실질 수령** 표시. 없으면 `false` |
 | paymentEventDefs           | json | no  | 연도 문자열 키 → `{ eventKey, label, accrualMonth }[]` 배열. 추가 정기 지급 행사(레벨 금액·스케줄). 없으면 `{}` 또는 생략 |
 
-> **Nonempty:** `accrualCurrentMonthPayNext` 에 Nonempty를 켜면 `false` 가 거절됩니다. **Nonempty 끄기** 권장. 앱은 거절 시 해당 필드 없이 생성 후 조회 시 `false` 로 취급합니다.
+> **Nonempty:** `accrualCurrentMonthPayNext`·`surveyShow*` 등 bool 에 Nonempty를 켜면 `false` 가 거절됩니다. **Nonempty 끄기** 권장.  
+> 일괄 보정: `npm run pb:fix-company-settings-schema` (`sabok_company_settings` 의 number/bool required 해제). 신규 생성만 `false` 거절 시 앱이 `true` 로 재시도하는 경로가 있습니다.
 
 ## `sabok_employees`
 
@@ -89,7 +90,8 @@ Prisma 스키마와 동일한 의미의 필드 (숫자 금액은 **number**).
 > 앱은 아래 숫자·불리언 필드에 **0·false** 를 정상 값으로 보냅니다(예: 조정급여 미입력=0, 자녀 0명, 플래그 해제=false).  
 > PocketBase에서 해당 필드에 **Nonempty** 를 켜 두면 `0`·`false` 가 “비어 있음”으로 거절되어 `Cannot be blank` / `Missing required value` 가 납니다.  
 > **해결:** 이 컬렉션의 `number`·`bool` 필드(급여·자녀·부모 수·보험/이자·플래그 등)에서는 **Nonempty를 끄고**, 숫자 범위만 필요하면 Min/Max를 쓰세요.  
-> **일괄 보정(권장):** 배포 서버에서 Admin 자격으로 `npm run pb:fix-employees-schema` 실행(`scripts/pb-fix-employees-schema.mjs`).  
+> **일괄 보정(권장):** 배포 서버에서 Admin 자격으로 실행(`scripts/pb-fix-employees-schema.mjs`, 대상 컬렉션은 `PB_FIX_COLLECTION`으로 지정 가능).  
+> `sabok_employees`: `npm run pb:fix-employees-schema` · `sabok_company_settings`: `npm run pb:fix-company-settings-schema` · `sabok_quarterly_employee_configs`(amount 0 등): `npm run pb:fix-quarterly-schema` · `sabok_level_payment_rules`: `npm run pb:fix-level-rules-schema` · `sabok_level5_overrides`: `npm run pb:fix-level5-schema`.  
 > **verbose / dry-run (macOS·Linux·Windows 공통):** `npm run pb:fix-employees-schema:verbose`, `npm run pb:fix-employees-schema:dry`  
 > **verbose 환경변수:** `PB_VERBOSE` 또는 **동일 의미의 `PB_FIX_VERBOSE`**.  
 > **Windows만 (환경변수 문법):** CMD — `set PB_VERBOSE=1 && npm run pb:fix-employees-schema` · PowerShell — `$env:PB_VERBOSE='1'; npm run pb:fix-employees-schema`  
@@ -110,6 +112,7 @@ Prisma 스키마와 동일한 의미의 필드 (숫자 금액은 **number**).
 | expectedYearlyWelfare | number | no | 연간 지급 예정액(원). 월별 스케줄「레벨·예정액」탭·직원 폼에서 입력, 레벨 규칙 합과 비교해 추천 레벨 산출. **Nonempty 끄기** |
 | level                 | number | yes  | |
 | flagAutoAmount, flagRepReturn, flagSpouseReceipt, flagWorkerNet | bool | yes | false 허용 → PB **Nonempty 끄기** |
+| salaryInclusionVarianceMode | text | no | `BOTH` · `OVER_ONLY` · `UNDER_ONLY`. 급여포함신고·스케줄에서 초과·미달 열 표시. **비우면** 전사 `sabok_company_settings.salaryInclusionVarianceMode`와 동일. Admin에서 선택(text) 필드 추가 |
 
 Unique: `(tenantId, employeeCode)`
 

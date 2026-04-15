@@ -28,6 +28,7 @@ import {
   saveMonthlyNoteFormAction,
 } from "@/app/actions/quarterly";
 import {
+  effectiveSalaryInclusionVarianceMode,
   salaryInclusionShowOverage,
   salaryInclusionShowShortfall,
 } from "@/lib/domain/salary-inclusion-display";
@@ -48,9 +49,7 @@ export default async function SchedulePage() {
   const year = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
   const accrual = settings?.accrualCurrentMonthPayNext ?? false;
-  const varianceMode = settings?.salaryInclusionVarianceMode ?? "BOTH";
-  const showCapOver = salaryInclusionShowOverage(varianceMode);
-  const showCapUnder = salaryInclusionShowShortfall(varianceMode);
+  const tenantVarianceMode = settings?.salaryInclusionVarianceMode ?? "BOTH";
 
   const employees = await employeeListByTenantCodeAsc(tenantId);
   const ids = employees.map((e) => e.id);
@@ -131,6 +130,7 @@ export default async function SchedulePage() {
       welfareByMonth[m] = r.welfareByMonth.get(m) ?? 0;
       linesByMonth[m] = r.welfareLinesByMonth.get(m) ?? [];
     }
+    const eff = effectiveSalaryInclusionVarianceMode(r.emp, tenantVarianceMode);
     return {
       employeeId: r.emp.id,
       employeeCode: r.emp.employeeCode,
@@ -140,6 +140,8 @@ export default async function SchedulePage() {
       linesByMonth,
       yearlyWelfare: r.yearlyWelfare,
       salaryMonth: r.salaryMonth,
+      showCapOver: salaryInclusionShowOverage(eff),
+      showCapUnder: salaryInclusionShowShortfall(eff),
       capBlocks: r.capBlocks.map((b) => ({
         key: b.key,
         title: b.title,
@@ -174,12 +176,7 @@ export default async function SchedulePage() {
         <p className="mb-4 text-xs leading-relaxed text-[var(--muted)]">
           정기 행사는 귀속 월, 분기·선택 복지는 설정한 지급 월 열에 표시됩니다. (기존 시트 「월별지급스케줄」과 동일 규칙)
         </p>
-        <ScheduleEmployeeCards
-          year={year}
-          rows={scheduleCardRows}
-          showCapOver={showCapOver}
-          showCapUnder={showCapUnder}
-        />
+        <ScheduleEmployeeCards year={year} rows={scheduleCardRows} />
       </div>
     </div>
   );

@@ -3,6 +3,9 @@
 import type { VendorBusinessType } from "@/lib/domain/vendor-reserve";
 import type { TenantClientEntityType, TenantOperationMode } from "@/lib/domain/tenant-profile";
 
+/** 급여포함신고·스케줄에서 상한 대비 초과/미달 표시 방식 — PB `salaryInclusionVarianceMode` */
+export type SalaryInclusionVarianceMode = "BOTH" | "OVER_ONLY" | "UNDER_ONLY";
+
 export type Employee = {
   id: string;
   tenantId: string;
@@ -38,6 +41,8 @@ export type Employee = {
   flagRepReturn: boolean;
   flagSpouseReceipt: boolean;
   flagWorkerNet: boolean;
+  /** 급여포함신고·스케줄 상한 초과/미달 열 표시. null 이면 전사 `CompanySettings.salaryInclusionVarianceMode` */
+  salaryInclusionVarianceMode: SalaryInclusionVarianceMode | null;
 };
 
 export type LevelPaymentRule = {
@@ -102,9 +107,6 @@ export type MonthlyEmployeeNote = {
   /** 그 달 사복으로 지급하기로 한 인센 금액(인센→사복 환류) */
   incentiveWelfarePaymentAmount: number | null;
 };
-
-/** 급여포함신고·스케줄에서 상한 대비 초과/미달 표시 방식 — PB `salaryInclusionVarianceMode` */
-export type SalaryInclusionVarianceMode = "BOTH" | "OVER_ONLY" | "UNDER_ONLY";
 
 /** 연도 문자열 키(예: "2026") → 추가 정기 지급 행사(귀속 월 지정) */
 export type CustomPaymentEventDef = {
