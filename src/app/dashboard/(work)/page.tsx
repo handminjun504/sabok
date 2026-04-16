@@ -1,5 +1,12 @@
-import { companySettingsByTenant, employeeCountByTenant, tenantGetById } from "@/lib/pb/repository";
+import {
+  companySettingsByTenant,
+  employeeCountByTenant,
+  tenantGetById,
+  vendorListByTenant,
+} from "@/lib/pb/repository";
+import { DashboardReserveStatusPanel } from "@/components/DashboardReserveStatusPanel";
 import { DashboardTenantProfileForm } from "@/components/DashboardTenantProfileForm";
+import { summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
 import { requireTenantContext } from "@/lib/tenant-context";
 import type { Tenant } from "@/types/models";
 import Link from "next/link";
@@ -18,12 +25,19 @@ function tenantProfileFormKey(t: Tenant): string {
 
 export default async function DashboardHomePage() {
   const { tenantId } = await requireTenantContext();
-  const [empCount, settings, tenant] = await Promise.all([
+  const [empCount, settings, tenant, vendors] = await Promise.all([
     employeeCountByTenant(tenantId),
     companySettingsByTenant(tenantId),
     tenantGetById(tenantId),
+    vendorListByTenant(tenantId),
   ]);
   const year = settings?.activeYear ?? new Date().getFullYear();
+  const reserveSummary = tenant
+    ? summarizeTenantAdditionalReserve(
+        { clientEntityType: tenant.clientEntityType, headOfficeCapital: tenant.headOfficeCapital },
+        vendors
+      )
+    : { kind: "NO_VENDORS" as const };
 
   return (
     <div className="space-y-12">
@@ -74,6 +88,8 @@ export default async function DashboardHomePage() {
           </div>
         </div>
       </section>
+
+      <DashboardReserveStatusPanel summary={reserveSummary} />
 
       {tenant ? (
         <DashboardTenantProfileForm key={tenantProfileFormKey(tenant)} tenant={tenant} />

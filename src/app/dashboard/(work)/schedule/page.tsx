@@ -140,6 +140,8 @@ export default async function SchedulePage() {
       linesByMonth,
       yearlyWelfare: r.yearlyWelfare,
       salaryMonth: r.salaryMonth,
+      flagRepReturn: r.emp.flagRepReturn,
+      discretionaryAmount: r.emp.discretionaryAmount,
       showCapOver: salaryInclusionShowOverage(eff),
       showCapUnder: salaryInclusionShowShortfall(eff),
       capBlocks: r.capBlocks.map((b) => ({
@@ -171,7 +173,7 @@ export default async function SchedulePage() {
   });
 
   const scheduleTab = (
-    <ScheduleEmployeeCards year={year} rows={scheduleCardRows} />
+    <ScheduleEmployeeCards year={year} rows={scheduleCardRows} operationMode={tenantOperationMode} />
   );
 
   const incentiveAccrualTab = (
