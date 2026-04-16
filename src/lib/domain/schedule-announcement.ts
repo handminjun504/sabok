@@ -29,27 +29,26 @@ export function buildDepositTransferSummaryNotice(month: number, rows: Announcem
   return [
     `${month}월 사내근로복지기금 입금·이체 안내`,
     ``,
-    `① 당월 근로자 지급(사복) 합계: ${formatWonLine(sum)} 원`,
-    `   → 사내근로복지기금 통장에 이 합계가 있어야 근로자에게 지급·이체하실 수 있습니다.`,
+    `① 당월 근로자 지급(사복) 합계: ${formatWonLine(sum)}원`,
+    `   → 사내근로복지기금 통장에 이 금액을 먼저 넣으신 뒤, 아래 직원분께 이체하시면 됩니다.`,
     ``,
     `② 20% 추가 적립이 필요한 경우(개인사업자, 자본금 50% 적립 중 법인 등):`,
-    `   → 통장에는 약 ${formatWonLine(with20)} 원까지 입금·조정이 필요할 수 있습니다.`,
+    `   → 통장에는 약 ${formatWonLine(with20)}원까지 입금·조정이 필요할 수 있습니다.`,
     ``,
     `(앱의 월별 스케줄 집계 기준이며, 대표반환·수수료·회계 처리는 별도입니다.)`,
   ].join("\n");
 }
 
-/** 안녕하세요! N월 사내근로복지기금 … 입금·이체 금액 + 직원별 지급액 */
+/**
+ * 법인·단일월 카톡 양식: 인사 → 통장 이체 금액 → 직원별(지급>0) → 마무리
+ * 예) 안녕하세요! 2월 … / 통장에 23,820,000원 이체하신 후 / … / 이체해주시면 됩니다.
+ */
 export function buildWelfareFundNotice(month: number, rows: AnnouncementRowInput[]): string {
   const sorted = sortByEmployeeCode(rows);
   const sum = sorted.reduce((s, r) => s + Math.max(0, Math.round(r.welfareMonth)), 0);
-  const with20 = Math.round(sum * 1.2);
   const lines: string[] = [
     `안녕하세요! ${month}월 사내근로복지기금 안내드립니다.`,
-    ``,
-    `당월 근로자에게 지급할 사복(기금) 합계는 ${formatWonLine(sum)} 원입니다.`,
-    `사내근로복지기금 통장에서 위 합계만큼 준비·이체하시면 근로자 지급에 맞출 수 있습니다.`,
-    `(개인사업자 등으로 해당 월 지급액에 20%를 더해 통장에 넣어야 하시면, 약 ${formatWonLine(with20)} 원까지 입금을 검토해 주세요.)`,
+    `사내근로복지기금 통장에 ${formatWonLine(sum)}원 이체하신 후`,
     ``,
   ];
   for (const r of sorted) {
@@ -57,7 +56,55 @@ export function buildWelfareFundNotice(month: number, rows: AnnouncementRowInput
     if (w <= 0) continue;
     lines.push(`${r.name} ${formatWonLine(w)} 원`);
   }
+  lines.push("", "이체해주시면 됩니다.");
   return lines.join("\n");
+}
+
+export type WelfareByMonthRow = {
+  employeeCode: string;
+  name: string;
+  welfareByMonth: Readonly<Record<number, number>>;
+};
+
+/**
+ * 여러 달을 한 번에 안내할 때(개인 등): 인사~ → 통장 합계 → 직원별 월별 금액 → 마무리 문구
+ * `monthFrom`~`monthTo` 포함 구간(순서 자동 정렬).
+ */
+export function buildWelfareFundBatchedNotice(monthFrom: number, monthTo: number, rows: readonly WelfareByMonthRow[]): string {
+  const from = Math.min(Math.max(1, monthFrom), 12);
+  const to = Math.max(Math.min(12, monthTo), 1);
+  const lo = Math.min(from, to);
+  const hi = Math.max(from, to);
+  const sorted = [...rows].sort((a, b) => a.employeeCode.localeCompare(b.employeeCode, "ko", { numeric: true }));
+
+  let total = 0;
+  const personBlocks: string[] = [];
+  for (const r of sorted) {
+    const sub: string[] = [];
+    for (let m = lo; m <= hi; m++) {
+      const w = Math.round(r.welfareByMonth[m] ?? 0);
+      if (w <= 0) continue;
+      total += w;
+      sub.push(`${m}월: ${formatWonLine(w)}원`);
+    }
+    if (sub.length === 0) continue;
+    personBlocks.push(`${r.name}님`, ...sub, "");
+  }
+
+  const monthLabels = Array.from({ length: hi - lo + 1 }, (_, i) => `${lo + i}월`).join(" ");
+  const head = [
+    `안녕하세요~`,
+    `${lo}월 ~ ${hi}월 사내근로복지기금 지급분 안내드립니다.`,
+    `사내근로복지기금 통장으로 ${formatWonLine(total)}원 이체하신 후`,
+    "",
+  ];
+  const foot = ["", "각각 이체해주시면됩니다.", `(저번처럼 각 인원 ${monthLabels} 총 ${hi - lo + 1}번씩 이체해주셔야합니다!)`];
+
+  if (personBlocks.length === 0) {
+    return [...head, `(해당 기간에 스케줄상 지급액이 있는 직원이 없습니다.)`, ...foot].join("\n");
+  }
+
+  return [...head, ...personBlocks, ...foot].join("\n");
 }
 
 export function showSalaryPortionNoticeMode(mode: TenantOperationMode): boolean {
@@ -66,7 +113,7 @@ export function showSalaryPortionNoticeMode(mode: TenantOperationMode): boolean 
 
 /**
  * 급여(월) = 조정·기준 연봉의 월 환산(`monthlySalaryPortion`과 동일).
- * 해당 월에 스케줄 기금이 있는 직원만 넣거나, 급여낮추기 전용 모드면 월 기금 0이어도 포함.
+ * 급여낮추기·복합 모드: 월 환산 급여가 있는 직원은 해당 월 기금 유무와 관계없이 포함(실무 안내 양식).
  */
 export function buildSalaryPortionNotice(
   month: number,
@@ -75,24 +122,9 @@ export function buildSalaryPortionNotice(
 ): string | null {
   if (!showSalaryPortionNoticeMode(operationMode)) return null;
   const sorted = sortByEmployeeCode(rows);
-  const included: AnnouncementRowInput[] = [];
-  let sumSalary = 0;
-  for (const r of sorted) {
-    if (r.salaryMonth <= 0) continue;
-    const w = Math.round(r.welfareMonth);
-    const include =
-      operationMode === "SALARY_WELFARE" ? true : operationMode === "COMBINED" ? w > 0 : false;
-    if (!include) continue;
-    sumSalary += Math.round(r.salaryMonth);
-    included.push(r);
-  }
+  const included = sorted.filter((r) => r.salaryMonth > 0);
   if (included.length === 0) return null;
-  const head = [
-    `${month}월 급여분 안내드립니다.`,
-    ``,
-    `아래 금액은 조정·기준 연봉의 월 환산(급여 쪽) 합계 ${formatWonLine(sumSalary)} 원입니다. 급여 계좌로 이체·지급하실 때 참고해 주세요.`,
-    ``,
-  ];
+  const head = [`${month}월 급여분 안내드립니다.`, ``];
   const body = included.map((r) => `${r.name} ${formatWonLine(Math.round(r.salaryMonth))} 원`);
   return [...head, ...body].join("\n");
 }
@@ -116,7 +148,7 @@ export function buildTransferAndDetailNotice(month: number, rows: AnnouncementRo
 
   const lines: string[] = [
     `${month}월 사내근로복지기금 안내드립니다.`,
-    `사내근로복지기금 통장으로 ${formatWonLine(sumWelfare)} 원 이체하신 후`,
+    `사내근로복지기금 통장에 ${formatWonLine(sumWelfare)}원 이체하신 후`,
     `(※ 개인사업자이시거나 자본금의 50%까지 적립 중인 법인이시면, 해당 월 지급 합계에 20%를 더한 ${formatWonLine(with20)} 원을 입금해 주세요.)`,
     `(※ 법인이 예컨대 2,500만 원까지 적립해야 하는 경우, 근로자대부(근로자에게 빌려준 금액)는 회사 자산으로 포함되는 경우가 많아 그 잔액만큼은 이미 적립분에 해당하는 것으로 보고, 2,500만 원에서 근로자대부를 뺀 금액만 추가로 적립하면 됩니다. 예: 근로자대부 2,000만 원이면 500만 원만 더 맞추면 됩니다.)`,
     "",
@@ -138,5 +170,6 @@ export function buildTransferAndDetailNotice(month: number, rows: AnnouncementRo
   }
 
   while (lines[lines.length - 1] === "") lines.pop();
+  lines.push("", "이체해주시면 됩니다.");
   return lines.join("\n");
 }

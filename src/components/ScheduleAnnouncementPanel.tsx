@@ -6,6 +6,7 @@ import {
   buildDepositTransferSummaryNotice,
   buildSalaryPortionNotice,
   buildTransferAndDetailNotice,
+  buildWelfareFundBatchedNotice,
   buildWelfareFundNotice,
   shouldShowTransferDetailBlock,
   showSalaryPortionNoticeMode,
@@ -75,6 +76,8 @@ export function ScheduleAnnouncementPanel({
   operationMode: TenantOperationMode;
 }) {
   const [focusMonth, setFocusMonth] = useState<number | null>(() => defaultAnnouncementMonth(year));
+  const [batchFrom, setBatchFrom] = useState(1);
+  const [batchTo, setBatchTo] = useState(3);
 
   useEffect(() => {
     setFocusMonth(defaultAnnouncementMonth(year));
@@ -102,13 +105,25 @@ export function ScheduleAnnouncementPanel({
     let s = 0;
     for (const r of announcementInputs) {
       if (r.salaryMonth <= 0) continue;
-      const w = Math.round(r.welfareMonth);
-      const include =
-        operationMode === "SALARY_WELFARE" ? true : operationMode === "COMBINED" ? w > 0 : false;
-      if (include) s += Math.round(r.salaryMonth);
+      s += Math.round(r.salaryMonth);
     }
     return s;
   }, [announcementInputs, operationMode]);
+
+  const batchedWelfareNotice = useMemo(() => {
+    if (rows.length === 0) return "";
+    const lo = Math.min(batchFrom, batchTo);
+    const hi = Math.max(batchFrom, batchTo);
+    return buildWelfareFundBatchedNotice(
+      lo,
+      hi,
+      rows.map((r) => ({
+        employeeCode: r.employeeCode,
+        name: r.name,
+        welfareByMonth: r.welfareByMonth,
+      }))
+    );
+  }, [rows, batchFrom, batchTo]);
 
   const welfareNotice = useMemo(() => {
     if (focusMonth == null) return "";
@@ -169,6 +184,41 @@ export function ScheduleAnnouncementPanel({
           {filterBtn(null, "전체")}
           {MONTHS.map((m) => filterBtn(m, `${m}월`))}
         </div>
+        <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-[var(--border)] pt-4">
+          <p className="w-full text-xs font-semibold text-[var(--text)]">묶음 안내(여러 달·개인 스타일)</p>
+          <label className="flex flex-col gap-1 text-xs text-[var(--muted)]">
+            시작 월
+            <select
+              className="input w-[5.5rem] text-xs"
+              value={batchFrom}
+              onChange={(e) => setBatchFrom(Number(e.target.value))}
+            >
+              {MONTHS.map((m) => (
+                <option key={m} value={m}>
+                  {m}월
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-[var(--muted)]">
+            끝 월
+            <select
+              className="input w-[5.5rem] text-xs"
+              value={batchTo}
+              onChange={(e) => setBatchTo(Number(e.target.value))}
+            >
+              {MONTHS.map((m) => (
+                <option key={m} value={m}>
+                  {m}월
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="max-w-md pb-1 text-[0.7rem] leading-snug text-[var(--muted)]">
+            직원별로 월별 지급액만 합산해 통장 이체 총액과 &ldquo;N월: 금액&rdquo; 블록을 만듭니다. 아래 4번 복사본을
+            사용하세요.
+          </p>
+        </div>
       </div>
 
       {focusMonth != null ? (
@@ -217,6 +267,11 @@ export function ScheduleAnnouncementPanel({
               disabled={focusMonth == null || !transferNotice}
             />
           ) : null}
+          <CopyTextBlock
+            title={`4) ${Math.min(batchFrom, batchTo)}월~${Math.max(batchFrom, batchTo)}월 묶음 안내`}
+            body={batchedWelfareNotice}
+            disabled={rows.length === 0}
+          />
         </div>
       </section>
     </div>
