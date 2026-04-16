@@ -117,7 +117,7 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                       지급월별 기금
                     </p>
                     <div className="min-w-0 overflow-hidden rounded-xl border border-[var(--border)]/80 bg-[var(--bg)]/40 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] sm:p-4">
-                      <div className="grid min-w-0 grid-cols-[repeat(3,minmax(0,1fr))] gap-2.5 sm:gap-3">
+                      <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-2 sm:grid-cols-[repeat(3,minmax(0,1fr))] sm:gap-3">
                         {MONTHS.map((m) => {
                           const v = r.welfareByMonth[m] ?? 0;
                           const empty = v === 0;
@@ -134,25 +134,25 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                               <div className="shrink-0 bg-[var(--surface-hover)]/50 px-1 py-1.5 text-xs font-bold tabular-nums text-[var(--muted)]">
                                 {m}월
                               </div>
-                              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-1.5 pb-2 pt-1">
+                              <div className="flex min-h-0 min-w-0 flex-1 flex-col px-1.5 pb-2 pt-1">
                                 <div
-                                  className={`min-w-0 w-full max-w-full overflow-x-auto overflow-y-hidden text-center text-sm tabular-nums whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-0.5 ${
+                                  className={`min-w-0 w-full max-w-full text-center text-sm tabular-nums leading-tight [overflow-wrap:anywhere] ${
                                     empty ? "text-[var(--muted)]" : "font-semibold text-[var(--text)]"
                                   }`}
                                 >
                                   {format(v)}
                                 </div>
                                 {!empty && lines.length > 0 ? (
-                                  <ul className="mt-1.5 min-h-0 min-w-0 max-w-full max-h-[9rem] flex-1 space-y-1 overflow-y-auto overflow-x-hidden border-t border-[var(--border)]/40 pt-1.5 text-left">
+                                  <ul className="mt-1.5 min-h-0 min-w-0 max-w-full max-h-[9rem] flex-1 space-y-1.5 overflow-y-auto border-t border-[var(--border)]/40 pt-1.5 text-left">
                                     {lines.map((line, i) => (
                                       <li
                                         key={`${line.label}-${i}`}
-                                        className="flex min-w-0 w-full flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden rounded-md bg-[var(--surface-hover)]/40 px-1 py-1 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-0.5"
+                                        className="flex min-w-0 w-full flex-col gap-0.5 rounded-md bg-[var(--surface-hover)]/40 px-1 py-1.5"
                                       >
-                                        <span className="shrink-0 whitespace-nowrap text-left text-[0.65rem] leading-tight text-[var(--muted)]">
-                                          {line.label.replace(/\r?\n/g, " ")}
+                                        <span className="min-w-0 break-words text-left text-[0.65rem] leading-snug text-[var(--muted)] whitespace-pre-line">
+                                          {line.label}
                                         </span>
-                                        <span className="shrink-0 whitespace-nowrap text-[0.7rem] font-semibold tabular-nums leading-tight text-[var(--text)]">
+                                        <span className="text-right text-[0.7rem] font-semibold tabular-nums leading-snug text-[var(--text)] [overflow-wrap:anywhere]">
                                           {format(line.amount)}
                                         </span>
                                       </li>
@@ -182,12 +182,12 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                         {focusLines.map((line, i) => (
                           <li
                             key={`${line.label}-${i}`}
-                            className="flex min-w-0 w-full flex-nowrap items-center gap-3 overflow-x-auto rounded-lg border border-[var(--border)]/50 bg-[var(--surface)]/80 px-2.5 py-2 tabular-nums shadow-[var(--shadow-card)] [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1"
+                            className="flex min-w-0 w-full flex-col gap-1 rounded-lg border border-[var(--border)]/50 bg-[var(--surface)]/80 px-2.5 py-2 tabular-nums shadow-[var(--shadow-card)]"
                           >
-                            <span className="shrink-0 whitespace-nowrap text-[var(--muted)]">
-                              {line.label.replace(/\r?\n/g, " ")}
+                            <span className="min-w-0 break-words text-[var(--muted)] whitespace-pre-line">
+                              {line.label}
                             </span>
-                            <span className="shrink-0 whitespace-nowrap font-bold tabular-nums text-[var(--text)]">
+                            <span className="text-right text-sm font-bold tabular-nums text-[var(--text)] [overflow-wrap:anywhere]">
                               {format(line.amount)}원
                             </span>
                           </li>
