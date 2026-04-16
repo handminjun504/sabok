@@ -102,7 +102,7 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                   <p className="font-mono text-sm font-semibold tabular-nums tracking-tight text-[var(--text)]">
                     {r.employeeCode}
                   </p>
-                  <p className="mt-0.5 truncate text-base font-semibold text-[var(--text)]">{r.name}</p>
+                  <p className="mt-0.5 break-words text-base font-semibold leading-snug text-[var(--text)]">{r.name}</p>
                 </div>
                 <span className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--muted)] shadow-[var(--shadow-card)]">
                   Lv.{r.level}
@@ -135,27 +135,23 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                               </div>
                               <div className="px-0.5 pb-1 pt-0.5">
                                 <div
-                                  className={`min-w-0 shrink-0 truncate text-[0.7rem] tabular-nums ${
+                                  className={`min-w-0 text-[0.7rem] tabular-nums leading-tight [overflow-wrap:anywhere] ${
                                     empty ? "text-[var(--muted)]" : "font-semibold text-[var(--text)]"
                                   }`}
-                                  title={empty ? undefined : `${format(v)}원`}
                                 >
                                   {format(v)}
                                 </div>
                                 {!empty && lines.length > 0 ? (
-                                  <ul className="mt-1 min-h-0 max-h-[4.25rem] flex-1 space-y-1 overflow-y-auto overflow-x-hidden border-t border-[var(--border)]/40 pt-1 text-left">
+                                  <ul className="mt-1 min-h-0 max-h-[8rem] flex-1 space-y-1 overflow-y-auto overflow-x-hidden border-t border-[var(--border)]/40 pt-1 text-left">
                                     {lines.map((line, i) => (
                                       <li
                                         key={`${line.label}-${i}`}
                                         className="rounded-md bg-[var(--surface-hover)]/40 px-0.5 py-0.5"
                                       >
-                                        <span
-                                          className="line-clamp-2 break-words text-left text-[0.52rem] leading-snug text-[var(--muted)] [overflow-wrap:anywhere]"
-                                          title={line.label}
-                                        >
+                                        <span className="block break-words text-left text-[0.52rem] leading-snug text-[var(--muted)] [overflow-wrap:anywhere] whitespace-pre-line">
                                           {line.label}
                                         </span>
-                                        <span className="mt-0.5 block truncate text-right text-[0.56rem] font-semibold tabular-nums text-[var(--text)]">
+                                        <span className="mt-0.5 block break-words text-right text-[0.56rem] font-semibold tabular-nums leading-tight text-[var(--text)] [overflow-wrap:anywhere]">
                                           {format(line.amount)}
                                         </span>
                                       </li>
