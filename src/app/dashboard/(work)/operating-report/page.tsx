@@ -104,6 +104,11 @@ export default async function OperatingReportPage() {
 
       <div className="surface overflow-x-auto dash-panel-pad">
         <h2 className="text-sm font-bold tracking-normal text-[var(--text)]">연간 지급액 — 복지비 구분(자동 배분)</h2>
+        <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+          정기 지급(event)·분기 항목·선택 복지를 법정 코드(57~66)에 <strong className="text-[var(--text)]">성격에 맞게</strong>{" "}
+          매핑합니다. 연간 합과의 차이는 빈 칸에 나눠 넣는 것이 아니라,{" "}
+          <strong className="text-[var(--text)]">이미 매핑된 구분들의 금액 비율</strong>에 맞춰 가산·차감합니다.
+        </p>
         <table className="mt-4 w-full min-w-[520px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--border)]">
