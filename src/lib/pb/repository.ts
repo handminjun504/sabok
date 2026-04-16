@@ -385,6 +385,20 @@ export async function companySettingsByTenant(tenantId: string): Promise<Company
   return r ? mapCompanySettings(r) : null;
 }
 
+/** 적립금 탭 메모만 갱신(PB에 `reserveProgressNote` text 필드 필요). */
+export async function companySettingsUpdateReserveProgressNote(
+  tenantId: string,
+  reserveProgressNote: string | null
+): Promise<void> {
+  const existing = await companySettingsByTenant(tenantId);
+  if (!existing?.id) throw new Error("전사 설정(company settings)이 없습니다.");
+  const pb = await getAdminPb();
+  const trimmed = reserveProgressNote?.trim() ?? "";
+  await pb.collection(C.companySettings).update(existing.id, {
+    reserveProgressNote: trimmed === "" ? null : trimmed,
+  });
+}
+
 function companySettingsAccrualNonemptyIssue(detailLower: string): boolean {
   return (
     detailLower.includes("accrualcurrentmonthpaynext") &&

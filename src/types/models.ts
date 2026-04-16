@@ -132,6 +132,8 @@ export type CompanySettings = {
   surveyShowWorkerNet: boolean;
   /** PB JSON. 없으면 null */
   paymentEventDefs: PaymentEventDefsByYear | null;
+  /** 추가 적립(출연) 진행 메모 — PB `reserveProgressNote` 없으면 null */
+  reserveProgressNote: string | null;
 };
 
 export type Tenant = {

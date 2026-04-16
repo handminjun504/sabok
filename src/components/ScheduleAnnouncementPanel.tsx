@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TenantOperationMode } from "@/lib/domain/tenant-profile";
 import {
-  buildDepositTransferSummaryNotice,
   buildSalaryPortionNotice,
   buildTransferAndDetailNotice,
   buildWelfareFundBatchedNotice,
@@ -134,11 +133,6 @@ export function ScheduleAnnouncementPanel({
     return buildWelfareFundNotice(focusMonth, announcementInputs);
   }, [focusMonth, announcementInputs, rows.length, year]);
 
-  const depositSummary = useMemo(() => {
-    if (focusMonth == null || !announcementInputs) return "";
-    return buildDepositTransferSummaryNotice(focusMonth, announcementInputs);
-  }, [focusMonth, announcementInputs]);
-
   const salaryNotice = useMemo(() => {
     if (focusMonth == null || !announcementInputs) return null;
     return buildSalaryPortionNotice(focusMonth, operationMode, announcementInputs);
@@ -251,7 +245,6 @@ export function ScheduleAnnouncementPanel({
           복사용 멘트
         </h2>
         <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-          <CopyTextBlock title="0) 입금·이체 금액 요약" body={depositSummary} disabled={focusMonth == null} />
           <CopyTextBlock title="1) 사내근로복지기금 지급 안내" body={welfareNotice} disabled={focusMonth == null} />
           {showSalaryPortionNoticeMode(operationMode) ? (
             <CopyTextBlock

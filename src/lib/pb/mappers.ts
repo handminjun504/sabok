@@ -205,6 +205,12 @@ function parsePaymentEventDefs(v: unknown): PaymentEventDefsByYear | null {
   return Object.keys(out).length ? out : null;
 }
 
+function textOrNull(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+}
+
 export function mapCompanySettings(r: Record<string, unknown>): CompanySettings {
   return {
     id: String(r.id),
@@ -218,5 +224,6 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     surveyShowSpouseReceipt: bool(r.surveyShowSpouseReceipt),
     surveyShowWorkerNet: bool(r.surveyShowWorkerNet),
     paymentEventDefs: parsePaymentEventDefs(r.paymentEventDefs),
+    reserveProgressNote: textOrNull(r.reserveProgressNote),
   };
 }

@@ -9,9 +9,10 @@ import {
   monthlyNoteListByTenantYear,
   quarterlyEmployeeConfigListByTenantYear,
   tenantGetById,
+  vendorListByTenant,
 } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
-import { canEditEmployees } from "@/lib/permissions";
+import { canEditCompanySettings, canEditEmployees } from "@/lib/permissions";
 import { customPaymentDefsForYear, customPaymentScheduleRows } from "@/lib/domain/payment-events";
 import {
   buildMonthlyBreakdown,
@@ -23,6 +24,7 @@ import {
   welfareScheduleLinesByMonth,
 } from "@/lib/domain/schedule";
 import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
+import { summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
 import {
   saveMonthlyIncentiveAccrualYearFormAction,
   saveMonthlyNoteFormAction,
@@ -39,6 +41,7 @@ import { ScheduleEmployeeLevelAssignments } from "@/components/ScheduleEmployeeL
 import { MonthlyIncentiveAccrualGrid } from "@/components/MonthlyIncentiveAccrualGrid";
 import { ScheduleAnnouncementPanel } from "@/components/ScheduleAnnouncementPanel";
 import { ScheduleEmployeeCards } from "@/components/ScheduleEmployeeCards";
+import { ScheduleReserveTab } from "@/components/ScheduleReserveTab";
 
 export default async function SchedulePage() {
   const { tenantId, role } = await requireTenantContext();
@@ -54,6 +57,16 @@ export default async function SchedulePage() {
 
   const employees = await employeeListByTenantCodeAsc(tenantId);
   const ids = employees.map((e) => e.id);
+
+  const vendors = await vendorListByTenant(tenantId);
+  const reserveSummary =
+    tenantRow != null
+      ? summarizeTenantAdditionalReserve(
+          { clientEntityType: tenantRow.clientEntityType, headOfficeCapital: tenantRow.headOfficeCapital },
+          vendors
+        )
+      : { kind: "NO_VENDORS" as const };
+  const canEditReserveNote = canEditCompanySettings(role) && settings != null;
 
   const [rules, overrides, quarterly, notes] = await Promise.all([
     levelPaymentRuleList(tenantId, year),
@@ -179,6 +192,20 @@ export default async function SchedulePage() {
     <ScheduleAnnouncementPanel year={year} rows={scheduleCardRows} operationMode={tenantOperationMode} />
   );
 
+  const reserveTab =
+    tenantRow != null ? (
+      <ScheduleReserveTab
+        summary={reserveSummary}
+        clientEntityType={tenantRow.clientEntityType}
+        headOfficeCapitalWon={tenantRow.headOfficeCapital}
+        initialNote={settings?.reserveProgressNote ?? null}
+        canEdit={canEditReserveNote}
+        settingsMissing={!settings}
+      />
+    ) : (
+      <p className="text-sm text-[var(--muted)]">거래처 정보를 불러올 수 없습니다.</p>
+    );
+
   const incentiveAccrualTab = (
     <div className="surface dash-panel-pad">
       <MonthlyIncentiveAccrualGrid
@@ -262,14 +289,16 @@ export default async function SchedulePage() {
         <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">{year}년</p>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          카카오·문자 안내문은 <span className="font-semibold text-[var(--text)]">「안내 멘트」</span> 탭에서
-          입금·이체 금액과 함께 복사할 수 있습니다.
+          카카오·문자 안내문은 <span className="font-semibold text-[var(--text)]">「안내 멘트」</span> 탭에서,
+          자본금 50% 한도·추가 적립 누적·메모는 <span className="font-semibold text-[var(--text)]">「적립금」</span>{" "}
+          탭에서 확인할 수 있습니다.
         </p>
       </div>
       <Tabs
         tabs={[
           { label: "월별 스케줄", content: scheduleTab },
           { label: "안내 멘트", content: announcementTab },
+          { label: "적립금", content: reserveTab },
           { label: "월별 발생 인센", content: incentiveAccrualTab },
           { label: "레벨·예정액", content: levelAssignmentTab },
           { label: "선택적 복지·메모", content: noteTab },

@@ -22,23 +22,6 @@ export function sumWelfareScheduledMonth(rows: readonly AnnouncementRowInput[]):
   return rows.reduce((s, r) => s + Math.max(0, Math.round(r.welfareMonth)), 0);
 }
 
-/** 입금·이체 금액만 요약한 짧은 멘트 */
-export function buildDepositTransferSummaryNotice(month: number, rows: AnnouncementRowInput[]): string {
-  const sum = sumWelfareScheduledMonth(rows);
-  const with20 = Math.round(sum * 1.2);
-  return [
-    `${month}월 사내근로복지기금 입금·이체 안내`,
-    ``,
-    `① 당월 근로자 지급(사복) 합계: ${formatWonLine(sum)}원`,
-    `   → 사내근로복지기금 통장에 이 금액을 먼저 넣으신 뒤, 아래 직원분께 이체하시면 됩니다.`,
-    ``,
-    `② 20% 추가 적립이 필요한 경우(개인사업자, 자본금 50% 적립 중 법인 등):`,
-    `   → 통장에는 약 ${formatWonLine(with20)}원까지 입금·조정이 필요할 수 있습니다.`,
-    ``,
-    `(앱의 월별 스케줄 집계 기준이며, 대표반환·수수료·회계 처리는 별도입니다.)`,
-  ].join("\n");
-}
-
 /**
  * 법인·단일월 카톡 양식: 인사 → 통장 이체 금액 → 직원별(지급>0) → 마무리
  * 예) 안녕하세요! 2월 … / 통장에 23,820,000원 이체하신 후 / … / 이체해주시면 됩니다.
@@ -56,7 +39,12 @@ export function buildWelfareFundNotice(month: number, rows: AnnouncementRowInput
     if (w <= 0) continue;
     lines.push(`${r.name} ${formatWonLine(w)} 원`);
   }
-  lines.push("", "이체해주시면 됩니다.");
+  lines.push(
+    "",
+    "(위 통장 입금액에 추가 적립(예: 20%)을 더할지는, 거래처 등록 시 정한 개인·법인 적립 구분과 세무 안내에 따라 달라집니다. 한도·남은 적립은 「적립금」 탭에서 확인·메모해 두실 수 있습니다.)",
+    "",
+    "이체해주시면 됩니다."
+  );
   return lines.join("\n");
 }
 

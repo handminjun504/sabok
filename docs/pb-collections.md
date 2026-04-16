@@ -78,6 +78,7 @@ Unique: `(userId, tenantId)`
 | surveyShowSpouseReceipt | bool | no | **배우자수령** 표시. 없으면 `false` |
 | surveyShowWorkerNet | bool | no | **근로자 실질 수령** 표시. 없으면 `false` |
 | paymentEventDefs           | json | no  | 연도 문자열 키 → `{ eventKey, label, accrualMonth }[]` 배열. 추가 정기 지급 행사(레벨 금액·스케줄). 없으면 `{}` 또는 생략 |
+| reserveProgressNote        | text | no  | 월별 스케줄 **적립금** 탭에서 저장하는 자유 메모(남은 적립 한도 등). 없으면 앱에서 `null` |
 
 > **Nonempty:** `accrualCurrentMonthPayNext`·`surveyShow*` 등 bool 에 Nonempty를 켜면 `false` 가 거절됩니다. **Nonempty 끄기** 권장.  
 > 일괄 보정: `npm run pb:fix-company-settings-schema` (`sabok_company_settings` 의 number/bool required 해제). 신규 생성만 `false` 거절 시 앱이 `true` 로 재시도하는 경로가 있습니다.
