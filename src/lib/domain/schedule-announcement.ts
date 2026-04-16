@@ -39,12 +39,7 @@ export function buildWelfareFundNotice(month: number, rows: AnnouncementRowInput
     if (w <= 0) continue;
     lines.push(`${r.name} ${formatWonLine(w)} 원`);
   }
-  lines.push(
-    "",
-    "(위 통장 입금액에 추가 적립(예: 20%)을 더할지는, 거래처 등록 시 정한 개인·법인 적립 구분과 세무 안내에 따라 달라집니다. 한도·남은 적립은 「적립금」 탭에서 확인·메모해 두실 수 있습니다.)",
-    "",
-    "이체해주시면 됩니다."
-  );
+  lines.push("", "이체해주시면 됩니다.");
   return lines.join("\n");
 }
 
