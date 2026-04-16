@@ -93,16 +93,17 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
               key={r.employeeId}
               className="flex min-h-0 min-w-0 max-w-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-card)] transition-shadow duration-200 hover:shadow-[var(--shadow-card-hover)]"
             >
-              <header className="relative flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--border)] bg-gradient-to-br from-[var(--surface-hover)]/80 to-[var(--surface)] px-4 pb-3 pt-3.5">
+              <header className="relative flex flex-nowrap items-baseline justify-between gap-2 border-b border-[var(--border)] bg-gradient-to-br from-[var(--surface-hover)]/80 to-[var(--surface)] px-4 pb-3 pt-3.5">
                 <div
                   className="pointer-events-none absolute inset-y-0 left-0 w-1 rounded-r-sm bg-[var(--accent)]/85 opacity-90"
                   aria-hidden
                 />
-                <div className="min-w-0 pl-2">
-                  <p className="font-mono text-sm font-semibold tabular-nums tracking-tight text-[var(--text)]">
-                    {r.employeeCode}
+                <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden pl-2 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1">
+                  <p className="whitespace-nowrap text-base font-semibold text-[var(--text)]">
+                    <span className="font-mono text-sm font-semibold tabular-nums tracking-tight">{r.employeeCode}</span>
+                    <span className="mx-1.5 font-normal text-[var(--muted)]">·</span>
+                    <span>{r.name}</span>
                   </p>
-                  <p className="mt-0.5 break-words text-base font-semibold leading-snug text-[var(--text)]">{r.name}</p>
                 </div>
                 <span className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--muted)] shadow-[var(--shadow-card)]">
                   Lv.{r.level}
@@ -115,8 +116,8 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                     <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                       지급월별 기금
                     </p>
-                    <div className="rounded-xl border border-[var(--border)]/80 bg-[var(--bg)]/40 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]">
-                      <div className="grid min-w-0 grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-6">
+                    <div className="min-w-0 overflow-hidden rounded-xl border border-[var(--border)]/80 bg-[var(--bg)]/40 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]">
+                      <div className="grid min-w-0 grid-cols-[repeat(3,minmax(0,1fr))] gap-1.5 sm:grid-cols-[repeat(4,minmax(0,1fr))] md:grid-cols-[repeat(6,minmax(0,1fr))]">
                         {MONTHS.map((m) => {
                           const v = r.welfareByMonth[m] ?? 0;
                           const empty = v === 0;
@@ -133,25 +134,25 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                               <div className="shrink-0 bg-[var(--surface-hover)]/50 px-0.5 py-1 text-[0.58rem] font-bold tabular-nums text-[var(--muted)]">
                                 {m}월
                               </div>
-                              <div className="px-0.5 pb-1 pt-0.5">
+                              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-0.5 pb-1 pt-0.5">
                                 <div
-                                  className={`min-w-0 text-[0.7rem] tabular-nums leading-tight [overflow-wrap:anywhere] ${
+                                  className={`min-w-0 w-full max-w-full overflow-x-auto overflow-y-hidden text-center text-[0.7rem] tabular-nums whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-0.5 ${
                                     empty ? "text-[var(--muted)]" : "font-semibold text-[var(--text)]"
                                   }`}
                                 >
                                   {format(v)}
                                 </div>
                                 {!empty && lines.length > 0 ? (
-                                  <ul className="mt-1 min-h-0 max-h-[8rem] flex-1 space-y-1 overflow-y-auto overflow-x-hidden border-t border-[var(--border)]/40 pt-1 text-left">
+                                  <ul className="mt-1 min-h-0 min-w-0 max-w-full max-h-[8rem] flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden border-t border-[var(--border)]/40 pt-1 text-left">
                                     {lines.map((line, i) => (
                                       <li
                                         key={`${line.label}-${i}`}
-                                        className="rounded-md bg-[var(--surface-hover)]/40 px-0.5 py-0.5"
+                                        className="flex min-w-0 w-full flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden rounded-md bg-[var(--surface-hover)]/40 px-0.5 py-0.5 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-0.5"
                                       >
-                                        <span className="block break-words text-left text-[0.52rem] leading-snug text-[var(--muted)] [overflow-wrap:anywhere] whitespace-pre-line">
-                                          {line.label}
+                                        <span className="shrink-0 whitespace-nowrap text-left text-[0.52rem] text-[var(--muted)]">
+                                          {line.label.replace(/\r?\n/g, " ")}
                                         </span>
-                                        <span className="mt-0.5 block break-words text-right text-[0.56rem] font-semibold tabular-nums leading-tight text-[var(--text)] [overflow-wrap:anywhere]">
+                                        <span className="shrink-0 whitespace-nowrap text-[0.56rem] font-semibold tabular-nums text-[var(--text)]">
                                           {format(line.amount)}
                                         </span>
                                       </li>
@@ -166,25 +167,27 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-xl border-2 border-[var(--accent-soft)] bg-gradient-to-b from-[var(--accent-soft)]/25 to-[var(--surface-hover)]/30 px-4 py-5 text-center shadow-[var(--shadow-card)]">
+                  <div className="min-w-0 overflow-hidden rounded-xl border-2 border-[var(--accent-soft)] bg-gradient-to-b from-[var(--accent-soft)]/25 to-[var(--surface-hover)]/30 px-4 py-5 text-center shadow-[var(--shadow-card)]">
                     <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent-dim)]">
                       {year}년 {focusMonth}월
                     </p>
-                    <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-[var(--text)]">
-                      {format(focusAmt ?? 0)}
-                      <span className="text-base font-semibold text-[var(--muted)]">원</span>
-                    </p>
+                    <div className="mt-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:thin]">
+                      <p className="whitespace-nowrap text-2xl font-bold tabular-nums tracking-tight text-[var(--text)]">
+                        {format(focusAmt ?? 0)}
+                        <span className="text-base font-semibold text-[var(--muted)]">원</span>
+                      </p>
+                    </div>
                     {focusLines.length > 0 ? (
                       <ul className="mt-4 space-y-2 border-t border-[var(--border)]/60 pt-4 text-left text-xs">
                         {focusLines.map((line, i) => (
                           <li
                             key={`${line.label}-${i}`}
-                            className="flex flex-col gap-1 rounded-lg border border-[var(--border)]/50 bg-[var(--surface)]/80 px-2.5 py-2 tabular-nums shadow-[var(--shadow-card)] sm:flex-row sm:items-baseline sm:justify-between sm:gap-3"
+                            className="flex min-w-0 w-full flex-nowrap items-center gap-3 overflow-x-auto rounded-lg border border-[var(--border)]/50 bg-[var(--surface)]/80 px-2.5 py-2 tabular-nums shadow-[var(--shadow-card)] [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1"
                           >
-                            <span className="min-w-0 break-words text-[var(--muted)] whitespace-pre-line">
-                              {line.label}
+                            <span className="shrink-0 whitespace-nowrap text-[var(--muted)]">
+                              {line.label.replace(/\r?\n/g, " ")}
                             </span>
-                            <span className="shrink-0 font-bold tabular-nums text-[var(--text)] sm:text-right">
+                            <span className="shrink-0 whitespace-nowrap font-bold tabular-nums text-[var(--text)]">
                               {format(line.amount)}원
                             </span>
                           </li>
@@ -200,24 +203,28 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                   <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     월 급여 · 기금 요약
                   </p>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <div className="rounded-lg border border-[var(--border)]/70 bg-[var(--surface)] px-2.5 py-2 shadow-[var(--shadow-card)]">
+                  <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[repeat(3,minmax(0,1fr))]">
+                    <div className="min-w-0 overflow-hidden rounded-lg border border-[var(--border)]/70 bg-[var(--surface)] px-2.5 py-2 shadow-[var(--shadow-card)]">
                       <p className="text-[0.6rem] font-medium text-[var(--muted)]">급여(월)</p>
-                      <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--text)]">{format(r.salaryMonth)}원</p>
+                      <p className="mt-0.5 overflow-x-auto whitespace-nowrap text-sm font-semibold tabular-nums text-[var(--text)] [-ms-overflow-style:none] [scrollbar-width:thin]">
+                        {format(r.salaryMonth)}원
+                      </p>
                     </div>
-                    <div className="rounded-lg border border-[var(--border)]/70 bg-[var(--surface)] px-2.5 py-2 shadow-[var(--shadow-card)]">
+                    <div className="min-w-0 overflow-hidden rounded-lg border border-[var(--border)]/70 bg-[var(--surface)] px-2.5 py-2 shadow-[var(--shadow-card)]">
                       <p className="text-[0.6rem] font-medium text-[var(--muted)]">급여+기금(월평)</p>
-                      <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--text)]">
+                      <p className="mt-0.5 overflow-x-auto whitespace-nowrap text-sm font-semibold tabular-nums text-[var(--text)] [-ms-overflow-style:none] [scrollbar-width:thin]">
                         {format(Math.round(avgTotal))}원
                       </p>
                     </div>
-                    <div className="rounded-lg border border-[var(--accent-soft)] bg-[var(--accent-soft)]/15 px-2.5 py-2 shadow-[var(--shadow-card)] sm:col-span-1">
+                    <div className="min-w-0 overflow-hidden rounded-lg border border-[var(--accent-soft)] bg-[var(--accent-soft)]/15 px-2.5 py-2 shadow-[var(--shadow-card)] sm:col-span-1">
                       <p className="text-[0.6rem] font-medium text-[var(--accent-dim)]">연간 기금 합</p>
-                      <p className="mt-0.5 text-sm font-bold tabular-nums text-[var(--text)]">{format(r.yearlyWelfare)}원</p>
+                      <p className="mt-0.5 overflow-x-auto whitespace-nowrap text-sm font-bold tabular-nums text-[var(--text)] [-ms-overflow-style:none] [scrollbar-width:thin]">
+                        {format(r.yearlyWelfare)}원
+                      </p>
                     </div>
                   </div>
                 </div>
-                <div className="rounded-xl border border-[var(--border)]/80 bg-[var(--surface)]/90 p-2.5 shadow-[var(--shadow-card)]">
+                <div className="min-w-0 overflow-hidden rounded-xl border border-[var(--border)]/80 bg-[var(--surface)]/90 p-2.5 shadow-[var(--shadow-card)]">
                   <p className="mb-2 px-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     급여포함신고 (상한 대비)
                   </p>
@@ -225,15 +232,15 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                     {r.capBlocks.map((b) => (
                       <div
                         key={b.key}
-                        className="rounded-lg border border-[var(--border)]/60 bg-[var(--surface-hover)]/30 px-2.5 py-2 first:mt-0"
+                        className="min-w-0 overflow-hidden rounded-lg border border-[var(--border)]/60 bg-[var(--surface-hover)]/30 px-2.5 py-2 first:mt-0"
                       >
-                        <p className="text-[0.68rem] font-semibold text-[var(--text)]">
-                          {b.title}
-                          <span className="mt-0.5 block font-normal text-[0.62rem] text-[var(--muted)]">
-                            실적: {b.actualLabel}
+                        <div className="overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:thin]">
+                          <p className="inline text-[0.68rem] font-semibold text-[var(--text)]">{b.title}</p>
+                          <span className="ml-1.5 inline text-[0.62rem] font-normal text-[var(--muted)]">
+                            · 실적: {b.actualLabel}
                           </span>
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-[var(--border)]/40 pt-2 text-[0.7rem] text-[var(--muted)]">
+                        </div>
+                        <div className="mt-2 flex min-w-0 flex-nowrap gap-x-3 overflow-x-auto border-t border-[var(--border)]/40 pt-2 text-[0.7rem] text-[var(--muted)] [-ms-overflow-style:none] [scrollbar-width:thin] [&>span]:shrink-0">
                           <span>
                             상한{" "}
                             <span className="font-medium tabular-nums text-[var(--text)]">
