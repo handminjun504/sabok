@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TenantOperationMode } from "@/lib/domain/tenant-profile";
 import {
   buildSalaryPortionNotice,
@@ -47,6 +47,12 @@ function fmt(n: number) {
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 // 3행 × 4열
 const MONTH_ROWS = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]] as const;
+
+/** 첫 진입 시 멘트가 비지 않도록: 기준 연도가 올해면 이번 달, 아니면 1월 */
+function defaultAnnouncementMonth(year: number): number {
+  const cy = new Date().getFullYear();
+  return year === cy ? new Date().getMonth() + 1 : 1;
+}
 
 function CopyTextBlock({
   title,
@@ -98,11 +104,11 @@ export function ScheduleEmployeeCards({
   rows: ScheduleCardRow[];
   operationMode: TenantOperationMode;
 }) {
-  const [focusMonth, setFocusMonth] = useState<number | null>(null);
+  const [focusMonth, setFocusMonth] = useState<number | null>(() => defaultAnnouncementMonth(year));
 
-  if (rows.length === 0) {
-    return <p className="py-10 text-center text-sm text-[var(--muted)]">직원 데이터가 없습니다.</p>;
-  }
+  useEffect(() => {
+    setFocusMonth(defaultAnnouncementMonth(year));
+  }, [year]);
 
   const announcementInputs = useMemo(() => {
     if (focusMonth == null) return null;
@@ -116,13 +122,14 @@ export function ScheduleEmployeeCards({
     }));
   }, [rows, focusMonth]);
 
-  const welfareNotice = useMemo(
-    () =>
-      focusMonth != null && announcementInputs
-        ? buildWelfareFundNotice(focusMonth, announcementInputs)
-        : "",
-    [focusMonth, announcementInputs]
-  );
+  const welfareNotice = useMemo(() => {
+    if (focusMonth == null) return "";
+    if (rows.length === 0) {
+      return `(${year}년 ${focusMonth}월) 직원이 등록되어 있지 않아 지급액 목록을 만들 수 없습니다. 직원을 등록한 뒤 다시 확인해 주세요.`;
+    }
+    if (!announcementInputs) return "";
+    return buildWelfareFundNotice(focusMonth, announcementInputs);
+  }, [focusMonth, announcementInputs, rows.length, year]);
 
   const salaryNotice = useMemo(() => {
     if (focusMonth == null || !announcementInputs) return null;
@@ -158,25 +165,24 @@ export function ScheduleEmployeeCards({
 
   return (
     <div className="space-y-4">
-      {/* 월 필터 */}
-      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="지급월 보기">
-        {filterBtn(null, "전체")}
-        {MONTHS.map((m) => filterBtn(m, `${m}월`))}
-      </div>
-
-      {/* 카카오·문자용 안내 멘트 (선택 월) */}
+      {/* 카카오·문자용 안내 멘트 — 상단 고정으로 바로 보이게 */}
       <section
-        className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/30 p-4"
+        id="announcement-copy"
+        className="scroll-mt-24 rounded-xl border-2 border-[var(--accent)]/35 bg-[var(--accent-soft)]/25 p-4 shadow-[var(--shadow-card)]"
         aria-labelledby="schedule-announcement-heading"
       >
-        <h2 id="schedule-announcement-heading" className="dash-eyebrow mb-2">
+        <h2 id="schedule-announcement-heading" className="text-base font-bold text-[var(--text)]">
           안내 멘트 복사
         </h2>
-        <p className="mb-3 text-[0.7rem] leading-snug text-[var(--muted)]">
-          스케줄 열과 동일한 기준(정기=귀속월, 분기·선택 복지=지급월)으로 해당 월 지급액을 넣습니다. 대표님 반환
-          금액은 직원 데이터에 없어 멘트에 안내 문구만 포함됩니다.
+        <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+          아래 &ldquo;지급월 보기&rdquo;에서 월을 바꿀 수 있습니다. 처음에는{" "}
+          <span className="font-semibold text-[var(--text)]">
+            {year === new Date().getFullYear() ? "오늘 기준 달" : "1월"}
+          </span>
+          이 선택되어 있습니다. 스케줄 열과 동일한 기준(정기=귀속월, 분기·선택 복지=지급월)으로 해당 월
+          지급액을 넣습니다.
         </p>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <CopyTextBlock title="1) 사내근로복지기금 지급 안내" body={welfareNotice} disabled={focusMonth == null} />
           {showSalaryPortionNoticeMode(operationMode) ? (
             <CopyTextBlock
@@ -195,7 +201,18 @@ export function ScheduleEmployeeCards({
         </div>
       </section>
 
+      {/* 월 필터 */}
+      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="지급월 보기">
+        {filterBtn(null, "전체")}
+        {MONTHS.map((m) => filterBtn(m, `${m}월`))}
+      </div>
+
       {/* 카드 그리드 */}
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-[var(--border)] bg-[var(--surface)] py-10 text-center text-sm text-[var(--muted)]">
+          직원 데이터가 없습니다. 직원을 등록하면 카드와 멘트 목록이 채워집니다.
+        </p>
+      ) : (
       <div className="grid gap-4 lg:grid-cols-2">
         {rows.map((r) => {
           const focusAmt = focusMonth != null ? (r.welfareByMonth[focusMonth] ?? 0) : null;
@@ -375,6 +392,7 @@ export function ScheduleEmployeeCards({
           );
         })}
       </div>
+      )}
     </div>
   );
 }

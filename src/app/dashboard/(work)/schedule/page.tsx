@@ -258,6 +258,13 @@ export default async function SchedulePage() {
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">{year}년</p>
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          카카오·문자 안내문은{" "}
+          <a href="#announcement-copy" className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline">
+            「월별 스케줄」탭 상단의 안내 멘트 복사
+          </a>
+          에서 복사할 수 있습니다.
+        </p>
       </div>
       <Tabs
         tabs={[
