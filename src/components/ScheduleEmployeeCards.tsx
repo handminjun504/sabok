@@ -116,8 +116,8 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                     <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                       지급월별 기금
                     </p>
-                    <div className="min-w-0 overflow-hidden rounded-xl border border-[var(--border)]/80 bg-[var(--bg)]/40 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]">
-                      <div className="grid min-w-0 grid-cols-[repeat(3,minmax(0,1fr))] gap-1.5 sm:grid-cols-[repeat(4,minmax(0,1fr))] md:grid-cols-[repeat(6,minmax(0,1fr))]">
+                    <div className="min-w-0 overflow-hidden rounded-xl border border-[var(--border)]/80 bg-[var(--bg)]/40 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] sm:p-4">
+                      <div className="grid min-w-0 grid-cols-[repeat(3,minmax(0,1fr))] gap-2.5 sm:gap-3">
                         {MONTHS.map((m) => {
                           const v = r.welfareByMonth[m] ?? 0;
                           const empty = v === 0;
@@ -125,34 +125,34 @@ export function ScheduleEmployeeCards({ year, rows }: { year: number; rows: Sche
                           return (
                             <div
                               key={m}
-                              className={`flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border text-center shadow-[var(--shadow-card)] transition-[border-color,box-shadow] duration-150 ${
+                              className={`flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border text-center shadow-[var(--shadow-card)] transition-[border-color,box-shadow] duration-150 ${
                                 empty
                                   ? "border-[var(--border)]/50 bg-[var(--surface)]/60"
                                   : "border-[var(--border)] bg-[var(--surface)] ring-1 ring-[var(--accent-soft)]/30 hover:shadow-[var(--shadow-card-hover)]"
                               }`}
                             >
-                              <div className="shrink-0 bg-[var(--surface-hover)]/50 px-0.5 py-1 text-[0.58rem] font-bold tabular-nums text-[var(--muted)]">
+                              <div className="shrink-0 bg-[var(--surface-hover)]/50 px-1 py-1.5 text-xs font-bold tabular-nums text-[var(--muted)]">
                                 {m}월
                               </div>
-                              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-0.5 pb-1 pt-0.5">
+                              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-1.5 pb-2 pt-1">
                                 <div
-                                  className={`min-w-0 w-full max-w-full overflow-x-auto overflow-y-hidden text-center text-[0.7rem] tabular-nums whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-0.5 ${
+                                  className={`min-w-0 w-full max-w-full overflow-x-auto overflow-y-hidden text-center text-sm tabular-nums whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-0.5 ${
                                     empty ? "text-[var(--muted)]" : "font-semibold text-[var(--text)]"
                                   }`}
                                 >
                                   {format(v)}
                                 </div>
                                 {!empty && lines.length > 0 ? (
-                                  <ul className="mt-1 min-h-0 min-w-0 max-w-full max-h-[8rem] flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden border-t border-[var(--border)]/40 pt-1 text-left">
+                                  <ul className="mt-1.5 min-h-0 min-w-0 max-w-full max-h-[9rem] flex-1 space-y-1 overflow-y-auto overflow-x-hidden border-t border-[var(--border)]/40 pt-1.5 text-left">
                                     {lines.map((line, i) => (
                                       <li
                                         key={`${line.label}-${i}`}
-                                        className="flex min-w-0 w-full flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden rounded-md bg-[var(--surface-hover)]/40 px-0.5 py-0.5 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-0.5"
+                                        className="flex min-w-0 w-full flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden rounded-md bg-[var(--surface-hover)]/40 px-1 py-1 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-0.5"
                                       >
-                                        <span className="shrink-0 whitespace-nowrap text-left text-[0.52rem] text-[var(--muted)]">
+                                        <span className="shrink-0 whitespace-nowrap text-left text-[0.65rem] leading-tight text-[var(--muted)]">
                                           {line.label.replace(/\r?\n/g, " ")}
                                         </span>
-                                        <span className="shrink-0 whitespace-nowrap text-[0.56rem] font-semibold tabular-nums text-[var(--text)]">
+                                        <span className="shrink-0 whitespace-nowrap text-[0.7rem] font-semibold tabular-nums leading-tight text-[var(--text)]">
                                           {format(line.amount)}
                                         </span>
                                       </li>
