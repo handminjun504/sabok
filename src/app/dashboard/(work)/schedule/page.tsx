@@ -172,10 +172,7 @@ export default async function SchedulePage() {
 
   const scheduleTab = (
     <div className="space-y-5">
-      <div className="surface dash-panel-pad">
-        <p className="mb-4 text-xs leading-relaxed text-[var(--muted)]">
-          정기 행사는 귀속 월, 분기·선택 복지는 설정한 지급 월 열에 표시됩니다. (기존 시트 「월별지급스케줄」과 동일 규칙)
-        </p>
+      <div className="surface dash-panel-pad min-w-0">
         <ScheduleEmployeeCards year={year} rows={scheduleCardRows} />
       </div>
     </div>
@@ -263,9 +260,6 @@ export default async function SchedulePage() {
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">{year}년</p>
-        <p className="mt-2 max-w-xl text-xs text-[var(--muted)]">
-          레벨 규칙·예정액·레벨 변경은 「레벨·예정액」 탭, 행사별 금액·목표는 「레벨/행사」 메뉴입니다.
-        </p>
       </div>
       <Tabs
         tabs={[

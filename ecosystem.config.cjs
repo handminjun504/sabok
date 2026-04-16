@@ -4,7 +4,7 @@
  *   pm2 reload ecosystem.config.cjs --update-env
  *
  * PORT·시크릿·PB 접속 정보는 저장소에 고정하지 않고 배포 파이프라인이 주입한다.
- * 계약: docs/deploy-caddy-pm2.md
+ * 계약·PM2/Caddy 꼬임 시 복구 순서: docs/deploy-caddy-pm2.md
  */
 const path = require("path");
 
