@@ -1,14 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { TenantOperationMode } from "@/lib/domain/tenant-profile";
-import {
-  buildSalaryPortionNotice,
-  buildTransferAndDetailNotice,
-  buildWelfareFundNotice,
-  shouldShowTransferDetailBlock,
-  showSalaryPortionNoticeMode,
-} from "@/lib/domain/schedule-announcement";
+import { useState } from "react";
 
 export type ScheduleWelfareLine = { label: string; amount: number };
 
@@ -48,99 +40,14 @@ const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 // 3행 × 4열
 const MONTH_ROWS = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]] as const;
 
-/** 첫 진입 시 멘트가 비지 않도록: 기준 연도가 올해면 이번 달, 아니면 1월 */
-function defaultAnnouncementMonth(year: number): number {
-  const cy = new Date().getFullYear();
-  return year === cy ? new Date().getMonth() + 1 : 1;
-}
-
-function CopyTextBlock({
-  title,
-  body,
-  disabled,
-}: {
-  title: string;
-  body: string;
-  disabled?: boolean;
-}) {
-  const [copied, setCopied] = useState(false);
-  const onCopy = useCallback(async () => {
-    if (disabled || !body) return;
-    try {
-      await navigator.clipboard.writeText(body);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }, [body, disabled]);
-
-  return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs font-bold text-[var(--text)]">{title}</span>
-        <button
-          type="button"
-          disabled={disabled || !body}
-          onClick={() => void onCopy()}
-          className="btn btn-secondary text-xs disabled:opacity-50"
-        >
-          {copied ? "복사됨" : "복사"}
-        </button>
-      </div>
-      <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded border border-[var(--border)]/60 bg-[var(--surface-hover)]/50 p-2.5 font-sans text-[0.7rem] leading-relaxed text-[var(--text)]">
-        {body || (disabled ? "월을 선택하면 문구가 생성됩니다." : "")}
-      </pre>
-    </div>
-  );
-}
-
 export function ScheduleEmployeeCards({
   year,
   rows,
-  operationMode,
 }: {
   year: number;
   rows: ScheduleCardRow[];
-  operationMode: TenantOperationMode;
 }) {
-  const [focusMonth, setFocusMonth] = useState<number | null>(() => defaultAnnouncementMonth(year));
-
-  useEffect(() => {
-    setFocusMonth(defaultAnnouncementMonth(year));
-  }, [year]);
-
-  const announcementInputs = useMemo(() => {
-    if (focusMonth == null) return null;
-    return rows.map((r) => ({
-      employeeCode: r.employeeCode,
-      name: r.name,
-      welfareMonth: r.welfareByMonth[focusMonth] ?? 0,
-      salaryMonth: r.salaryMonth,
-      flagRepReturn: r.flagRepReturn,
-      discretionaryAmount: r.discretionaryAmount,
-    }));
-  }, [rows, focusMonth]);
-
-  const welfareNotice = useMemo(() => {
-    if (focusMonth == null) return "";
-    if (rows.length === 0) {
-      return `(${year}년 ${focusMonth}월) 직원이 등록되어 있지 않아 지급액 목록을 만들 수 없습니다. 직원을 등록한 뒤 다시 확인해 주세요.`;
-    }
-    if (!announcementInputs) return "";
-    return buildWelfareFundNotice(focusMonth, announcementInputs);
-  }, [focusMonth, announcementInputs, rows.length, year]);
-
-  const salaryNotice = useMemo(() => {
-    if (focusMonth == null || !announcementInputs) return null;
-    return buildSalaryPortionNotice(focusMonth, operationMode, announcementInputs);
-  }, [focusMonth, announcementInputs, operationMode]);
-
-  const transferNotice = useMemo(() => {
-    if (focusMonth == null || !announcementInputs) return "";
-    if (!shouldShowTransferDetailBlock(announcementInputs)) return "";
-    return buildTransferAndDetailNotice(focusMonth, announcementInputs);
-  }, [focusMonth, announcementInputs]);
+  const [focusMonth, setFocusMonth] = useState<number | null>(null);
 
   const filterBtn = (m: number | null, label: string) => {
     const active = focusMonth === m;
@@ -165,42 +72,6 @@ export function ScheduleEmployeeCards({
 
   return (
     <div className="space-y-4">
-      {/* 카카오·문자용 안내 멘트 — 상단 고정으로 바로 보이게 */}
-      <section
-        id="announcement-copy"
-        className="scroll-mt-24 rounded-xl border-2 border-[var(--accent)]/35 bg-[var(--accent-soft)]/25 p-4 shadow-[var(--shadow-card)]"
-        aria-labelledby="schedule-announcement-heading"
-      >
-        <h2 id="schedule-announcement-heading" className="text-base font-bold text-[var(--text)]">
-          안내 멘트 복사
-        </h2>
-        <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
-          아래 &ldquo;지급월 보기&rdquo;에서 월을 바꿀 수 있습니다. 처음에는{" "}
-          <span className="font-semibold text-[var(--text)]">
-            {year === new Date().getFullYear() ? "오늘 기준 달" : "1월"}
-          </span>
-          이 선택되어 있습니다. 스케줄 열과 동일한 기준(정기=귀속월, 분기·선택 복지=지급월)으로 해당 월
-          지급액을 넣습니다.
-        </p>
-        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <CopyTextBlock title="1) 사내근로복지기금 지급 안내" body={welfareNotice} disabled={focusMonth == null} />
-          {showSalaryPortionNoticeMode(operationMode) ? (
-            <CopyTextBlock
-              title="2) 급여분(월 환산 급여) 안내"
-              body={salaryNotice ?? ""}
-              disabled={focusMonth == null || !salaryNotice}
-            />
-          ) : null}
-          {shouldShowTransferDetailBlock(rows) ? (
-            <CopyTextBlock
-              title="3) 통장 이체·반환·알아서금액"
-              body={transferNotice}
-              disabled={focusMonth == null || !transferNotice}
-            />
-          ) : null}
-        </div>
-      </section>
-
       {/* 월 필터 */}
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="지급월 보기">
         {filterBtn(null, "전체")}
