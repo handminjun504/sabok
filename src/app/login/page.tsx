@@ -102,7 +102,7 @@ export default function LoginPage() {
                 />
               </div>
               {error && (
-                <p className="neu-field rounded-xl px-3 py-2.5 text-[0.9375rem] leading-relaxed text-[var(--danger)] ring-2 ring-red-200/40">
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-[var(--danger)]">
                   {error}
                 </p>
               )}

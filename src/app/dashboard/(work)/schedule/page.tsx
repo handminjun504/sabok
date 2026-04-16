@@ -171,11 +171,7 @@ export default async function SchedulePage() {
   });
 
   const scheduleTab = (
-    <div className="space-y-5">
-      <div className="surface dash-panel-pad min-w-0">
-        <ScheduleEmployeeCards year={year} rows={scheduleCardRows} />
-      </div>
-    </div>
+    <ScheduleEmployeeCards year={year} rows={scheduleCardRows} />
   );
 
   const incentiveAccrualTab = (

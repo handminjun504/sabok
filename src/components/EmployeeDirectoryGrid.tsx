@@ -25,55 +25,32 @@ export type EmployeeDirectoryPayrollYearContext = {
   customSchedule: CustomPaymentScheduleDef[];
 };
 
-const EMPTY = "-";
+const EM = "—";
 
 function won(n: number | null | undefined): string {
-  const s = formatWon(n ?? null);
-  return s || EMPTY;
+  return formatWon(n ?? null) || EM;
 }
 
-function monthWithSuffix(m: number | null | undefined): string {
-  if (m == null) return EMPTY;
-  return `${m}월`;
+function monthLabel(m: number | null | undefined): string {
+  return m != null ? `${m}월` : EM;
 }
 
-/** 금액·한 줄 값: 라벨(왼쪽) / 값(오른쪽, 줄바꿈 금지) — 좁은 칸에 숫자가 쪼개지는 것 방지 */
-function FieldRow({ label, value }: { label: string; value: ReactNode }) {
+/** 라벨 + 값 한 행 */
+function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex min-w-0 items-baseline justify-between gap-4 border-b border-[var(--border)]/70 py-2.5 last:border-b-0">
-      <span className="min-w-0 flex-1 pr-2 text-sm font-semibold leading-snug text-[var(--text)]">{label}</span>
-      <span className="shrink-0 whitespace-nowrap text-right text-base font-bold tabular-nums tracking-tight text-[var(--text)]">
+    <div className="flex min-w-0 items-baseline justify-between gap-3 py-2 [&:not(:last-child)]:border-b [&:not(:last-child)]:border-[var(--border)]/60">
+      <span className="shrink-0 text-xs font-medium text-[var(--muted)]">{label}</span>
+      <span className="min-w-0 truncate text-right text-sm font-semibold tabular-nums text-[var(--text)]">
         {value}
       </span>
     </div>
   );
 }
 
-function SectionTitle({ children }: { children: ReactNode }) {
+/** 섹션 소제목 */
+function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <h3 className="mb-0 mt-5 border-b-2 border-[var(--border-strong)] pb-2 text-[0.9375rem] font-bold tracking-tight text-[var(--text)] first:mt-0">
-      {children}
-    </h3>
-  );
-}
-
-/** 짧은 라벨 + 숫자 묶음 (가족 수 등) — 라벨은 한 줄 유지, 짧은 표기 + title로 풀네임 */
-function StatChip({
-  label,
-  labelTitle,
-  value,
-}: {
-  label: string;
-  labelTitle?: string;
-  value: ReactNode;
-}) {
-  return (
-    <div className="min-w-[3.25rem] shrink-0">
-      <p className="whitespace-nowrap text-xs font-bold text-[var(--muted)]" title={labelTitle}>
-        {label}
-      </p>
-      <p className="mt-1 whitespace-nowrap text-lg font-bold tabular-nums text-[var(--text)]">{value}</p>
-    </div>
+    <p className="dash-eyebrow mb-2 mt-4 first:mt-0">{children}</p>
   );
 }
 
@@ -88,15 +65,14 @@ export function EmployeeDirectoryGrid({
   colRepReturn: boolean;
   colSpouseReceipt: boolean;
   colWorkerNet: boolean;
-  /** 있으면 기준 연도 기준 연간 사복·급여+사복 합계 표시(스케줄·분기·월별 노트와 동일 로직) */
   payrollYearContext?: EmployeeDirectoryPayrollYearContext;
 }) {
   if (employees.length === 0) {
-    return <p className="p-6 text-base font-medium text-[var(--muted)]">등록된 직원이 없습니다.</p>;
+    return <p className="py-10 text-center text-sm text-[var(--muted)]">등록된 직원이 없습니다.</p>;
   }
 
   return (
-    <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
       {employees.map((e) => {
         const ovr = payrollYearContext?.overrides.filter((x) => x.employeeId === e.id) ?? [];
         const q = payrollYearContext?.quarterly.filter((x) => x.employeeId === e.id) ?? [];
@@ -117,97 +93,93 @@ export function EmployeeDirectoryGrid({
             : 0;
         const salaryY = payrollYearContext != null ? effectiveAnnualSalaryWon(e) : 0;
         const totalY = salaryY + welfareY;
+
         return (
-        <article
-          key={e.id}
-          className="surface surface-hoverable flex min-w-0 flex-col overflow-hidden shadow-[var(--shadow-card)]"
-        >
-          <header className="border-b border-[var(--border)] bg-[var(--surface-hover)]/40 px-5 py-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 space-y-1">
-                <h2 className="text-xl font-bold tracking-tight text-[var(--text)]">{e.name}</h2>
-                <p className="font-mono text-sm font-bold tabular-nums text-[var(--text)]">{e.employeeCode}</p>
+          <article
+            key={e.id}
+            className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-card-hover)]"
+          >
+            {/* 헤더 */}
+            <header className="flex items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface-hover)]/50 px-4 py-3.5">
+              <div className="min-w-0 space-y-0.5">
+                <p className="font-mono text-xs font-semibold tabular-nums text-[var(--muted)]">{e.employeeCode}</p>
+                <p className="text-lg font-bold leading-tight tracking-tight text-[var(--text)]">{e.name}</p>
                 {e.position ? (
-                  <p className="text-sm font-semibold text-[var(--text)]">직급 {e.position}</p>
+                  <p className="text-xs text-[var(--muted)]">{e.position}</p>
                 ) : null}
               </div>
               <Link
                 href={`/dashboard/employees/${e.id}`}
-                className="shrink-0 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-bold text-[var(--accent)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-[var(--accent)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
               >
                 상세
               </Link>
-            </div>
-          </header>
+            </header>
 
-          <div className="space-y-0 px-5 pb-5 pt-3">
-            <SectionTitle>급여·복지</SectionTitle>
-            <div className="pt-1">
-              <FieldRow label="기존연봉" value={won(e.baseSalary)} />
-              <FieldRow label="조정급여" value={won(e.adjustedSalary)} />
-              <FieldRow label="사복지급분" value={won(e.welfareAllocation)} />
-              <FieldRow label="알아서금액" value={won(e.discretionaryAmount)} />
+            <div className="px-4 py-3">
+              {/* 급여·복지 */}
+              <SectionLabel>급여 · 복지</SectionLabel>
+              <Row label="기존연봉" value={won(e.baseSalary)} />
+              <Row label="조정급여" value={won(e.adjustedSalary)} />
+              <Row label="사복지급분" value={won(e.welfareAllocation)} />
+              <Row label="알아서금액" value={won(e.discretionaryAmount)} />
               {payrollYearContext != null ? (
                 <>
-                  <FieldRow
-                    label={`${payrollYearContext.activeYear}년 연간 사복(스케줄·노트)`}
-                    value={won(welfareY)}
-                  />
-                  <FieldRow
-                    label={`${payrollYearContext.activeYear}년 연간 합계(급여+사복)`}
-                    value={won(totalY)}
-                  />
+                  <Row label={`${payrollYearContext.activeYear}년 연간 사복`} value={won(welfareY)} />
+                  <Row label="연간 합계 (급여+사복)" value={won(totalY)} />
                 </>
               ) : null}
-            </div>
 
-            {colRepReturn || colSpouseReceipt || colWorkerNet ? (
-              <>
-                <SectionTitle>표시 항목</SectionTitle>
-                <div className="pt-1">
-                  {colRepReturn ? <FieldRow label="대표반환" value={yn(e.flagRepReturn) || EMPTY} /> : null}
-                  {colSpouseReceipt ? <FieldRow label="배우자수령" value={yn(e.flagSpouseReceipt) || EMPTY} /> : null}
-                  {colWorkerNet ? <FieldRow label="근로자 실질 수령" value={yn(e.flagWorkerNet) || EMPTY} /> : null}
-                </div>
-              </>
-            ) : null}
+              {/* 표시항목 (설정된 것만) */}
+              {(colRepReturn || colSpouseReceipt || colWorkerNet) ? (
+                <>
+                  <SectionLabel>표시 항목</SectionLabel>
+                  {colRepReturn ? <Row label="대표반환" value={yn(e.flagRepReturn) || EM} /> : null}
+                  {colSpouseReceipt ? <Row label="배우자수령" value={yn(e.flagSpouseReceipt) || EM} /> : null}
+                  {colWorkerNet ? <Row label="근로자 실질 수령" value={yn(e.flagWorkerNet) || EM} /> : null}
+                </>
+              ) : null}
 
-            <SectionTitle>가족·일정</SectionTitle>
-            <div className="grid grid-cols-3 gap-4 border-b border-[var(--border)]/70 py-3 sm:gap-6">
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--muted)]">입사 월</p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{monthWithSuffix(e.hireMonth)}</p>
+              {/* 일정 */}
+              <SectionLabel>일정</SectionLabel>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "입사월", value: monthLabel(e.hireMonth) },
+                  { label: "생일월", value: monthLabel(e.birthMonth) },
+                  { label: "결혼기념", value: monthLabel(e.weddingMonth) },
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-md border border-[var(--border)] bg-[var(--surface-hover)]/50 px-2 py-2 text-center">
+                    <p className="text-[0.65rem] font-semibold text-[var(--muted)]">{label}</p>
+                    <p className="mt-0.5 text-sm font-bold tabular-nums text-[var(--text)]">{value}</p>
+                  </div>
+                ))}
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--muted)]">생일 월</p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{monthWithSuffix(e.birthMonth)}</p>
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--muted)]" title="결혼기념월">
-                  결혼기념
-                </p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-[var(--text)]">{monthWithSuffix(e.weddingMonth)}</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-start gap-x-6 gap-y-4 border-b border-[var(--border)]/70 py-4">
-              <StatChip label="영유아" value={e.childrenInfant} />
-              <StatChip label="미취학" labelTitle="미취학아동" value={e.childrenPreschool} />
-              <StatChip label="청소년" value={e.childrenTeen} />
-              <StatChip label="부모님" value={e.parentsCount} />
-              <StatChip label="시부모님" value={e.parentsInLawCount} />
-            </div>
 
-            <SectionTitle>공제·지급</SectionTitle>
-            <div className="pt-1">
-              <FieldRow label="보험료" value={won(e.insurancePremium)} />
-              <FieldRow label="대출이자" value={won(e.loanInterest)} />
-              <FieldRow label="월세" value={won(e.monthlyRentAmount)} />
-              <FieldRow label="급여일" value={e.payDay != null ? e.payDay : EMPTY} />
-              <FieldRow label="레벨" value={e.level} />
-              <FieldRow label="예상 인센" value={won(e.incentiveAmount)} />
+              {/* 가족 수 */}
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-md border border-[var(--border)] bg-[var(--surface-hover)]/50 px-3 py-2">
+                {[
+                  { short: "영유아", full: "영유아", val: e.childrenInfant },
+                  { short: "미취학", full: "미취학아동", val: e.childrenPreschool },
+                  { short: "청소년", full: "청소년", val: e.childrenTeen },
+                  { short: "부모님", full: "부모님", val: e.parentsCount },
+                  { short: "시부모", full: "시부모님", val: e.parentsInLawCount },
+                ].map(({ short, full, val }) => (
+                  <span key={short} title={full} className="text-xs text-[var(--muted)]">
+                    {short} <span className="font-bold tabular-nums text-[var(--text)]">{val}</span>
+                  </span>
+                ))}
+              </div>
+
+              {/* 공제·지급 */}
+              <SectionLabel>공제 · 지급</SectionLabel>
+              <Row label="보험료" value={won(e.insurancePremium)} />
+              <Row label="대출이자" value={won(e.loanInterest)} />
+              <Row label="월세" value={won(e.monthlyRentAmount)} />
+              <Row label="급여일" value={e.payDay != null ? `${e.payDay}일` : EM} />
+              <Row label="레벨" value={e.level} />
+              <Row label="예상 인센" value={won(e.incentiveAmount)} />
             </div>
-          </div>
-        </article>
+          </article>
         );
       })}
     </div>

@@ -103,7 +103,7 @@ export function DashboardShell({
             </button>
           </form>
         </header>
-        <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-4 py-10 sm:px-6 sm:py-12 lg:px-10">{children}</main>
+        <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">{children}</main>
       </div>
     );
   }
@@ -112,32 +112,34 @@ export function DashboardShell({
     <div className="flex min-h-screen bg-transparent">
       {/* 데스크톱 사이드바 */}
       <aside className="neu-sidebar sticky top-3 z-20 mx-3 hidden h-[calc(100vh-1.5rem)] w-[var(--sidebar-w)] shrink-0 flex-col md:flex">
-        <div className="px-4 py-4">
+        <div className="border-b border-[var(--border)] px-4 py-4">
           <p className="dash-eyebrow">SABOK</p>
-          <p className="neu-title-gradient mt-1 text-base font-bold tracking-tight">사내근로복지기금</p>
+          <p className="neu-title-gradient mt-0.5 text-[0.9375rem] font-bold">사내근로복지기금</p>
           {tenantLine ? (
-            <div className="mt-3 space-y-2 rounded-xl border border-[var(--accent-soft)] bg-[var(--accent-soft)]/40 px-3 py-2.5">
-              <p className="line-clamp-3 text-xs font-medium leading-snug text-[var(--text)]">{tenantLine}</p>
+            <div className="mt-3 space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-hover)] px-3 py-2.5">
+              <p className="line-clamp-3 text-xs leading-snug text-[var(--muted)]">{tenantLine}</p>
               {showTenantSwitch ? (
                 <Link
                   href="/dashboard/select-tenant"
-                  className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-center text-xs font-semibold text-[var(--accent)] shadow-sm transition-colors hover:bg-[var(--surface-hover)]"
+                  className="flex w-full items-center justify-center rounded-md border border-[var(--accent-soft)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
                 >
-                  다른 거래처로 전환
+                  거래처 전환
                 </Link>
               ) : null}
             </div>
           ) : null}
         </div>
         <NavBody groups={groups} pathname={pathname} />
-        <form action={logoutAction} className="mt-auto p-3">
-          <button
-            type="submit"
-            className="neu-field w-full rounded-xl px-3 py-2.5 text-[0.9375rem] font-medium text-[var(--muted)] transition-colors hover:text-[var(--danger)]"
-          >
-            로그아웃
-          </button>
-        </form>
+        <div className="border-t border-[var(--border)] p-3">
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm font-medium text-[var(--muted)] transition-colors hover:border-[var(--danger)]/30 hover:text-[var(--danger)]"
+            >
+              로그아웃
+            </button>
+          </form>
+        </div>
       </aside>
 
       {/* 모바일 상단 바 */}
@@ -197,19 +199,21 @@ export function DashboardShell({
                 </div>
               ) : null}
               <NavBody groups={groups} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
-              <form action={logoutAction} className="mt-auto p-3">
-                <button
-                  type="submit"
-                  className="neu-field w-full rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--danger)]"
-                >
-                  로그아웃
-                </button>
-              </form>
+              <div className="border-t border-[var(--border)] p-3">
+                <form action={logoutAction}>
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm font-medium text-[var(--muted)] transition-colors hover:text-[var(--danger)]"
+                  >
+                    로그아웃
+                  </button>
+                </form>
+              </div>
             </div>
           </>
         ) : null}
 
-        <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-4 py-10 sm:px-6 sm:py-12 lg:px-10">
+        <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
           {children}
         </main>
       </div>
