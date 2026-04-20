@@ -81,7 +81,6 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
       `${payYear}년 최저임금(연 환산 약 ${minAnnual.toLocaleString("ko-KR")}원)보다 적용 연봉(${effectiveAnnual.toLocaleString("ko-KR")}원)이 낮습니다. 확인하세요.`,
     );
   }
-  const 경고 = warnings.length > 0 ? warnings.join("\n") : undefined;
 
   const existingEmp = id ? await employeeFindFirst(id, ctx.tenantId) : null;
   if (id && !existingEmp) return { 오류: "직원을 찾을 수 없습니다." };
@@ -100,6 +99,24 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     ? chk(formData, "flagWorkerNet")
     : (existingEmp?.flagWorkerNet ?? false);
 
+  /**
+   * 퇴사 월만 입력하고 연도를 비워 두는 케이스가 흔하다.
+   * 그대로 두면 도메인 규칙(`employeeStatusForYear`) 상 옛 데이터 안전망 때문에 무시되어 “퇴사월을 적었는데 반영 안 됨” 사고가 난다.
+   * → 폼 단계에서 보정: `resignMonth` 만 있으면 `resignYear = activeYear` 로 자동 채움.
+   * 사용자가 의도적으로 둘 다 비웠으면 그대로 둠(재직 중).
+   */
+  const resignMonthRaw = toIntOrNull(formData.get("resignMonth"));
+  const resignYearRaw = toIntOrNull(formData.get("resignYear"));
+  const resignMonthVal = resignMonthRaw;
+  const resignYearVal =
+    resignYearRaw == null && resignMonthRaw != null ? payYear : resignYearRaw;
+  if (resignMonthRaw != null && resignYearRaw == null) {
+    warnings.push(
+      `‘퇴사 월’만 입력되어 있어 활성 연도(${payYear})로 자동 보정합니다. 다른 연도라면 ‘퇴사 연도’를 함께 입력하세요.`,
+    );
+  }
+  const 경고 = warnings.length > 0 ? warnings.join("\n") : undefined;
+
   const data: Record<string, unknown> = {
     name,
     position,
@@ -115,8 +132,8 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     expectedYearlyWelfare: toNumOrNull(formData.get("expectedYearlyWelfare")),
     birthMonth: toIntOrNull(formData.get("birthMonth")),
     hireMonth: toIntOrNull(formData.get("hireMonth")),
-    resignMonth: toIntOrNull(formData.get("resignMonth")),
-    resignYear: toIntOrNull(formData.get("resignYear")),
+    resignMonth: resignMonthVal,
+    resignYear: resignYearVal,
     weddingMonth: toIntOrNull(formData.get("weddingMonth")),
     childrenInfant: toInt0(formData.get("childrenInfant")),
     childrenPreschool: toInt0(formData.get("childrenPreschool")),

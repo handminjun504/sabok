@@ -751,6 +751,10 @@ export function EmployeeForm({
 
           <section className="space-y-3 border-t border-[var(--border)] pt-6">
             <h3 className="dash-form-section-title">일정·가족·보험</h3>
+            <p className="text-xs leading-snug text-[var(--muted)]">
+              퇴사 처리는 <strong className="text-[var(--text)]">‘퇴사 월’</strong> 만 입력해도 활성 연도(
+              <span className="font-mono tabular-nums text-[var(--text)]">{activeYear}</span>)로 자동 처리됩니다. 다른 연도라면 ‘퇴사 연도’를 함께 입력하세요.
+            </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             <Cell label="입사 월" name="hireMonth" type="number" defaultValue={employee?.hireMonth ?? ""} />
             <Cell label="퇴사 연도" name="resignYear" type="number" defaultValue={employee?.resignYear ?? ""} />
