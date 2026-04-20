@@ -1,6 +1,6 @@
 import {
   companySettingsByTenant,
-  employeeCountByTenant,
+  employeeListByTenantCodeAsc,
   tenantGetById,
   vendorListByTenant,
 } from "@/lib/pb/repository";
@@ -8,6 +8,7 @@ import { DashboardReserveStatusPanel } from "@/components/DashboardReserveStatus
 import { DashboardTenantProfileForm } from "@/components/DashboardTenantProfileForm";
 import { summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
 import { requireTenantContext } from "@/lib/tenant-context";
+import { employeeIsInactiveForYear } from "@/lib/domain/schedule";
 import type { Tenant } from "@/types/models";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -26,13 +27,15 @@ function tenantProfileFormKey(t: Tenant): string {
 
 export default async function DashboardHomePage() {
   const { tenantId } = await requireTenantContext();
-  const [empCount, settings, tenant, vendors] = await Promise.all([
-    employeeCountByTenant(tenantId),
+  const [employees, settings, tenant, vendors] = await Promise.all([
+    employeeListByTenantCodeAsc(tenantId),
     companySettingsByTenant(tenantId),
     tenantGetById(tenantId),
     vendorListByTenant(tenantId),
   ]);
   const year = settings?.activeYear ?? new Date().getFullYear();
+  const activeCount = employees.filter((e) => !employeeIsInactiveForYear(e, year)).length;
+  const inactiveCount = employees.length - activeCount;
   const reserveSummary = tenant
     ? summarizeTenantAdditionalReserve(
         { clientEntityType: tenant.clientEntityType, headOfficeCapital: tenant.headOfficeCapital },
@@ -49,7 +52,10 @@ export default async function DashboardHomePage() {
         meta={
           <>
             <span className="trust-pill">기준 연도 {year}</span>
-            <span className="trust-pill">등록 직원 {empCount}명</span>
+            <span className="trust-pill">{year}년 재직 {activeCount}명</span>
+            {inactiveCount > 0 ? (
+              <span className="trust-pill">비활성(입사 전·퇴사) {inactiveCount}명</span>
+            ) : null}
           </>
         }
       />
@@ -60,8 +66,11 @@ export default async function DashboardHomePage() {
         </h2>
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="surface-prominent p-5 sm:p-6 lg:p-8">
-            <p className="dash-eyebrow">등록 직원</p>
-            <p className="mt-3 text-4xl font-extrabold tabular-nums tracking-normal text-[var(--text)]">{empCount}</p>
+            <p className="dash-eyebrow">{year}년 재직 직원</p>
+            <p className="mt-3 text-4xl font-extrabold tabular-nums tracking-normal text-[var(--text)]">{activeCount}</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              전체 등록 {employees.length}명{inactiveCount > 0 ? ` · 비활성 ${inactiveCount}명` : ""}
+            </p>
             <Link
               href="/dashboard/employees"
               className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[var(--accent)] hover:gap-2 hover:underline"

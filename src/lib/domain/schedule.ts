@@ -71,6 +71,89 @@ function employeeLevelNorm(employee: Pick<Employee, "level">): number {
   return Math.min(5, Math.max(1, n));
 }
 
+export type EmploymentRange = {
+  /** 해당 연도에 활성인 시작 월(포함) */
+  fromMonth: number;
+  /** 해당 연도에 활성인 끝 월(포함) */
+  toMonth: number;
+};
+
+export type EmployeeStatusForYear =
+  | { kind: "ACTIVE_FULL_YEAR" }
+  | { kind: "ACTIVE_PARTIAL"; range: EmploymentRange }
+  | { kind: "BEFORE_HIRE"; hireYear: number; hireMonth: number | null }
+  | { kind: "AFTER_RESIGN"; resignYear: number; resignMonth: number | null };
+
+/**
+ * 활성 연도(year) 기준 직원의 활성 월 범위를 결정한다.
+ *
+ * 규칙(하위 호환):
+ *   - hireYear/resignYear 가 모두 없으면 → 전체 연도 활성(기존 동작 유지)
+ *   - 활성 연도 < hireYear → 입사 전(BEFORE_HIRE), 스케줄 0
+ *   - 활성 연도 > resignYear → 퇴사 후(AFTER_RESIGN), 스케줄 0
+ *   - 활성 연도 == hireYear → hireMonth(있으면) 부터 시작, 없으면 1월
+ *   - 활성 연도 == resignYear → resignMonth(있으면) 까지, 없으면 12월
+ *   - resignMonth 만 있고 resignYear 가 없으면 → 무시(연도가 명시되어야 적용. 옛 데이터의 단일 월 입력이 영원히 잘리는 사고 방지)
+ */
+export function employeeStatusForYear(
+  employee: Pick<Employee, "hireYear" | "hireMonth" | "resignYear" | "resignMonth">,
+  year: number,
+): EmployeeStatusForYear {
+  const hireY = employee.hireYear ?? null;
+  const resignY = employee.resignYear ?? null;
+
+  if (hireY != null && year < hireY) {
+    return { kind: "BEFORE_HIRE", hireYear: hireY, hireMonth: employee.hireMonth ?? null };
+  }
+  if (resignY != null && year > resignY) {
+    return { kind: "AFTER_RESIGN", resignYear: resignY, resignMonth: employee.resignMonth ?? null };
+  }
+
+  let from = 1;
+  let to = 12;
+  let partial = false;
+
+  if (hireY != null && year === hireY && employee.hireMonth != null) {
+    const m = Math.round(Number(employee.hireMonth));
+    if (Number.isFinite(m) && m >= 1 && m <= 12 && m > 1) {
+      from = m;
+      partial = true;
+    }
+  }
+  if (resignY != null && year === resignY && employee.resignMonth != null) {
+    const m = Math.round(Number(employee.resignMonth));
+    if (Number.isFinite(m) && m >= 1 && m <= 12 && m < 12) {
+      to = m;
+      partial = true;
+    }
+  }
+
+  if (from > to) {
+    /** 같은 해에 입사 후 그 전 달에 퇴사한 모순 입력 → 보수적으로 비활성 처리 */
+    return { kind: "AFTER_RESIGN", resignYear: resignY ?? year, resignMonth: employee.resignMonth ?? null };
+  }
+
+  return partial ? { kind: "ACTIVE_PARTIAL", range: { fromMonth: from, toMonth: to } } : { kind: "ACTIVE_FULL_YEAR" };
+}
+
+/** 활성 연도에 직원이 “전혀 활성이 아니다(0원)”인지 한 줄로 확인 */
+export function employeeIsInactiveForYear(
+  employee: Pick<Employee, "hireYear" | "hireMonth" | "resignYear" | "resignMonth">,
+  year: number,
+): boolean {
+  const s = employeeStatusForYear(employee, year);
+  return s.kind === "BEFORE_HIRE" || s.kind === "AFTER_RESIGN";
+}
+
+/** 특정 월이 활성 범위 안인지 — 정기/분기/노트 적용 시 공통으로 사용 */
+function monthIsActive(status: EmployeeStatusForYear, month: number): boolean {
+  if (status.kind === "ACTIVE_FULL_YEAR") return true;
+  if (status.kind === "ACTIVE_PARTIAL") {
+    return month >= status.range.fromMonth && month <= status.range.toMonth;
+  }
+  return false;
+}
+
 /** 해당 연도·레벨의 정기(레벨/행사) 규칙 금액 합 — 모든 행사가 한 번씩 발생한다고 가정한 표준 연간 합 */
 export function sumRegularRulesAnnualForLevel(
   rules: LevelPaymentRule[],
@@ -167,12 +250,16 @@ export function buildMonthlyBreakdown(
   accrualCurrentMonthPayNext: boolean,
   customPaymentEvents: CustomPaymentScheduleDef[] = []
 ): MonthBreakdown[] {
+  const status = employeeStatusForYear(employee, year);
+
   const qByPaidMonth = new Map<number, { itemKey: string; amount: number }[]>();
   for (const q of quarterly) {
     if (q.year !== year) continue;
     const months = q.paymentMonths.length > 0 ? q.paymentMonths : [];
     for (const m of months) {
       if (m < 1 || m > 12) continue;
+      /** 분기 지원도 활성 월 범위 안에 있을 때만 반영 (지급월 기준) */
+      if (!monthIsActive(status, m)) continue;
       const list = qByPaidMonth.get(m) ?? [];
       list.push({ itemKey: q.itemKey, amount: toNum(q.amount) });
       qByPaidMonth.set(m, list);
@@ -186,7 +273,15 @@ export function buildMonthlyBreakdown(
         ? 1
         : accrualMonth + 1
       : accrualMonth;
-    const eventKeys = eventsOccurringInMonth(accrualMonth, employee, foundingMonth, customPaymentEvents);
+
+    /**
+     * 정기 이벤트는 “귀속월(accrualMonth)” 기준으로 활성 여부를 본다.
+     * 입사월/생일월/창립월/결혼기념월 등은 활성 범위 밖이면 발생하지 않는다.
+     */
+    const accrualActive = monthIsActive(status, accrualMonth);
+    const eventKeys = accrualActive
+      ? eventsOccurringInMonth(accrualMonth, employee, foundingMonth, customPaymentEvents)
+      : [];
     const regularEvents = eventKeys.map((eventKey) => ({
       eventKey,
       amount: resolveEventAmount(employee, eventKey, year, rules, overrides),
@@ -386,11 +481,19 @@ export function yearlyWelfareTotal(rows: MonthBreakdown[]): number {
 
 /** 월별 노트에서 연간 추가액 (지급월 합산용과 동일하게 연도 필터) */
 export function sumMonthlyNoteExtrasForYear(
-  notes: Pick<{ year: number; optionalExtraAmount: number | null }, "year" | "optionalExtraAmount">[],
-  year: number
+  notes: Pick<{ year: number; month?: number; optionalExtraAmount: number | null }, "year" | "month" | "optionalExtraAmount">[],
+  year: number,
+  /** 직원 활성 범위 — 주어지면 범위 밖 월 노트는 합산에서 제외 */
+  status?: EmployeeStatusForYear,
 ): number {
   return notes
     .filter((n) => n.year === year)
+    .filter((n) => {
+      if (!status) return true;
+      const m = n.month;
+      if (m == null) return true; /** month 가 없는 레거시 형태는 그대로 합산 */
+      return monthIsActive(status, m);
+    })
     .reduce((s, n) => s + (n.optionalExtraAmount != null ? toNum(n.optionalExtraAmount) : 0), 0);
 }
 
@@ -422,7 +525,8 @@ export function computeActualYearlyWelfareForEmployee(
     accrualCurrentMonthPayNext,
     customPaymentEvents
   );
-  return yearlyWelfareTotal(br) + sumMonthlyNoteExtrasForYear(monthlyNotesForEmployee, year);
+  const status = employeeStatusForYear(employee, year);
+  return yearlyWelfareTotal(br) + sumMonthlyNoteExtrasForYear(monthlyNotesForEmployee, year, status);
 }
 
 /** 지급월(paidMonth)이 lastPaidMonthInclusive 이하인 스케줄 행만 합산 */
@@ -434,15 +538,17 @@ export function yearlyWelfareTotalThroughPaidMonth(
   return rows.filter((r) => r.paidMonth <= m).reduce((s, r) => s + r.totalWelfareMonth, 0);
 }
 
-/** 월별 노트 추가액 — 해당 연도·지급월이 lastPaidMonthInclusive 이하만 */
+/** 월별 노트 추가액 — 해당 연도·지급월이 lastPaidMonthInclusive 이하만, 활성 범위 안에서만 */
 export function sumMonthlyNoteExtrasThroughPaidMonth(
   notes: Pick<{ year: number; month: number; optionalExtraAmount: number | null }, "year" | "month" | "optionalExtraAmount">[],
   year: number,
-  lastPaidMonthInclusive: number
+  lastPaidMonthInclusive: number,
+  status?: EmployeeStatusForYear,
 ): number {
   const m = Math.min(12, Math.max(0, lastPaidMonthInclusive));
   return notes
     .filter((n) => n.year === year && n.month >= 1 && n.month <= m)
+    .filter((n) => (status ? monthIsActive(status, n.month) : true))
     .reduce((s, n) => s + (n.optionalExtraAmount != null ? toNum(n.optionalExtraAmount) : 0), 0);
 }
 
@@ -476,9 +582,10 @@ export function computeActualWelfareThroughPaidMonth(
     customPaymentEvents
   );
   const through = Math.min(12, Math.max(1, lastPaidMonthInclusive));
+  const status = employeeStatusForYear(employee, year);
   return (
     yearlyWelfareTotalThroughPaidMonth(br, through) +
-    sumMonthlyNoteExtrasThroughPaidMonth(monthlyNotesForEmployee, year, through)
+    sumMonthlyNoteExtrasThroughPaidMonth(monthlyNotesForEmployee, year, through, status)
   );
 }
 

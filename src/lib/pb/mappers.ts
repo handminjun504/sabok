@@ -52,7 +52,9 @@ export function mapEmployee(r: Record<string, unknown>): Employee {
   quarterlyPayAmount: numNull(r.quarterlyPayAmount),
   birthMonth: r.birthMonth === null || r.birthMonth === undefined || r.birthMonth === "" ? null : num(r.birthMonth),
   hireMonth: r.hireMonth === null || r.hireMonth === undefined || r.hireMonth === "" ? null : num(r.hireMonth),
+  hireYear: r.hireYear === null || r.hireYear === undefined || r.hireYear === "" ? null : num(r.hireYear),
   resignMonth: r.resignMonth === null || r.resignMonth === undefined || r.resignMonth === "" ? null : num(r.resignMonth),
+  resignYear: r.resignYear === null || r.resignYear === undefined || r.resignYear === "" ? null : num(r.resignYear),
   weddingMonth:
     r.weddingMonth === null || r.weddingMonth === undefined || r.weddingMonth === "" ? null : num(r.weddingMonth),
   childrenInfant: num(r.childrenInfant),

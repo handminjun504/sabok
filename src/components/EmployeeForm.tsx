@@ -342,6 +342,20 @@ export function EmployeeForm({
               {employee.adjustedSalary > 0 ? `${formatWon(employee.adjustedSalary)}원` : "—"}
             </dd>
           </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">입사</dt>
+            <dd className="mt-1 tabular-nums">
+              {employee.hireYear ?? "—"}년{employee.hireMonth != null ? ` ${employee.hireMonth}월` : ""}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">퇴사</dt>
+            <dd className="mt-1 tabular-nums">
+              {employee.resignYear != null
+                ? `${employee.resignYear}년${employee.resignMonth != null ? ` ${employee.resignMonth}월` : ""}`
+                : "재직 중"}
+            </dd>
+          </div>
         </dl>
         <button type="button" className="btn btn-primary mt-5 text-sm" onClick={() => setEditorOpen(true)}>
           정보 수정·삭제
@@ -548,7 +562,9 @@ export function EmployeeForm({
           <section className="space-y-3 border-t border-[var(--border)] pt-6">
             <h3 className="dash-form-section-title">일정·가족·보험</h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <Cell label="입사 연도" name="hireYear" type="number" defaultValue={employee?.hireYear ?? ""} />
             <Cell label="입사 월" name="hireMonth" type="number" defaultValue={employee?.hireMonth ?? ""} />
+            <Cell label="퇴사 연도" name="resignYear" type="number" defaultValue={employee?.resignYear ?? ""} />
             <Cell label="퇴사 월" name="resignMonth" type="number" defaultValue={employee?.resignMonth ?? ""} />
             <Cell label="생일 월" name="birthMonth" type="number" defaultValue={employee?.birthMonth ?? ""} />
             <Cell

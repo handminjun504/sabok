@@ -10,6 +10,7 @@ import type {
 import {
   computeActualYearlyWelfareForEmployee,
   effectiveAnnualSalaryWon,
+  employeeStatusForYear,
   type CustomPaymentScheduleDef,
 } from "@/lib/domain/schedule";
 import { formatWon, yn } from "@/lib/spreadsheet-format";
@@ -93,20 +94,49 @@ export function EmployeeDirectoryGrid({
             : 0;
         const salaryY = payrollYearContext != null ? effectiveAnnualSalaryWon(e) : 0;
         const totalY = salaryY + welfareY;
+        const status =
+          payrollYearContext != null ? employeeStatusForYear(e, payrollYearContext.activeYear) : null;
+        const statusBadge = (() => {
+          if (!status) return null;
+          if (status.kind === "ACTIVE_FULL_YEAR") {
+            return <span className="badge badge-success">재직</span>;
+          }
+          if (status.kind === "ACTIVE_PARTIAL") {
+            const { fromMonth, toMonth } = status.range;
+            const label =
+              fromMonth === 1 ? `~${toMonth}월 재직` : toMonth === 12 ? `${fromMonth}월~ 재직` : `${fromMonth}~${toMonth}월 재직`;
+            return <span className="badge badge-warn">{label}</span>;
+          }
+          if (status.kind === "BEFORE_HIRE") {
+            return (
+              <span className="badge badge-neutral">
+                {status.hireYear}년 입사 예정
+              </span>
+            );
+          }
+          return (
+            <span className="badge badge-neutral">
+              {status.resignYear}년{status.resignMonth ? ` ${status.resignMonth}월` : ""} 퇴사
+            </span>
+          );
+        })();
+        const cardDimmed = status?.kind === "BEFORE_HIRE" || status?.kind === "AFTER_RESIGN";
 
         return (
           <article
             key={e.id}
-            className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-card-hover)]"
+            className={
+              "overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-card-hover)] " +
+              (cardDimmed ? "opacity-70" : "")
+            }
           >
             {/* 헤더 */}
             <header className="flex items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface-hover)]/50 px-4 py-3.5">
               <div className="min-w-0 space-y-0.5">
                 <p className="font-mono text-xs font-semibold tabular-nums text-[var(--muted)]">{e.employeeCode}</p>
                 <p className="text-lg font-bold leading-tight tracking-tight text-[var(--text)]">{e.name}</p>
-                {e.position ? (
-                  <p className="text-xs text-[var(--muted)]">{e.position}</p>
-                ) : null}
+                {e.position ? <p className="text-xs text-[var(--muted)]">{e.position}</p> : null}
+                {statusBadge ? <div className="mt-1.5">{statusBadge}</div> : null}
               </div>
               <Link
                 href={`/dashboard/employees/${e.id}`}
@@ -142,13 +172,31 @@ export function EmployeeDirectoryGrid({
 
               {/* 일정 */}
               <SectionLabel>일정</SectionLabel>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[
-                  { label: "입사월", value: monthLabel(e.hireMonth) },
+                  {
+                    label: "입사",
+                    value:
+                      e.hireYear != null
+                        ? `${e.hireYear}${e.hireMonth != null ? `.${e.hireMonth}` : ""}`
+                        : monthLabel(e.hireMonth),
+                  },
+                  {
+                    label: "퇴사",
+                    value:
+                      e.resignYear != null
+                        ? `${e.resignYear}${e.resignMonth != null ? `.${e.resignMonth}` : ""}`
+                        : e.resignMonth != null
+                          ? `${e.resignMonth}월`
+                          : "재직",
+                  },
                   { label: "생일월", value: monthLabel(e.birthMonth) },
                   { label: "결혼기념", value: monthLabel(e.weddingMonth) },
                 ].map(({ label, value }) => (
-                  <div key={label} className="rounded-md border border-[var(--border)] bg-[var(--surface-hover)]/50 px-2 py-2 text-center">
+                  <div
+                    key={label}
+                    className="rounded-md border border-[var(--border)] bg-[var(--surface-hover)]/50 px-2 py-2 text-center"
+                  >
                     <p className="text-[0.65rem] font-semibold text-[var(--muted)]">{label}</p>
                     <p className="mt-0.5 text-sm font-bold tabular-nums text-[var(--text)]">{value}</p>
                   </div>

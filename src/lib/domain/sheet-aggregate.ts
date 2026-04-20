@@ -6,6 +6,7 @@ import type { Employee, Level5Override, LevelPaymentRule, MonthlyEmployeeNote, Q
 import {
   type CustomPaymentScheduleDef,
   computeActualYearlyWelfareForEmployee,
+  employeeIsInactiveForYear,
 } from "./schedule";
 
 export type LevelWelfareAggregate = {
@@ -18,7 +19,10 @@ export type TenantOperatingSummary = {
   year: number;
   foundingMonth: number;
   accrualCurrentMonthPayNext: boolean;
+  /** 해당 연도에 활성(재직)이었던 직원 수 */
   employeeCount: number;
+  /** 등록은 되어 있지만 해당 연도에는 비활성(입사 전·퇴사 후)인 직원 수 */
+  inactiveEmployeeCount: number;
   byLevel: LevelWelfareAggregate[];
   totalYearlyWelfare: number;
   sumBaseSalary: number;
@@ -56,8 +60,17 @@ export function computeTenantOperatingSummary(
   let sumAdjustedSalary = 0;
   let sumWelfareAllocation = 0;
   let sumIncentiveAmount = 0;
+  let activeCount = 0;
+  let inactiveCount = 0;
 
   for (const emp of employees) {
+    /** 해당 연도에 비활성(입사 전·퇴사 후)인 직원은 인원·금액 합계에서 모두 제외 */
+    if (employeeIsInactiveForYear(emp, year)) {
+      inactiveCount += 1;
+      continue;
+    }
+    activeCount += 1;
+
     sumBaseSalary += toInt(emp.baseSalary);
     sumAdjustedSalary += toInt(emp.adjustedSalary);
     sumWelfareAllocation += toInt(emp.welfareAllocation);
@@ -97,7 +110,8 @@ export function computeTenantOperatingSummary(
     year,
     foundingMonth,
     accrualCurrentMonthPayNext,
-    employeeCount: employees.length,
+    employeeCount: activeCount,
+    inactiveEmployeeCount: inactiveCount,
     byLevel,
     totalYearlyWelfare: Math.round(totalYearlyWelfare),
     sumBaseSalary,
