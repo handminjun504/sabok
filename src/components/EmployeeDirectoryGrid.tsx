@@ -108,20 +108,13 @@ export function EmployeeDirectoryGrid({
               fromMonth === 1 ? `~${toMonth}월 재직` : toMonth === 12 ? `${fromMonth}월~ 재직` : `${fromMonth}~${toMonth}월 재직`;
             return <span className="badge badge-warn">{label}</span>;
           }
-          if (status.kind === "BEFORE_HIRE") {
-            return (
-              <span className="badge badge-neutral">
-                {status.hireYear}년 입사 예정
-              </span>
-            );
-          }
           return (
             <span className="badge badge-neutral">
               {status.resignYear}년{status.resignMonth ? ` ${status.resignMonth}월` : ""} 퇴사
             </span>
           );
         })();
-        const cardDimmed = status?.kind === "BEFORE_HIRE" || status?.kind === "AFTER_RESIGN";
+        const cardDimmed = status?.kind === "AFTER_RESIGN";
 
         return (
           <article
@@ -187,13 +180,7 @@ export function EmployeeDirectoryGrid({
               <SectionLabel>일정</SectionLabel>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[
-                  {
-                    label: "입사",
-                    value:
-                      e.hireYear != null
-                        ? `${e.hireYear}${e.hireMonth != null ? `.${e.hireMonth}` : ""}`
-                        : monthLabel(e.hireMonth),
-                  },
+                  { label: "입사월", value: monthLabel(e.hireMonth) },
                   {
                     label: "퇴사",
                     value:

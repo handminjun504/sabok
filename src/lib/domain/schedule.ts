@@ -81,45 +81,30 @@ export type EmploymentRange = {
 export type EmployeeStatusForYear =
   | { kind: "ACTIVE_FULL_YEAR" }
   | { kind: "ACTIVE_PARTIAL"; range: EmploymentRange }
-  | { kind: "BEFORE_HIRE"; hireYear: number; hireMonth: number | null }
   | { kind: "AFTER_RESIGN"; resignYear: number; resignMonth: number | null };
 
 /**
  * 활성 연도(year) 기준 직원의 활성 월 범위를 결정한다.
  *
  * 규칙(하위 호환):
- *   - hireYear/resignYear 가 모두 없으면 → 전체 연도 활성(기존 동작 유지)
- *   - 활성 연도 < hireYear → 입사 전(BEFORE_HIRE), 스케줄 0
+ *   - resignYear 가 없으면 → 전체 연도 활성(입사 시점은 매년 hireMonth 에 입사축하 발생만 사용, 활성 범위와는 무관)
  *   - 활성 연도 > resignYear → 퇴사 후(AFTER_RESIGN), 스케줄 0
- *   - 활성 연도 == hireYear → hireMonth(있으면) 부터 시작, 없으면 1월
- *   - 활성 연도 == resignYear → resignMonth(있으면) 까지, 없으면 12월
+ *   - 활성 연도 == resignYear → resignMonth(있으면) 까지만 활성, 없으면 12월까지
  *   - resignMonth 만 있고 resignYear 가 없으면 → 무시(연도가 명시되어야 적용. 옛 데이터의 단일 월 입력이 영원히 잘리는 사고 방지)
  */
 export function employeeStatusForYear(
-  employee: Pick<Employee, "hireYear" | "hireMonth" | "resignYear" | "resignMonth">,
+  employee: Pick<Employee, "resignYear" | "resignMonth">,
   year: number,
 ): EmployeeStatusForYear {
-  const hireY = employee.hireYear ?? null;
   const resignY = employee.resignYear ?? null;
 
-  if (hireY != null && year < hireY) {
-    return { kind: "BEFORE_HIRE", hireYear: hireY, hireMonth: employee.hireMonth ?? null };
-  }
   if (resignY != null && year > resignY) {
     return { kind: "AFTER_RESIGN", resignYear: resignY, resignMonth: employee.resignMonth ?? null };
   }
 
-  let from = 1;
   let to = 12;
   let partial = false;
 
-  if (hireY != null && year === hireY && employee.hireMonth != null) {
-    const m = Math.round(Number(employee.hireMonth));
-    if (Number.isFinite(m) && m >= 1 && m <= 12 && m > 1) {
-      from = m;
-      partial = true;
-    }
-  }
   if (resignY != null && year === resignY && employee.resignMonth != null) {
     const m = Math.round(Number(employee.resignMonth));
     if (Number.isFinite(m) && m >= 1 && m <= 12 && m < 12) {
@@ -128,21 +113,16 @@ export function employeeStatusForYear(
     }
   }
 
-  if (from > to) {
-    /** 같은 해에 입사 후 그 전 달에 퇴사한 모순 입력 → 보수적으로 비활성 처리 */
-    return { kind: "AFTER_RESIGN", resignYear: resignY ?? year, resignMonth: employee.resignMonth ?? null };
-  }
-
-  return partial ? { kind: "ACTIVE_PARTIAL", range: { fromMonth: from, toMonth: to } } : { kind: "ACTIVE_FULL_YEAR" };
+  return partial ? { kind: "ACTIVE_PARTIAL", range: { fromMonth: 1, toMonth: to } } : { kind: "ACTIVE_FULL_YEAR" };
 }
 
 /** 활성 연도에 직원이 “전혀 활성이 아니다(0원)”인지 한 줄로 확인 */
 export function employeeIsInactiveForYear(
-  employee: Pick<Employee, "hireYear" | "hireMonth" | "resignYear" | "resignMonth">,
+  employee: Pick<Employee, "resignYear" | "resignMonth">,
   year: number,
 ): boolean {
   const s = employeeStatusForYear(employee, year);
-  return s.kind === "BEFORE_HIRE" || s.kind === "AFTER_RESIGN";
+  return s.kind === "AFTER_RESIGN";
 }
 
 /** 특정 월이 활성 범위 안인지 — 정기/분기/노트 적용 시 공통으로 사용 */

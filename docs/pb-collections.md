@@ -110,7 +110,7 @@ Prisma 스키마와 동일한 의미의 필드 (숫자 금액은 **number**).
 | baseSalary, adjustedSalary, welfareAllocation | number | yes | PB에서는 **Nonempty 끄기** (조정급여 0 = 기존연봉만 사용) |
 | incentiveAmount, discretionaryAmount, optionalWelfareAmount, monthlyPayAmount, quarterlyPayAmount | number | 선택 | `optionalWelfareAmount`는 UI·저장에서 사용하지 않음(항상 null). 선택적 복지는 `sabok_monthly_employee_notes.optionalExtraAmount`로 월별 입력 |
 | priorOverpaidWelfareWon | number | 선택 | **전기에 사복으로 더 받은 금액(원)**. 입력하면 이번 기 사복지급분 상한이 자동으로 그만큼 차감되어 급여포함신고·상한 초과/미달 계산에 즉시 반영. **기존 DB**: Admin에서 number 필드로 추가(Nonempty 끔). 없으면 null·차감 없음 |
-| birthMonth, hireMonth, hireYear, resignMonth, resignYear, weddingMonth, payDay | number | 선택 | **퇴사·연도 처리**: `resignYear` 가 활성 연도보다 이전이면 그 해는 모든 정기·분기·월별 노트가 0(스케줄·운영 보고·안내 멘트에서 자동 제외). 같은 해면 `resignMonth` 다음 달부터 비활성. `hireYear` 이전 연도는 “입사 전”으로 똑같이 0. **기존 DB**: Admin에서 `hireYear`, `resignYear` 두 number 필드를 새로 추가(Nonempty 끔). `resignMonth` 만 있고 `resignYear` 가 없으면 사고 방지를 위해 무시되니 둘 다 채워야 적용된다 |
+| birthMonth, hireMonth, resignMonth, resignYear, weddingMonth, payDay | number | 선택 | **퇴사·연도 처리**: `resignYear` 가 활성 연도보다 이전이면 그 해는 모든 정기·분기·월별 노트가 0(스케줄·운영 보고·안내 멘트에서 자동 제외). 같은 해면 `resignMonth` 다음 달부터 비활성. **기존 DB**: Admin에서 `resignYear` number 필드를 새로 추가(Nonempty 끔). `resignMonth` 만 있고 `resignYear` 가 없으면 사고 방지를 위해 무시되니 둘 다 채워야 적용된다. (입사 연도는 별도 필드로 두지 않으며, 입사월은 매년 입사축하 발생 월로만 사용된다.) |
 | childrenInfant, childrenPreschool, childrenTeen, parentsCount, parentsInLawCount | number | yes | 0 허용 → PB **Nonempty 끄기** |
 | insurancePremium, loanInterest | number | yes | 0 허용 → PB **Nonempty 끄기**. 분기 템플릿 건강보험·주택이자는 **발생액**과 비교 |
 | monthlyRentAmount | number | no | 월세 등 월 단위 발생액. `HOUSING_RENT` 분기 항목과 한도 `min` |

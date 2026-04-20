@@ -40,7 +40,6 @@ export async function POST(req: Request) {
         f.discretionaryAmount != null && f.discretionaryAmount !== "" ? Number(f.discretionaryAmount) : null,
       birthMonth: f.birthMonth as number | null,
       hireMonth: f.hireMonth as number | null,
-      hireYear: f.hireYear as number | null,
       resignMonth: f.resignMonth as number | null,
       resignYear: f.resignYear as number | null,
       weddingMonth: f.weddingMonth as number | null,

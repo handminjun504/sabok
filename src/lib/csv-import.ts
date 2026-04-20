@@ -27,8 +27,6 @@ const ALIASES: Record<string, string> = {
   근로자실질수령반환분제외: "flagWorkerNet",
   "입사 월": "hireMonth",
   입사월: "hireMonth",
-  "입사 연도": "hireYear",
-  입사연도: "hireYear",
   "퇴사 월": "resignMonth",
   퇴사월: "resignMonth",
   "퇴사 연도": "resignYear",
@@ -172,7 +170,6 @@ export function parseEmployeeCsv(text: string): CsvRowResult[] {
       discretionaryAmount: String(get("discretionaryAmount") || "").replace(/,/g, "") || null,
       birthMonth: get("birthMonth") ? parseInt(String(get("birthMonth")), 10) : null,
       hireMonth: get("hireMonth") ? parseInt(String(get("hireMonth")), 10) : null,
-      hireYear: get("hireYear") ? parseInt(String(get("hireYear")), 10) : null,
       resignMonth: get("resignMonth") ? parseInt(String(get("resignMonth")), 10) : null,
       resignYear: get("resignYear") ? parseInt(String(get("resignYear")), 10) : null,
       weddingMonth: get("weddingMonth") ? parseInt(String(get("weddingMonth")), 10) : null,
@@ -214,7 +211,6 @@ const SHEET_EMPLOYEE_EXPORT_HEADERS_CORE = [
 ] as const;
 
 const SHEET_EMPLOYEE_EXPORT_HEADERS_TAIL = [
-  "입사 연도",
   "입사 월",
   "퇴사 연도",
   "퇴사 월",
@@ -286,7 +282,6 @@ export function employeeToSheetCsvCells(e: Employee, settings: CompanySettings |
       : "",
     e.discretionaryAmount != null && Number(e.discretionaryAmount) !== 0 ? wonCell(e.discretionaryAmount) : "",
     ...survey,
-    e.hireYear != null ? String(e.hireYear) : "",
     e.hireMonth != null ? String(e.hireMonth) : "",
     e.resignYear != null ? String(e.resignYear) : "",
     e.resignMonth != null ? String(e.resignMonth) : "",

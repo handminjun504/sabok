@@ -41,7 +41,6 @@ function minimalEmployee(over: Partial<Employee> = {}): Employee {
     quarterlyPayAmount: null,
     birthMonth: null,
     hireMonth: null,
-    hireYear: null,
     resignMonth: null,
     resignYear: null,
     weddingMonth: null,

@@ -32,8 +32,6 @@ export type Employee = {
   quarterlyPayAmount: number | null;
   birthMonth: number | null;
   hireMonth: number | null;
-  /** 입사 연도(선택). 활성 연도가 hireYear 이전이면 그 해는 아예 활성이 아님(스케줄·분기·인원 합계에서 제외). */
-  hireYear: number | null;
   resignMonth: number | null;
   /** 퇴사 연도(선택). 활성 연도가 resignYear 이후면 그 해는 비활성. resignYear 와 같은 해에는 resignMonth 이후 월만 비활성. */
   resignYear: number | null;
