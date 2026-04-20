@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useId, useMemo, useState } from "react";
+import { useActionState, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { employeePositionSelectValues } from "@/lib/domain/employee-positions";
-import type { Employee, SalaryInclusionVarianceMode } from "@/types/models";
+import type { Employee, LevelTarget, SalaryInclusionVarianceMode } from "@/types/models";
 import { SALARY_INCLUSION_VARIANCE_MODES } from "@/lib/domain/salary-inclusion-display";
 import {
   deleteEmployeeFormAction,
@@ -117,12 +117,16 @@ function LabeledCommaWon({
   defaultValue,
   optional,
   className = "",
+  hint,
+  onUserChange,
 }: {
   name: string;
   label: string;
   defaultValue?: number | null;
   optional?: boolean;
   className?: string;
+  hint?: ReactNode;
+  onUserChange?: (value: number) => void;
 }) {
   const inputId = useId();
   return (
@@ -136,7 +140,11 @@ function LabeledCommaWon({
         defaultValue={defaultValue ?? null}
         className={inputClass}
         placeholder={optional ? "(선택)" : undefined}
+        onUserChange={onUserChange}
       />
+      {hint ? (
+        <p className="mt-1 text-[0.7rem] leading-snug text-[var(--muted)]">{hint}</p>
+      ) : null}
     </div>
   );
 }
@@ -300,6 +308,7 @@ export function EmployeeForm({
   surveyShowSpouseReceipt = false,
   surveyShowWorkerNet = false,
   existingEmployees = [],
+  levelTargets = [],
 }: {
   employee?: Employee | null;
   activeYear: number;
@@ -313,6 +322,11 @@ export function EmployeeForm({
   surveyShowWorkerNet?: boolean;
   /** 동명이인 즉시 안내용 — 페이지에서 조회한 같은 업체 직원 목록(이름·코드·직급만 필요) */
   existingEmployees?: EmployeeSimpleRow[];
+  /**
+   * 레벨별 연간 사복 목표액(현재 활성 연도 기준).
+   * 사용자가 ‘사복지급분’ 칸을 비워 두면 선택한 레벨의 목표액으로 자동 채워진다.
+   */
+  levelTargets?: LevelTarget[];
 }) {
   const [state, formAction, savePending] = useActionState<EmployeeActionState, FormData>(
     saveEmployeeAction,
@@ -350,6 +364,70 @@ export function EmployeeForm({
   const nameId = useId();
   const levelId = useId();
   const varianceModeId = useId();
+
+  /**
+   * 레벨을 컨트롤드 상태로 둬야 ‘레벨 변경 → 사복지급분 자동 채움’이 즉시 반영된다.
+   * 빈 문자열 상태(사용자가 잠시 지운 경우)도 허용한다.
+   */
+  const [levelStr, setLevelStr] = useState<string>(String(employee?.level ?? 3));
+  const currentLevel = (() => {
+    const n = Number(levelStr);
+    return Number.isFinite(n) && n >= 1 && n <= 5 ? Math.round(n) : null;
+  })();
+
+  /**
+   * 레벨별 연간 목표액(원). 활성 연도(`activeYear`) 기준만 받는다고 전제.
+   * 페이지에서 다른 연도가 섞여 들어와도 활성 연도만 채택해 안전망을 둔다.
+   */
+  const targetByLevel = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const t of levelTargets) {
+      if (t.year !== activeYear) continue;
+      const amt = Number(t.targetAmount);
+      if (!Number.isFinite(amt)) continue;
+      m.set(Math.round(Number(t.level)), Math.max(0, Math.round(amt)));
+    }
+    return m;
+  }, [levelTargets, activeYear]);
+
+  /**
+   * “사용자가 사복지급분 칸을 직접 손댔는가” 추적.
+   * 기존 직원이 이미 0보다 큰 값을 가지고 있으면 손댄 것으로 간주(자동 덮어쓰기 방지).
+   * 한 번이라도 사용자가 키보드로 입력하면 true가 되어 이후 레벨 변경에도 자동 채움이 비활성화된다.
+   */
+  const [welfareTouched, setWelfareTouched] = useState<boolean>(
+    () => (employee?.welfareAllocation ?? 0) > 0,
+  );
+
+  const welfareAutoFromLevel =
+    currentLevel != null ? (targetByLevel.get(currentLevel) ?? 0) : 0;
+
+  /** 폼에 실제로 채울 값: 사용자가 손대지 않았으면 레벨 목표, 그 외엔 기존 값. */
+  const welfareDefaultValue = welfareTouched
+    ? (employee?.welfareAllocation ?? null)
+    : welfareAutoFromLevel;
+
+  const welfareHint = (() => {
+    if (welfareTouched) return null;
+    if (currentLevel == null) return null;
+    if (targetByLevel.size === 0) return null;
+    if (welfareAutoFromLevel <= 0) {
+      return (
+        <>
+          레벨 {currentLevel} 연간 목표액이 설정되어 있지 않습니다 — 자동 채움 없음.
+        </>
+      );
+    }
+    return (
+      <>
+        레벨 {currentLevel} 연간 목표액(
+        <span className="font-mono tabular-nums text-[var(--text)]">
+          {formatWon(welfareAutoFromLevel)}원
+        </span>
+        )에서 자동 입력. 직접 입력하면 그 값이 우선합니다.
+      </>
+    );
+  })();
 
   useEffect(() => {
     if (state?.오류) setEditorOpen(true);
@@ -537,7 +615,8 @@ export function EmployeeForm({
                   type="number"
                   min={1}
                   max={5}
-                  defaultValue={employee?.level ?? 3}
+                  value={levelStr}
+                  onChange={(e) => setLevelStr(e.target.value)}
                   required
                 />
               </div>
@@ -561,7 +640,11 @@ export function EmployeeForm({
               className="sm:col-span-2"
               label="사복지급분"
               name="welfareAllocation"
-              defaultValue={employee?.welfareAllocation}
+              defaultValue={welfareDefaultValue}
+              onUserChange={() => {
+                if (!welfareTouched) setWelfareTouched(true);
+              }}
+              hint={welfareHint}
             />
             <div className="min-w-0">
               <LabeledCommaWon

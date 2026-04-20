@@ -5,6 +5,7 @@ import {
   employeeListByTenantCodeAsc,
   level5OverrideListByEmployeeYear,
   levelPaymentRuleList,
+  levelTargetList,
 } from "@/lib/pb/repository";
 import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
 import { requireTenantContext } from "@/lib/tenant-context";
@@ -85,6 +86,8 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
     name: e.name,
     position: e.position,
   }));
+  /** 레벨 변경 시 ‘사복지급분’ 비어 있으면 레벨 목표액으로 자동 채움 (작성된 값은 보존) */
+  const levelTargets = await levelTargetList(tenantId, year);
 
   return (
     <div className="space-y-6">
@@ -104,6 +107,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           surveyShowSpouseReceipt={settings?.surveyShowSpouseReceipt ?? false}
           surveyShowWorkerNet={settings?.surveyShowWorkerNet ?? false}
           existingEmployees={existingEmployees}
+          levelTargets={levelTargets}
         />
       ) : (
         <p className="text-sm text-[var(--muted)]">조회 전용입니다.</p>

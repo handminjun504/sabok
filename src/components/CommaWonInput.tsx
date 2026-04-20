@@ -29,6 +29,11 @@ export type CommaWonInputProps = {
   /** 입력이 잠시 멈춘 뒤(및 blur 시) 호출 — 자동 저장 등 */
   onCommitValue?: (value: number) => void;
   commitDebounceMs?: number;
+  /**
+   * 사용자가 키보드로 값을 변경할 때 즉시 호출. `defaultValue`(외부 자동 채움) 갱신에는 발화하지 않는다.
+   * 부모가 “사용자가 직접 손댔는지” 추적해 자동 채움을 멈추는 용도.
+   */
+  onUserChange?: (value: number) => void;
 };
 
 /** 원 단위 숫자 입력 — 입력 시 콤마 자동 삽입. 제출 값은 `1,234,567` 형태이며 서버에서 콤마 제거 후 파싱하면 됩니다. */
@@ -43,6 +48,7 @@ export function CommaWonInput({
   readOnly,
   onCommitValue,
   commitDebounceMs = 550,
+  onUserChange,
 }: CommaWonInputProps) {
   const init =
     defaultValue != null && Number.isFinite(Number(defaultValue))
@@ -123,9 +129,12 @@ export function CommaWonInput({
         const d = digitsOnly(e.target.value);
         if (!d) {
           setVal("");
+          onUserChange?.(0);
           return;
         }
-        setVal(formatWonInput(Number(d)));
+        const n = Number(d);
+        setVal(formatWonInput(n));
+        onUserChange?.(n);
       }}
       onBlur={flushCommit}
     />

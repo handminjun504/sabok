@@ -2,7 +2,11 @@ import { EmployeeForm } from "@/components/EmployeeForm";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { companySettingsByTenant, employeeListByTenantCodeAsc } from "@/lib/pb/repository";
+import {
+  companySettingsByTenant,
+  employeeListByTenantCodeAsc,
+  levelTargetList,
+} from "@/lib/pb/repository";
 import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
 
 export default async function NewEmployeePage() {
@@ -22,6 +26,8 @@ export default async function NewEmployeePage() {
     name: e.name,
     position: e.position,
   }));
+  /** 레벨 선택 시 사복지급분 자동 채움 — 활성 연도의 레벨 목표액만 필요 */
+  const levelTargets = await levelTargetList(tenantId, activeYear);
 
   return (
     <div className="space-y-6">
@@ -35,6 +41,7 @@ export default async function NewEmployeePage() {
         surveyShowSpouseReceipt={settings?.surveyShowSpouseReceipt ?? false}
         surveyShowWorkerNet={settings?.surveyShowWorkerNet ?? false}
         existingEmployees={existingEmployees}
+        levelTargets={levelTargets}
       />
     </div>
   );
