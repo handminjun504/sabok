@@ -4,6 +4,8 @@ import { canEditCompanySettings } from "@/lib/permissions";
 import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
 import { CompanySettingsForm } from "@/components/CompanySettingsForm";
 import { SALARY_INCLUSION_VARIANCE_MODES } from "@/lib/domain/salary-inclusion-display";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Alert } from "@/components/ui/Alert";
 
 export default async function SettingsPage() {
   const { tenantId, role } = await requireTenantContext();
@@ -20,14 +22,13 @@ export default async function SettingsPage() {
   const surveyWorker = s?.surveyShowWorkerNet ?? false;
   return (
     <div className="mx-auto max-w-xl space-y-6">
-      <div>
-        <h1 className="neu-title-gradient text-2xl font-bold">전사 설정</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          선택한 거래처 기준 · 창립월·급여일·기준 연도·지급 표시
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="환경 설정"
+        title="전사 설정"
+        description="선택한 거래처 기준 · 창립월·급여일·기준 연도·지급 표시"
+      />
       {!canEdit && (
-        <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
+        <Alert tone="warn">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</Alert>
       )}
       {canEdit ? (
         <CollapsibleEditorPanel

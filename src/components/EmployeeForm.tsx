@@ -10,21 +10,29 @@ import {
   saveEmployeeAction,
   type EmployeeActionState,
 } from "@/app/actions/employee";
+import { CommaWonInput } from "@/components/CommaWonInput";
+import { digitsOnly, formatWon } from "@/lib/util/number";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { Alert } from "@/components/ui/Alert";
 
 const fieldLabelClass = "dash-field-label";
 
 /** 직원 폼 전역: `.input`과 동일 계열(0.8125rem)로 목록·상세 타이포 통일 */
 const inputClass = "input w-full min-w-0 text-[0.8125rem] leading-normal text-[var(--text)]";
 
-function formatWonInput(n: number): string {
-  return n.toLocaleString("ko-KR");
+/**
+ * 라벨 + 공통 `CommaWonInput` 으로 묶은 Wrapper.
+ * `htmlFor`-`id` 연결로 스크린리더·클릭 영역을 제대로 만들어 준다.
+ */
+/** 입력 초기값을 폼 표시 문자열로. 0 은 "0", 미정은 "" 로 구분(기존 UX 유지). */
+function formatInitialWon(v: number | null | undefined): string {
+  if (v == null) return "";
+  if (!Number.isFinite(Number(v))) return "";
+  if (Number(v) === 0) return "0";
+  return formatWon(v);
 }
 
-function digitsOnly(s: string): string {
-  return s.replace(/[^\d]/g, "");
-}
-
-function CommaNumberInput({
+function LabeledCommaWon({
   name,
   label,
   defaultValue,
@@ -37,33 +45,18 @@ function CommaNumberInput({
   optional?: boolean;
   className?: string;
 }) {
-  const init =
-    defaultValue != null && Number.isFinite(Number(defaultValue)) && Number(defaultValue) !== 0
-      ? formatWonInput(Number(defaultValue))
-      : defaultValue === 0
-        ? "0"
-        : "";
-  const [val, setVal] = useState(init);
-
+  const inputId = useId();
   return (
     <div className={`min-w-0 ${className}`}>
-      <label className={fieldLabelClass}>{label}</label>
-      <input
-        className={inputClass}
+      <label className={fieldLabelClass} htmlFor={inputId}>
+        {label}
+      </label>
+      <CommaWonInput
+        id={inputId}
         name={name}
-        type="text"
-        inputMode="numeric"
-        autoComplete="off"
-        value={val}
+        defaultValue={defaultValue ?? null}
+        className={inputClass}
         placeholder={optional ? "(선택)" : undefined}
-        onChange={(e) => {
-          const d = digitsOnly(e.target.value);
-          if (!d) {
-            setVal("");
-            return;
-          }
-          setVal(formatWonInput(Number(d)));
-        }}
       />
     </div>
   );
@@ -83,20 +76,8 @@ function SalaryPairFields({
   const baseId = useId();
   const adjId = useId();
 
-  const initBase =
-    defaultBase != null && Number.isFinite(Number(defaultBase)) && Number(defaultBase) !== 0
-      ? formatWonInput(Number(defaultBase))
-      : defaultBase === 0
-        ? "0"
-        : "";
-  const initAdj =
-    defaultAdjusted != null &&
-    Number.isFinite(Number(defaultAdjusted)) &&
-    Number(defaultAdjusted) !== 0
-      ? formatWonInput(Number(defaultAdjusted))
-      : defaultAdjusted === 0
-        ? "0"
-        : "";
+  const initBase = formatInitialWon(defaultBase);
+  const initAdj = formatInitialWon(defaultAdjusted);
 
   const [baseStr, setBaseStr] = useState(initBase);
   const [adjStr, setAdjStr] = useState(initAdj);
@@ -114,14 +95,14 @@ function SalaryPairFields({
   const adjRangeHint = useMemo(() => {
     if (baseNum <= 0) return null;
     const minA = Math.floor(baseNum * 0.8);
-    return `조정급여: ${minA.toLocaleString("ko-KR")}~${baseNum.toLocaleString("ko-KR")}원 (기존의 80~100%). 비우면 기존연봉.`;
+    return `조정급여: ${formatWon(minA)}~${formatWon(baseNum)}원 (기존의 80~100%). 비우면 기존연봉.`;
   }, [baseNum]);
 
   const adjRangeError = useMemo(() => {
     if (baseNum <= 0 || adjNum <= 0) return null;
     const minA = Math.floor(baseNum * 0.8);
     if (adjNum < minA || adjNum > baseNum) {
-      return `조정급여는 기존의 80~100% (${minA.toLocaleString("ko-KR")}~${baseNum.toLocaleString("ko-KR")}원)`;
+      return `조정급여는 기존의 80~100% (${formatWon(minA)}~${formatWon(baseNum)}원)`;
     }
     return null;
   }, [baseNum, adjNum]);
@@ -134,7 +115,7 @@ function SalaryPairFields({
   const minWageWarning = useMemo(() => {
     if (effectiveAnnual <= 0) return null;
     if (effectiveAnnual < minimumAnnualSalaryWon) {
-      return `최저임금(연 환산 약 ${minimumAnnualSalaryWon.toLocaleString("ko-KR")}원) 미만. 확인하세요.`;
+      return `최저임금(연 환산 약 ${formatWon(minimumAnnualSalaryWon)}원) 미만. 확인하세요.`;
     }
     return null;
   }, [effectiveAnnual, minimumAnnualSalaryWon]);
@@ -160,11 +141,7 @@ function SalaryPairFields({
             value={baseStr}
             onChange={(e) => {
               const d = digitsOnly(e.target.value);
-              if (!d) {
-                setBaseStr("");
-                return;
-              }
-              setBaseStr(formatWonInput(Number(d)));
+              setBaseStr(d ? formatWon(Number(d)) : "");
             }}
           />
         </div>
@@ -183,11 +160,7 @@ function SalaryPairFields({
             placeholder="미입력·0 = 기존연봉 적용"
             onChange={(e) => {
               const d = digitsOnly(e.target.value);
-              if (!d) {
-                setAdjStr("");
-                return;
-              }
-              setAdjStr(formatWonInput(Number(d)));
+              setAdjStr(d ? formatWon(Number(d)) : "");
             }}
           />
         </div>
@@ -220,10 +193,14 @@ function Cell({
   className?: string;
   required?: boolean;
 }) {
+  const inputId = useId();
   return (
     <div className={`min-w-0 ${className}`}>
-      <label className={fieldLabelClass}>{label}</label>
+      <label className={fieldLabelClass} htmlFor={inputId}>
+        {label}
+      </label>
       <input
+        id={inputId}
         className={inputClass}
         name={name}
         type={type}
@@ -287,6 +264,9 @@ export function EmployeeForm({
   const positionOptions = employeePositionSelectValues(employee?.position);
   const positionDefault = (employee?.position ?? "").trim();
   const positionNeedsPlaceholder = !positionDefault;
+  const positionId = useId();
+  const levelId = useId();
+  const varianceModeId = useId();
 
   useEffect(() => {
     if (state?.오류) setEditorOpen(true);
@@ -297,23 +277,22 @@ export function EmployeeForm({
   return (
     <div className="space-y-4">
     {state?.오류 ? (
-      <div className="rounded-lg border border-[var(--danger)] bg-[var(--surface)] p-3 text-sm text-[var(--danger)]">
+      <Alert tone="danger" assertive>
         {state.오류}
-      </div>
+      </Alert>
     ) : null}
     {state?.성공 ? (
-      <div className="rounded-lg border border-[var(--success)] bg-[var(--surface)] p-3 text-sm font-medium text-[var(--success)]">
+      <Alert tone="success">
         저장되었습니다.
         {isNew ? (
           <p className="mt-1 text-xs font-normal text-[var(--muted)]">잠시 후 직원 목록으로 이동합니다.</p>
         ) : null}
-      </div>
+      </Alert>
     ) : null}
     {state?.경고 ? (
-      <div className="rounded-lg border border-amber-200/90 bg-amber-50 p-3 text-sm leading-relaxed text-amber-950">
-        <strong className="font-semibold">확인</strong>
-        <p className="mt-1">{state.경고}</p>
-      </div>
+      <Alert tone="warn" title="확인">
+        {state.경고}
+      </Alert>
     ) : null}
 
     {employee && !showEditor ? (
@@ -355,12 +334,12 @@ export function EmployeeForm({
           </div>
           <div>
             <dt className="text-xs font-semibold text-[var(--muted)]">기존연봉</dt>
-            <dd className="mt-1 tabular-nums">{employee.baseSalary.toLocaleString("ko-KR")}원</dd>
+            <dd className="mt-1 tabular-nums">{formatWon(employee.baseSalary)}원</dd>
           </div>
           <div>
             <dt className="text-xs font-semibold text-[var(--muted)]">조정급여</dt>
             <dd className="mt-1 tabular-nums">
-              {employee.adjustedSalary > 0 ? `${employee.adjustedSalary.toLocaleString("ko-KR")}원` : "—"}
+              {employee.adjustedSalary > 0 ? `${formatWon(employee.adjustedSalary)}원` : "—"}
             </dd>
           </div>
         </dl>
@@ -411,8 +390,11 @@ export function EmployeeForm({
                 <Cell label="이름" name="name" defaultValue={employee?.name} className="max-w-xl" required />
               </div>
               <div className="px-3 py-3">
-                <label className={fieldLabelClass}>직급</label>
+                <label className={fieldLabelClass} htmlFor={positionId}>
+                  직급
+                </label>
                 <select
+                  id={positionId}
                   name="position"
                   className={inputClass}
                   required
@@ -431,8 +413,11 @@ export function EmployeeForm({
                 </select>
               </div>
               <div className="px-3 py-3 sm:max-w-[14rem]">
-                <label className={fieldLabelClass}>레벨 (1~5)</label>
+                <label className={fieldLabelClass} htmlFor={levelId}>
+                  레벨 (1~5)
+                </label>
                 <input
+                  id={levelId}
                   className={inputClass}
                   name="level"
                   type="number"
@@ -458,40 +443,40 @@ export function EmployeeForm({
           <section className="space-y-3 border-t border-[var(--border)] pt-6">
             <h3 className="dash-form-section-title">복지·금액</h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-            <CommaNumberInput
+            <LabeledCommaWon
               className="sm:col-span-2"
               label="사복지급분"
               name="welfareAllocation"
               defaultValue={employee?.welfareAllocation}
             />
             <div className="min-w-0">
-              <CommaNumberInput
+              <LabeledCommaWon
                 label="예상 인센(선택)"
                 name="incentiveAmount"
                 defaultValue={employee?.incentiveAmount ?? undefined}
                 optional
               />
             </div>
-            <CommaNumberInput
+            <LabeledCommaWon
               className="sm:col-span-2"
               label="알아서금액"
               name="discretionaryAmount"
               defaultValue={employee?.discretionaryAmount ?? undefined}
               optional
             />
-            <CommaNumberInput
+            <LabeledCommaWon
               label="월지급"
               name="monthlyPayAmount"
               defaultValue={employee?.monthlyPayAmount ?? undefined}
               optional
             />
-            <CommaNumberInput
+            <LabeledCommaWon
               label="분기지급"
               name="quarterlyPayAmount"
               defaultValue={employee?.quarterlyPayAmount ?? undefined}
               optional
             />
-            <CommaNumberInput
+            <LabeledCommaWon
               className="sm:col-span-2"
               label="연간 지급 예정액(스케줄·레벨 추천)"
               name="expectedYearlyWelfare"
@@ -541,8 +526,11 @@ export function EmployeeForm({
               동일합니다.
             </p>
             <div className="max-w-md">
-              <label className={fieldLabelClass}>표시 방식</label>
+              <label className={fieldLabelClass} htmlFor={varianceModeId}>
+                표시 방식
+              </label>
               <select
+                id={varianceModeId}
                 name="salaryInclusionVarianceMode"
                 className={inputClass}
                 defaultValue={employee?.salaryInclusionVarianceMode ?? ""}
@@ -585,19 +573,19 @@ export function EmployeeForm({
               defaultValue={employee?.parentsInLawCount ?? 0}
             />
             <Cell label="급여일" name="payDay" type="number" defaultValue={employee?.payDay ?? ""} />
-            <CommaNumberInput
+            <LabeledCommaWon
               className="sm:col-span-2"
               label="보험료(발생)"
               name="insurancePremium"
               defaultValue={employee?.insurancePremium}
             />
-            <CommaNumberInput
+            <LabeledCommaWon
               className="sm:col-span-2"
               label="대출이자(발생)"
               name="loanInterest"
               defaultValue={employee?.loanInterest}
             />
-            <CommaNumberInput
+            <LabeledCommaWon
               className="sm:col-span-2"
               label="월세(발생·월)"
               name="monthlyRentAmount"
@@ -609,12 +597,17 @@ export function EmployeeForm({
         </div>
       </div>
 
-      <button type="submit" disabled={savePending} className="btn btn-primary px-8 py-2.5 disabled:opacity-60">
+      <button
+        type="submit"
+        disabled={savePending || !salaryRangeOk}
+        className="btn btn-primary px-8 py-2.5 disabled:opacity-60"
+        title={!salaryRangeOk ? "조정급여 범위(80~100%)를 먼저 맞추세요." : undefined}
+      >
         {savePending ? "저장 중…" : "저장"}
       </button>
       {!salaryRangeOk ? (
-        <p className="text-sm text-[var(--danger)]">
-          조정급여가 기존연봉의 80~100% 범위를 벗어나면 저장 시 서버에서 거절됩니다.
+        <p className="text-sm text-[var(--danger)]" role="alert">
+          조정급여가 기존연봉의 80~100% 범위를 벗어났습니다. 범위 안으로 조정한 뒤 저장하세요.
         </p>
       ) : null}
     </form>
@@ -643,26 +636,9 @@ export function EmployeeForm({
         </button>
       </form>
     ) : null}
-    {delState?.오류 ? <p className="text-sm text-[var(--danger)]">{delState.오류}</p> : null}
+    {delState?.오류 ? <Alert tone="danger" assertive>{delState.오류}</Alert> : null}
 
-    {savePending ? (
-      <div
-        className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--text)]/15 backdrop-blur-[2px]"
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
-        aria-label="직원 정보 저장 중"
-      >
-        <div className="surface flex max-w-sm flex-col items-center gap-3 rounded-xl border border-[var(--border)] px-8 py-6 shadow-lg">
-          <span
-            className="inline-block size-9 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--text)]"
-            aria-hidden
-          />
-          <p className="text-sm font-medium text-[var(--text)]">저장 중입니다…</p>
-          <p className="text-center text-xs text-[var(--muted)]">잠시만 기다려 주세요.</p>
-        </div>
-      </div>
-    ) : null}
+    <LoadingOverlay visible={savePending} label="저장 중입니다…" hint="잠시만 기다려 주세요." />
     </div>
   );
 }

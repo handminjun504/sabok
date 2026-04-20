@@ -13,6 +13,8 @@ import { CsvImportClient } from "@/components/CsvImportClient";
 import { EmployeeCsvExportButton } from "@/components/EmployeeCsvExportButton";
 import { EmployeeDirectoryGrid } from "@/components/EmployeeDirectoryGrid";
 import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default async function EmployeesPage() {
   const { tenantId, role } = await requireTenantContext();
@@ -38,47 +40,63 @@ export default async function EmployeesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="neu-title-gradient text-2xl font-bold">직원 정보</h1>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <EmployeeCsvExportButton />
-          {canEditEmployees(role) && (
-            <>
-              <Link href="/dashboard/employees/new" className="btn btn-primary px-4 py-2 text-sm">
-                직원 추가
-              </Link>
-              <CsvImportClient />
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="surface dash-panel-pad text-sm">
-        <p className="font-semibold tracking-normal text-[var(--text)]">&lt;{yy}년 사복 진행 조사표&gt;</p>
-        <p className="mt-1 text-xs text-[var(--muted)]">
-          {`창립월 ${foundingMonth}월 · 기준 연도 ${activeYear}년 · 카드 연간 사복·급여+사복 합계는 스케줄·분기·월별 노트와 동일 산식 · CODE 순 · 시트 매핑은 저장소 docs/sheet-mapping.md`}
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="인원 관리"
+        title="직원 정보"
+        description={`<${yy}년 사복 진행 조사표> · 창립월 ${foundingMonth}월 · 기준 연도 ${activeYear}년`}
+        actions={
+          <>
+            <EmployeeCsvExportButton />
+            {canEditEmployees(role) && (
+              <>
+                <Link href="/dashboard/employees/new" className="btn btn-primary text-sm">
+                  직원 추가
+                </Link>
+                <CsvImportClient />
+              </>
+            )}
+          </>
+        }
+        meta={
+          <>
+            <span className="trust-pill">CODE 순</span>
+            <span className="trust-pill">{list.length}명</span>
+          </>
+        }
+      />
 
       <div className="surface p-4 sm:p-5">
-        <EmployeeDirectoryGrid
-          employees={list}
-          colRepReturn={colRepReturn}
-          colSpouseReceipt={colSpouseReceipt}
-          colWorkerNet={colWorkerNet}
-          payrollYearContext={{
-            activeYear,
-            foundingMonth,
-            accrualCurrentMonthPayNext: accrual,
-            rules,
-            overrides,
-            quarterly,
-            monthlyNotes: notes,
-            customSchedule,
-          }}
-        />
+        {list.length === 0 ? (
+          <EmptyState
+            title="등록된 직원이 없습니다."
+            description="우측 상단의 ‘직원 추가’ 또는 CSV 가져오기로 시작하세요."
+            icon="👥"
+            action={
+              canEditEmployees(role) ? (
+                <Link href="/dashboard/employees/new" className="btn btn-primary text-sm">
+                  직원 추가
+                </Link>
+              ) : undefined
+            }
+          />
+        ) : (
+          <EmployeeDirectoryGrid
+            employees={list}
+            colRepReturn={colRepReturn}
+            colSpouseReceipt={colSpouseReceipt}
+            colWorkerNet={colWorkerNet}
+            payrollYearContext={{
+              activeYear,
+              foundingMonth,
+              accrualCurrentMonthPayNext: accrual,
+              rules,
+              overrides,
+              quarterly,
+              monthlyNotes: notes,
+              customSchedule,
+            }}
+          />
+        )}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import { summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
 import { requireTenantContext } from "@/lib/tenant-context";
 import type { Tenant } from "@/types/models";
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 function tenantProfileFormKey(t: Tenant): string {
   return [
@@ -41,17 +42,17 @@ export default async function DashboardHomePage() {
 
   return (
     <div className="space-y-12">
-      <header className="space-y-4">
-        <div>
-          <p className="page-eyebrow">업무 홈</p>
-          <h1 className="page-hero-title mt-2 neu-title-gradient">복지기금 운영 현황</h1>
-          <p className="page-hero-sub">기준 연도와 주요 수치를 확인하세요.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <span className="trust-pill">기준 연도 {year}</span>
-          <span className="trust-pill">등록 직원 {empCount}명</span>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="업무 홈"
+        title="복지기금 운영 현황"
+        description="기준 연도와 주요 수치를 확인하세요."
+        meta={
+          <>
+            <span className="trust-pill">기준 연도 {year}</span>
+            <span className="trust-pill">등록 직원 {empCount}명</span>
+          </>
+        }
+      />
 
       <section aria-labelledby="dash-stats">
         <h2 id="dash-stats" className="sr-only">
