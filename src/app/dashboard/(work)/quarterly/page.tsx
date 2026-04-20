@@ -9,10 +9,10 @@ import { QUARTERLY_ITEM, QUARTERLY_ITEM_LABELS, type QuarterlyItemKey } from "@/
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
 import {
   applyQuarterlyTemplateFormAction,
-  saveQuarterlyEmployeeConfigFormAction,
   saveQuarterlyRatesFormAction,
 } from "@/app/actions/quarterly";
 import { QuarterlyConfigDeleteButton } from "@/components/QuarterlyConfigDeleteButton";
+import { QuarterlyEmployeeConfigForm } from "@/components/QuarterlyEmployeeConfigForm";
 import { CommaWonInput } from "@/components/CommaWonInput";
 import { Tabs } from "@/components/Tabs";
 import { Alert } from "@/components/ui/Alert";
@@ -281,10 +281,7 @@ export default async function QuarterlyPage() {
             <h3 className="mb-4 text-center text-sm font-semibold tracking-normal text-[var(--text)]">
               항목·지급 월 추가
             </h3>
-            <form
-              action={saveQuarterlyEmployeeConfigFormAction}
-              className="mx-auto flex max-w-2xl flex-col items-center gap-4"
-            >
+            <QuarterlyEmployeeConfigForm>
               <input type="hidden" name="year" value={year} />
               <div className="w-full max-w-md">
                 <label className="dash-field-label text-center">직원</label>
@@ -317,7 +314,7 @@ export default async function QuarterlyPage() {
               <button type="submit" className="btn btn-primary px-8 py-2 text-sm">
                 저장
               </button>
-            </form>
+            </QuarterlyEmployeeConfigForm>
           </div>
 
           <div className="surface overflow-x-auto dash-panel-pad">

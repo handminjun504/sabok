@@ -992,6 +992,36 @@ export async function quarterlyEmployeeConfigUpsert(data: {
       `여러 지급 월(${months.join(", ")}) 중 첫 달(${months[0]}월) 만 저장되었습니다. PB 'sabok_quarterly_employee_configs' 컬렉션에 json 필드 'paymentMonths' 를 추가한 뒤 다시 저장하세요.`,
     );
   }
+
+  /**
+   * 일부 PB 환경(특정 버전·collection 옵션)은 unknown field 를 throw 없이 silent 로 무시한다.
+   * 그 경우 위 try 가 통과하지만 실제 paymentMonths 컬럼은 비어 있어 다음 조회 때 “첫 달만” 으로 보인다.
+   * → 저장 직후 다시 한 번 조회해서 paymentMonths 가 우리가 보낸 그대로 들어갔는지 검증한다.
+   */
+  if (months.length > 1) {
+    const verify = await firstByFilterStrict(C.quarterlyEmployeeConfigs, f);
+    const stored = verify?.paymentMonths;
+    const ok =
+      Array.isArray(stored)
+        ? stored.length === months.length
+        : typeof stored === "string"
+          ? (() => {
+              try {
+                const parsed = JSON.parse(stored) as unknown;
+                return Array.isArray(parsed) && parsed.length === months.length;
+              } catch {
+                return false;
+              }
+            })()
+          : false;
+    if (!ok) {
+      throw new Error(
+        `여러 지급 월(${months.join(", ")}) 중 첫 달(${months[0]}월) 만 저장된 것으로 확인됩니다. ` +
+          `PB 'sabok_quarterly_employee_configs' 컬렉션에 json 타입 필드 'paymentMonths' 가 없거나 다른 타입(number 등)으로 잡혀 있을 가능성이 큽니다. ` +
+          `해결: 'npm run pb:fix-quarterly-payment-months' 를 한 번 실행하거나, PB Admin 에서 컬렉션을 열어 type=json, name='paymentMonths', Required 끔 으로 필드를 추가/수정한 뒤 다시 저장하세요.`,
+      );
+    }
+  }
 }
 
 /** --- Monthly employee notes --- */
