@@ -255,11 +255,17 @@ export function buildMonthlyBreakdown(
       : accrualMonth;
 
     /**
-     * 정기 이벤트는 “귀속월(accrualMonth)” 기준으로 활성 여부를 본다.
-     * 입사월/생일월/창립월/결혼기념월 등은 활성 범위 밖이면 발생하지 않는다.
+     * 정기 이벤트는 **귀속월·지급월이 모두 활성 범위 안**일 때만 발생한다.
+     *
+     * - “당월 귀속·익월 지급”(`accrualCurrentMonthPayNext=true`) 모드에서는 귀속이 활성 범위에 들어가도
+     *   지급월이 퇴사월 다음 달로 밀릴 수 있다. 이 경우 사내 규칙상 “퇴사월 당월까지만 지급, 그 이후
+     *   지급하지 않음”에 따라 **그 월의 정기 지급은 발생하지 않는다**.
+     * - 동월 귀속·동월 지급 모드에서는 두 값이 같아 기존 동작과 동일하다.
+     * - 12월 귀속·1월 지급(롤백) 케이스는 12월이 비활성이면 이미 귀속에서 걸러지므로 영향이 없다.
      */
     const accrualActive = monthIsActive(status, accrualMonth);
-    const eventKeys = accrualActive
+    const paidActive = monthIsActive(status, paidMonth);
+    const eventKeys = accrualActive && paidActive
       ? eventsOccurringInMonth(accrualMonth, employee, foundingMonth, customPaymentEvents)
       : [];
     const regularEvents = eventKeys.map((eventKey) => ({
