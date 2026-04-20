@@ -26,13 +26,12 @@ export function DashboardReserveStatusPanel({ summary }: { summary: TenantAdditi
           <h2 id="reserve-status-heading" className="text-sm font-bold text-[var(--text)]">
             추가 적립(출연) 누적
           </h2>
-          <span className="rounded-full border border-[var(--border)] bg-[var(--surface-hover)] px-2.5 py-0.5 text-xs font-semibold text-[var(--muted)]">
-            개인 적립
-          </span>
+          <span className="badge badge-accent">개인 — 항상 +20% 적립</span>
         </div>
         <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-          개인사업자 출연은 지출액의 20% 추가 적립이 매월 적용되며, 법인처럼 자본금×50% 누적 상한으로
-          &ldquo;적립 완료&rdquo;를 나누지는 않습니다.
+          개인사업자는 출연 시{" "}
+          <strong className="text-[var(--text)]">항상 지출액의 20%가 추가 적립</strong>됩니다. 법인처럼 자본금 50%
+          누적 한도가 없어 “적립 진행” 메모를 따로 적어 둘 필요가 없습니다 — 누적만 표시합니다.
         </p>
         <p className="mt-3 text-lg font-bold tabular-nums text-[var(--text)]">
           누적 추가 적립 합 <span className="text-[var(--accent)]">{fmt(summary.accumulatedTotalWon)}</span>원
