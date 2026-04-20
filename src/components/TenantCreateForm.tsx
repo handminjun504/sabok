@@ -1,11 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { createTenantAction, type TenantActionState } from "@/app/actions/tenant-admin";
 import { CommaWonInput } from "@/components/CommaWonInput";
-import { TENANT_OPERATION_MODES } from "@/lib/domain/tenant-profile";
+import {
+  ANNOUNCEMENT_MODES,
+  TENANT_OPERATION_MODES,
+  type AnnouncementMode,
+} from "@/lib/domain/tenant-profile";
+
+const MONTH_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
 export type TenantCreateFormVariant = "full" | "select";
 
@@ -26,6 +31,9 @@ export function TenantCreateForm({
   const [state, formAction] = useActionState<TenantActionState, FormData>(createTenantAction, null);
   const onSelectScreen = variant === "select";
   const showIntro = !embed;
+  const [announcementMode, setAnnouncementMode] = useState<AnnouncementMode>("SINGLE");
+  const [batchFrom, setBatchFrom] = useState(1);
+  const [batchTo, setBatchTo] = useState(3);
 
   useEffect(() => {
     if (!state?.성공) return;
@@ -116,6 +124,75 @@ export function TenantCreateForm({
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-[var(--muted)]">본사 자본금 (원)</label>
               <CommaWonInput name="headOfficeCapital" className="input w-full text-xs" placeholder="선택" />
+            </div>
+          </div>
+        </div>
+
+        <div className="sm:col-span-2">
+          <p className="dash-eyebrow mb-2">안내 멘트 기본 방식</p>
+          <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
+            대시보드 → 월별 스케줄 → 「안내 멘트」 탭에서 어떤 양식을 기본으로 보여줄지 정합니다.
+            <strong className="text-[var(--text)]"> 묶음</strong>은 여러 달을 한 번에 안내(개인사업자 등),
+            <strong className="text-[var(--text)]"> 단일월</strong>은 매 달 하나씩 안내(법인 일반).
+          </p>
+          <div className="space-y-2">
+            {ANNOUNCEMENT_MODES.map((opt) => (
+              <label
+                key={opt.value}
+                className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-hover)] p-3 transition-colors hover:border-[var(--border-strong)]"
+              >
+                <input
+                  type="radio"
+                  name="announcementMode"
+                  value={opt.value}
+                  checked={announcementMode === opt.value}
+                  onChange={() => setAnnouncementMode(opt.value)}
+                  className="mt-1"
+                />
+                <span className="min-w-0">
+                  <span className="font-medium text-[var(--text)]">{opt.label}</span>
+                  <span className="mt-0.5 block text-xs text-[var(--muted)]">{opt.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div
+            className={
+              "mt-3 grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 sm:grid-cols-2 " +
+              (announcementMode === "BATCHED" ? "" : "opacity-60")
+            }
+          >
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-[var(--muted)]">묶음 시작 월</label>
+              <select
+                name="announcementBatchFromMonth"
+                className="input w-full text-sm"
+                value={batchFrom}
+                onChange={(e) => setBatchFrom(Number(e.target.value))}
+                disabled={announcementMode !== "BATCHED"}
+              >
+                {MONTH_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}월
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-[var(--muted)]">묶음 끝 월</label>
+              <select
+                name="announcementBatchToMonth"
+                className="input w-full text-sm"
+                value={batchTo}
+                onChange={(e) => setBatchTo(Number(e.target.value))}
+                disabled={announcementMode !== "BATCHED"}
+              >
+                {MONTH_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}월
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

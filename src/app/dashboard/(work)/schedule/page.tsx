@@ -200,6 +200,9 @@ export default async function SchedulePage() {
       rows={scheduleCardRows}
       operationMode={tenantOperationMode}
       reserveStatus={reserveStatus}
+      announcementMode={tenantRow?.announcementMode ?? "SINGLE"}
+      defaultBatchFromMonth={tenantRow?.announcementBatchFromMonth ?? null}
+      defaultBatchToMonth={tenantRow?.announcementBatchToMonth ?? null}
     />
   );
 

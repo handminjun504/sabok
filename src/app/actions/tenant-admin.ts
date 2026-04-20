@@ -6,7 +6,11 @@ import { z } from "zod";
 import { pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
 import { getSession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
-import { parseTenantClientEntityType } from "@/lib/domain/tenant-profile";
+import {
+  normalizeAnnouncementBatchRange,
+  parseAnnouncementMode,
+  parseTenantClientEntityType,
+} from "@/lib/domain/tenant-profile";
 import {
   companySettingsCreateForTenant,
   tenantCreate,
@@ -32,6 +36,12 @@ const tenantCreateSchema = z.object({
   approvalNumber: z.string().optional(),
   businessRegNo: z.string().optional(),
   headOfficeCapital: z.string().optional(),
+  announcementMode: z.preprocess(
+    (v) => parseAnnouncementMode(v),
+    z.enum(["SINGLE", "BATCHED"]),
+  ),
+  announcementBatchFromMonth: z.string().optional(),
+  announcementBatchToMonth: z.string().optional(),
 });
 
 /** 플랫폼 관리자 전용. 거래처(테넌트) 생성 — TenantCreateForm과 동일한 useActionState 패턴. */
@@ -63,6 +73,9 @@ export async function createTenantAction(
     approvalNumber: approvalRaw.length > 0 ? approvalRaw : undefined,
     businessRegNo: businessRegRaw.length > 0 ? businessRegRaw : undefined,
     headOfficeCapital: capitalRaw.length > 0 ? capitalRaw : undefined,
+    announcementMode: formData.get("announcementMode"),
+    announcementBatchFromMonth: String(formData.get("announcementBatchFromMonth") ?? "").trim() || undefined,
+    announcementBatchToMonth: String(formData.get("announcementBatchToMonth") ?? "").trim() || undefined,
   });
   if (!parsed.success) {
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };
@@ -76,6 +89,12 @@ export async function createTenantAction(
     }
     headOfficeCapital = n;
   }
+
+  /** 묶음 모드 시작·끝 월 정규화 (단일월 모드면 저장은 하되 UI 에서 무시) */
+  const batchRange = normalizeAnnouncementBatchRange(
+    parsed.data.announcementBatchFromMonth ? Number(parsed.data.announcementBatchFromMonth) : null,
+    parsed.data.announcementBatchToMonth ? Number(parsed.data.announcementBatchToMonth) : null,
+  );
 
   const existing = await tenantFindByCode(parsed.data.code);
   if (existing) {
@@ -94,6 +113,9 @@ export async function createTenantAction(
       approvalNumber: parsed.data.approvalNumber?.trim() ? parsed.data.approvalNumber.trim() : null,
       businessRegNo: parsed.data.businessRegNo?.trim() ? parsed.data.businessRegNo.trim() : null,
       headOfficeCapital,
+      announcementMode: parsed.data.announcementMode,
+      announcementBatchFromMonth: batchRange.fromMonth,
+      announcementBatchToMonth: batchRange.toMonth,
     });
   } catch (e) {
     console.error("[createTenantAction] tenantCreate", e);
@@ -116,6 +138,9 @@ export async function createTenantAction(
     approvalNumber: parsed.data.approvalNumber?.trim() || null,
     businessRegNo: parsed.data.businessRegNo?.trim() || null,
     headOfficeCapital,
+    announcementMode: parsed.data.announcementMode,
+    announcementBatchFromMonth: batchRange.fromMonth,
+    announcementBatchToMonth: batchRange.toMonth,
   };
 
   try {

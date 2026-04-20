@@ -21,8 +21,10 @@ import type {
 } from "@/types/models";
 import type { VendorBusinessType } from "@/lib/domain/vendor-reserve";
 import {
+  parseAnnouncementMode,
   parseTenantClientEntityType,
   parseTenantOperationMode,
+  type AnnouncementMode,
   type TenantClientEntityType,
   type TenantOperationMode,
 } from "@/lib/domain/tenant-profile";
@@ -140,6 +142,15 @@ function tenantClientEntityFromPb(r: Record<string, unknown>): TenantClientEntit
   return parseTenantClientEntityType(r.clientEntityType);
 }
 
+function tenantMonthOrNull(r: Record<string, unknown>, key: string): number | null {
+  const v = r[key];
+  if (v == null || v === "") return null;
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n)) return null;
+  if (n < 1 || n > 12) return null;
+  return n;
+}
+
 function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
   const cap = Number(r.headOfficeCapital);
   return {
@@ -159,6 +170,9 @@ function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
       "사업자등록번호",
     ),
     headOfficeCapital: Number.isFinite(cap) ? cap : null,
+    announcementMode: parseAnnouncementMode(r.announcementMode),
+    announcementBatchFromMonth: tenantMonthOrNull(r, "announcementBatchFromMonth"),
+    announcementBatchToMonth: tenantMonthOrNull(r, "announcementBatchToMonth"),
   };
 }
 
@@ -232,6 +246,9 @@ export async function tenantCreate(data: {
   approvalNumber?: string | null;
   businessRegNo?: string | null;
   headOfficeCapital?: number | null;
+  announcementMode?: AnnouncementMode | null;
+  announcementBatchFromMonth?: number | null;
+  announcementBatchToMonth?: number | null;
 }): Promise<Tenant> {
   const pb = await getAdminPb();
 
@@ -253,6 +270,13 @@ export async function tenantCreate(data: {
   if (data.headOfficeCapital != null && Number.isFinite(data.headOfficeCapital)) {
     optional.headOfficeCapital = data.headOfficeCapital;
   }
+  if (data.announcementMode) optional.announcementMode = data.announcementMode;
+  if (data.announcementBatchFromMonth != null) {
+    optional.announcementBatchFromMonth = data.announcementBatchFromMonth;
+  }
+  if (data.announcementBatchToMonth != null) {
+    optional.announcementBatchToMonth = data.announcementBatchToMonth;
+  }
 
   const withOptional = { ...base, ...optional };
 
@@ -268,7 +292,7 @@ export async function tenantCreate(data: {
       const created = asRecord(await pb.collection(C.tenants).create(base));
       logPbClientError("tenantCreate (first attempt failed; retried without optional fields)", e);
       console.warn(
-        "[pb] tenantCreate: 인가번호·사업자번호·본사자본금은 저장되지 않았습니다. sabok_tenants에 해당 필드를 추가한 뒤 다시 등록하세요.",
+        "[pb] tenantCreate: 인가번호·사업자번호·본사자본금·안내 모드(announcementMode 등)는 저장되지 않았습니다. sabok_tenants에 해당 필드를 추가한 뒤 다시 등록하세요.",
       );
       return tenantFromPbRecord(created);
     } catch (e2) {
@@ -293,11 +317,32 @@ export async function tenantUpdateProfile(
     approvalNumber: string | null;
     businessRegNo: string | null;
     headOfficeCapital: number | null;
+    announcementMode: AnnouncementMode;
+    announcementBatchFromMonth: number | null;
+    announcementBatchToMonth: number | null;
   }
 ): Promise<Tenant> {
   const pb = await getAdminPb();
-  const r = asRecord(
-    await pb.collection(C.tenants).update(id, {
+  /** PB에 announcement* 컬럼이 없으면 unknown field 400 — 우선 모든 키로 시도하고, 실패 시 새 필드만 빼고 재시도. */
+  const fullPayload = {
+    name: data.name.trim(),
+    memo: data.memo ?? null,
+    clientEntityType: data.clientEntityType,
+    operationMode: data.operationMode,
+    approvalNumber: data.approvalNumber,
+    businessRegNo: data.businessRegNo,
+    headOfficeCapital: data.headOfficeCapital,
+    announcementMode: data.announcementMode,
+    announcementBatchFromMonth: data.announcementBatchFromMonth,
+    announcementBatchToMonth: data.announcementBatchToMonth,
+  };
+  try {
+    const r = asRecord(await pb.collection(C.tenants).update(id, fullPayload));
+    return tenantFromPbRecord(r);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/announcement|unknown field|invalid_value/i.test(msg)) throw e;
+    const fallback = {
       name: data.name.trim(),
       memo: data.memo ?? null,
       clientEntityType: data.clientEntityType,
@@ -305,9 +350,13 @@ export async function tenantUpdateProfile(
       approvalNumber: data.approvalNumber,
       businessRegNo: data.businessRegNo,
       headOfficeCapital: data.headOfficeCapital,
-    })
-  );
-  return tenantFromPbRecord(r);
+    };
+    const r = asRecord(await pb.collection(C.tenants).update(id, fallback));
+    console.warn(
+      "[pb] tenantUpdateProfile: announcementMode/announcementBatchFromMonth/announcementBatchToMonth 컬럼이 없어 저장되지 않았습니다. sabok_tenants 에 해당 필드를 추가하세요.",
+    );
+    return tenantFromPbRecord(r);
+  }
 }
 
 /** --- Users --- */

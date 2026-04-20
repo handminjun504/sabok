@@ -27,6 +27,9 @@ Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사
 | approvalNumber     | text | no   | 인가번호 등 위탁·등록 식별 문자열 |
 | businessRegNo      | text | no   | 사업자등록번호(표시·검색용, 형식 자유) |
 | headOfficeCapital  | number | no | 본사 자본금(원). 미입력 시 null |
+| announcementMode   | text | no   | 안내 멘트 기본 모드. `SINGLE`(매 달 하나씩) \| `BATCHED`(여러 달 한 번에). 없으면 `SINGLE` 로 동작 |
+| announcementBatchFromMonth | number | no | 묶음 모드 기본 시작 월(1~12). 없으면 UI 기본 1 |
+| announcementBatchToMonth   | number | no | 묶음 모드 기본 끝 월(1~12). 없으면 UI 기본 3 |
 
 **도메인**: 테넌트 1건 ≈ 사업장·기금 1단위(기금 1개/사업장). 코드: `fund-site-model.ts`.
 

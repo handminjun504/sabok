@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 import { pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
-import { parseTenantClientEntityType } from "@/lib/domain/tenant-profile";
+import {
+  normalizeAnnouncementBatchRange,
+  parseAnnouncementMode,
+  parseTenantClientEntityType,
+} from "@/lib/domain/tenant-profile";
 import { tenantUpdateProfile } from "@/lib/pb/repository";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
@@ -22,6 +26,12 @@ const schema = z.object({
   approvalNumber: z.string().optional(),
   businessRegNo: z.string().optional(),
   headOfficeCapital: z.string().optional(),
+  announcementMode: z.preprocess(
+    (v) => parseAnnouncementMode(v),
+    z.enum(["SINGLE", "BATCHED"]),
+  ),
+  announcementBatchFromMonth: z.string().optional(),
+  announcementBatchToMonth: z.string().optional(),
 });
 
 export async function updateTenantProfileAction(
@@ -46,6 +56,9 @@ export async function updateTenantProfileAction(
     approvalNumber: approvalRaw.length > 0 ? approvalRaw : undefined,
     businessRegNo: businessRegRaw.length > 0 ? businessRegRaw : undefined,
     headOfficeCapital: capitalRaw.length > 0 ? capitalRaw : undefined,
+    announcementMode: formData.get("announcementMode"),
+    announcementBatchFromMonth: String(formData.get("announcementBatchFromMonth") ?? "").trim() || undefined,
+    announcementBatchToMonth: String(formData.get("announcementBatchToMonth") ?? "").trim() || undefined,
   });
   if (!parsed.success) {
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };
@@ -60,6 +73,11 @@ export async function updateTenantProfileAction(
     headOfficeCapital = n;
   }
 
+  const batchRange = normalizeAnnouncementBatchRange(
+    parsed.data.announcementBatchFromMonth ? Number(parsed.data.announcementBatchFromMonth) : null,
+    parsed.data.announcementBatchToMonth ? Number(parsed.data.announcementBatchToMonth) : null,
+  );
+
   try {
     await tenantUpdateProfile(ctx.tenantId, {
       name: parsed.data.name,
@@ -69,6 +87,9 @@ export async function updateTenantProfileAction(
       approvalNumber: parsed.data.approvalNumber?.trim() ? parsed.data.approvalNumber.trim() : null,
       businessRegNo: parsed.data.businessRegNo?.trim() ? parsed.data.businessRegNo.trim() : null,
       headOfficeCapital,
+      announcementMode: parsed.data.announcementMode,
+      announcementBatchFromMonth: batchRange.fromMonth,
+      announcementBatchToMonth: batchRange.toMonth,
     });
   } catch (e) {
     console.error("[updateTenantProfileAction]", e);

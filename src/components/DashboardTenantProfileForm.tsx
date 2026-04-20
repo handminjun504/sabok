@@ -6,11 +6,15 @@ import { useRouter } from "next/navigation";
 import { updateTenantProfileAction, type TenantProfileState } from "@/app/actions/tenant-profile";
 import { CommaWonInput } from "@/components/CommaWonInput";
 import {
+  ANNOUNCEMENT_MODES,
   TENANT_OPERATION_MODES,
+  type AnnouncementMode,
   type TenantClientEntityType,
   type TenantOperationMode,
 } from "@/lib/domain/tenant-profile";
 import type { Tenant } from "@/types/models";
+
+const MONTH_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
 export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
   const router = useRouter();
@@ -21,13 +25,25 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
   /** PB·서버에서 내려온 값과 제출값이 항상 일치하도록 라디오는 제어 컴포넌트로 둔다. */
   const [clientEntityType, setClientEntityType] = useState<TenantClientEntityType>(tenant.clientEntityType);
   const [operationMode, setOperationMode] = useState<TenantOperationMode>(tenant.operationMode);
+  const [announcementMode, setAnnouncementMode] = useState<AnnouncementMode>(tenant.announcementMode);
+  const [batchFrom, setBatchFrom] = useState<number>(tenant.announcementBatchFromMonth ?? 1);
+  const [batchTo, setBatchTo] = useState<number>(tenant.announcementBatchToMonth ?? 3);
 
   const fieldsLocked = !editing;
 
   useEffect(() => {
     setClientEntityType(tenant.clientEntityType);
     setOperationMode(tenant.operationMode);
-  }, [tenant.clientEntityType, tenant.operationMode]);
+    setAnnouncementMode(tenant.announcementMode);
+    setBatchFrom(tenant.announcementBatchFromMonth ?? 1);
+    setBatchTo(tenant.announcementBatchToMonth ?? 3);
+  }, [
+    tenant.clientEntityType,
+    tenant.operationMode,
+    tenant.announcementMode,
+    tenant.announcementBatchFromMonth,
+    tenant.announcementBatchToMonth,
+  ]);
 
   useEffect(() => {
     if (state?.성공) {
@@ -40,6 +56,9 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
     setEditing(false);
     setClientEntityType(tenant.clientEntityType);
     setOperationMode(tenant.operationMode);
+    setAnnouncementMode(tenant.announcementMode);
+    setBatchFrom(tenant.announcementBatchFromMonth ?? 1);
+    setBatchTo(tenant.announcementBatchToMonth ?? 3);
     setFormKey((k) => k + 1);
   }
 
@@ -79,6 +98,9 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
         {/* 라디오는 disabled 시 제출되지 않음 → state와 동일한 값을 hidden으로 반드시 보냄 */}
         <input type="hidden" name="clientEntityType" value={clientEntityType} />
         <input type="hidden" name="operationMode" value={operationMode} />
+        <input type="hidden" name="announcementMode" value={announcementMode} />
+        <input type="hidden" name="announcementBatchFromMonth" value={String(batchFrom)} />
+        <input type="hidden" name="announcementBatchToMonth" value={String(batchTo)} />
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <p className="dash-eyebrow mb-1">인가번호</p>
@@ -184,6 +206,69 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
               className="input w-full text-xs"
               disabled={fieldsLocked}
             />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <span className="mb-2 block text-sm font-medium text-[var(--muted)]">안내 멘트 기본 방식</span>
+            <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
+              월별 스케줄 →「안내 멘트」탭이 처음 열릴 때 어떤 양식을 기본으로 보여줄지 정합니다.
+            </p>
+            <div className="space-y-2" role="radiogroup" aria-label="안내 멘트 기본 방식">
+              {ANNOUNCEMENT_MODES.map((opt) => (
+                <label
+                  key={opt.value}
+                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-hover)] p-3"
+                >
+                  <input
+                    type="radio"
+                    checked={announcementMode === opt.value}
+                    onChange={() => setAnnouncementMode(opt.value)}
+                    disabled={fieldsLocked}
+                    className="mt-1"
+                  />
+                  <span className="min-w-0">
+                    <span className="font-medium text-[var(--text)]">{opt.label}</span>
+                    <span className="mt-0.5 block text-xs text-[var(--muted)]">{opt.hint}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div
+              className={
+                "mt-3 grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 sm:grid-cols-2 " +
+                (announcementMode === "BATCHED" ? "" : "opacity-60")
+              }
+            >
+              <div>
+                <label className="dash-eyebrow mb-1 block">묶음 시작 월</label>
+                <select
+                  className="input w-full text-sm"
+                  value={batchFrom}
+                  onChange={(e) => setBatchFrom(Number(e.target.value))}
+                  disabled={fieldsLocked || announcementMode !== "BATCHED"}
+                >
+                  {MONTH_OPTIONS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}월
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="dash-eyebrow mb-1 block">묶음 끝 월</label>
+                <select
+                  className="input w-full text-sm"
+                  value={batchTo}
+                  onChange={(e) => setBatchTo(Number(e.target.value))}
+                  disabled={fieldsLocked || announcementMode !== "BATCHED"}
+                >
+                  {MONTH_OPTIONS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}월
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
             <label className="dash-eyebrow mb-1 block">

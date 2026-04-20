@@ -1,7 +1,11 @@
 /** PocketBase `sabok_*` 컬렉션과 정합되는 앱 도메인 타입 (숫자 필드는 number). */
 
 import type { VendorBusinessType } from "@/lib/domain/vendor-reserve";
-import type { TenantClientEntityType, TenantOperationMode } from "@/lib/domain/tenant-profile";
+import type {
+  AnnouncementMode,
+  TenantClientEntityType,
+  TenantOperationMode,
+} from "@/lib/domain/tenant-profile";
 
 /** 급여포함신고·스케줄에서 상한 대비 초과/미달 표시 방식 — PB `salaryInclusionVarianceMode` */
 export type SalaryInclusionVarianceMode = "BOTH" | "OVER_ONLY" | "UNDER_ONLY";
@@ -156,6 +160,12 @@ export type Tenant = {
   businessRegNo: string | null;
   /** PB `headOfficeCapital` (원) — 없으면 null */
   headOfficeCapital: number | null;
+  /** 안내 멘트 기본 모드 — PB `announcementMode` 없으면 "SINGLE" */
+  announcementMode: AnnouncementMode;
+  /** 묶음 안내 기본 시작 월(1~12) — 없으면 null (UI 기본 1) */
+  announcementBatchFromMonth: number | null;
+  /** 묶음 안내 기본 끝 월(1~12) — 없으면 null (UI 기본 3) */
+  announcementBatchToMonth: number | null;
 };
 
 export type UserRow = {

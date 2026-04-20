@@ -16,6 +16,7 @@ import {
   additionalReserveStatusLabel,
   type AdditionalReserveStatus,
 } from "@/lib/domain/vendor-reserve";
+import type { AnnouncementMode } from "@/lib/domain/tenant-profile";
 import type { ScheduleCardRow } from "@/components/ScheduleEmployeeCards";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
@@ -75,6 +76,9 @@ export function ScheduleAnnouncementPanel({
   rows,
   operationMode,
   reserveStatus,
+  announcementMode = "SINGLE",
+  defaultBatchFromMonth,
+  defaultBatchToMonth,
 }: {
   year: number;
   rows: ScheduleCardRow[];
@@ -84,19 +88,44 @@ export function ScheduleAnnouncementPanel({
    * 이 값을 멘트 빌더와 카드에 그대로 흘려 보낸다.
    */
   reserveStatus: AdditionalReserveStatus;
+  /** 거래처 등록 시 정한 기본 안내 방식 — BATCHED 면 묶음 안내 영역을 강조한다. */
+  announcementMode?: AnnouncementMode;
+  /** 거래처 기본 묶음 시작 월(1~12). 없으면 1월. */
+  defaultBatchFromMonth?: number | null;
+  /** 거래처 기본 묶음 끝 월(1~12). 없으면 3월. */
+  defaultBatchToMonth?: number | null;
 }) {
   const reserveActive = reserveStatus.active;
   const reserveOptions = useMemo(
     () => ({ additionalReserveActive: reserveActive }),
     [reserveActive],
   );
+  const batchedPreferred = announcementMode === "BATCHED";
+  const initialBatchFrom = (() => {
+    const v = defaultBatchFromMonth;
+    return v != null && v >= 1 && v <= 12 ? v : 1;
+  })();
+  const initialBatchTo = (() => {
+    const v = defaultBatchToMonth;
+    return v != null && v >= 1 && v <= 12 ? v : 3;
+  })();
   const [focusMonth, setFocusMonth] = useState<number | null>(() => defaultAnnouncementMonth(year));
-  const [batchFrom, setBatchFrom] = useState(1);
-  const [batchTo, setBatchTo] = useState(3);
+  const [batchFrom, setBatchFrom] = useState(initialBatchFrom);
+  const [batchTo, setBatchTo] = useState(initialBatchTo);
 
   useEffect(() => {
     setFocusMonth(defaultAnnouncementMonth(year));
   }, [year]);
+
+  /** 거래처 기본값이 바뀌면(프로필 수정 후 새로고침 등) 묶음 구간도 동기화. */
+  useEffect(() => {
+    if (defaultBatchFromMonth != null && defaultBatchFromMonth >= 1 && defaultBatchFromMonth <= 12) {
+      setBatchFrom(defaultBatchFromMonth);
+    }
+    if (defaultBatchToMonth != null && defaultBatchToMonth >= 1 && defaultBatchToMonth <= 12) {
+      setBatchTo(defaultBatchToMonth);
+    }
+  }, [defaultBatchFromMonth, defaultBatchToMonth]);
 
   const announcementInputs = useMemo(() => {
     if (focusMonth == null) return null;
@@ -209,8 +238,20 @@ export function ScheduleAnnouncementPanel({
           {filterBtn(null, "전체")}
           {MONTHS.map((m) => filterBtn(m, `${m}월`))}
         </div>
-        <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-[var(--border)] pt-4">
-          <p className="w-full text-xs font-semibold text-[var(--text)]">묶음 안내(여러 달·개인 스타일)</p>
+        <div
+          className={
+            "mt-4 flex flex-wrap items-end gap-3 border-t pt-4 " +
+            (batchedPreferred
+              ? "border-[var(--accent)]/40 bg-[var(--accent-soft)]/40 -mx-4 px-4 -mb-4 pb-4 sm:-mx-5 sm:px-5"
+              : "border-[var(--border)]")
+          }
+        >
+          <p className="flex w-full items-center gap-2 text-xs font-semibold text-[var(--text)]">
+            묶음 안내(여러 달·개인 스타일)
+            {batchedPreferred ? (
+              <span className="badge badge-accent">거래처 기본</span>
+            ) : null}
+          </p>
           <label className="flex flex-col gap-1 text-xs text-[var(--muted)]">
             시작 월
             <select
@@ -291,27 +332,47 @@ export function ScheduleAnnouncementPanel({
         <h2 id="announcement-copy-blocks" className="text-base font-bold text-[var(--text)]">
           복사용 멘트
         </h2>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          거래처 기본 모드:{" "}
+          <strong className="text-[var(--text)]">
+            {batchedPreferred ? "묶음 안내" : "단일월 안내"}
+          </strong>{" "}
+          — 거래처 등록·프로필에서 변경할 수 있습니다.
+        </p>
         <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-          <CopyTextBlock title="1) 사내근로복지기금 지급 안내" body={welfareNotice} disabled={focusMonth == null} />
+          {batchedPreferred ? (
+            <CopyTextBlock
+              title={`1) ${Math.min(batchFrom, batchTo)}월~${Math.max(batchFrom, batchTo)}월 묶음 안내 (거래처 기본)`}
+              body={batchedWelfareNotice}
+              disabled={rows.length === 0}
+            />
+          ) : null}
+          <CopyTextBlock
+            title={`${batchedPreferred ? "2)" : "1)"} 사내근로복지기금 지급 안내`}
+            body={welfareNotice}
+            disabled={focusMonth == null}
+          />
           {showSalaryPortionNoticeMode(operationMode) ? (
             <CopyTextBlock
-              title="2) 급여분(월 환산 급여) 안내"
+              title={`${batchedPreferred ? "3)" : "2)"} 급여분(월 환산 급여) 안내`}
               body={salaryNotice ?? ""}
               disabled={focusMonth == null || !salaryNotice}
             />
           ) : null}
           {shouldShowTransferDetailBlock(rows) ? (
             <CopyTextBlock
-              title="3) 통장 이체·반환·알아서금액"
+              title={`${batchedPreferred ? "4)" : "3)"} 통장 이체·반환·알아서금액`}
               body={transferNotice}
               disabled={focusMonth == null || !transferNotice}
             />
           ) : null}
-          <CopyTextBlock
-            title={`4) ${Math.min(batchFrom, batchTo)}월~${Math.max(batchFrom, batchTo)}월 묶음 안내`}
-            body={batchedWelfareNotice}
-            disabled={rows.length === 0}
-          />
+          {!batchedPreferred ? (
+            <CopyTextBlock
+              title={`${shouldShowTransferDetailBlock(rows) ? "4)" : "3)"} ${Math.min(batchFrom, batchTo)}월~${Math.max(batchFrom, batchTo)}월 묶음 안내`}
+              body={batchedWelfareNotice}
+              disabled={rows.length === 0}
+            />
+          ) : null}
         </div>
       </section>
     </div>

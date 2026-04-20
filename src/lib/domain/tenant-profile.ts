@@ -51,6 +51,54 @@ export function tenantOperationModeLabel(m: TenantOperationMode): string {
   }
 }
 
+/**
+ * 거래처별 기본 안내 멘트 방식.
+ * - SINGLE: 매 달 하나씩 안내 (대부분 법인). 안내 패널은 단일월 카드/멘트를 강조한다.
+ * - BATCHED: 여러 달을 한 번에 묶어서 안내 (대부분 개인사업자). 안내 패널은 묶음 카드/멘트를 강조하고
+ *   `announcementBatchFromMonth` ~ `announcementBatchToMonth` 를 기본 구간으로 미리 채운다.
+ */
+export type AnnouncementMode = "SINGLE" | "BATCHED";
+
+export function parseAnnouncementMode(v: unknown): AnnouncementMode {
+  const s = String(v ?? "SINGLE").trim().toUpperCase();
+  if (s === "BATCHED") return "BATCHED";
+  return "SINGLE";
+}
+
+export function announcementModeLabel(m: AnnouncementMode): string {
+  return m === "BATCHED" ? "묶음 안내(여러 달 한 번에)" : "단일월 안내(매 달)";
+}
+
+export const ANNOUNCEMENT_MODES: { value: AnnouncementMode; label: string; hint: string }[] = [
+  {
+    value: "SINGLE",
+    label: "단일월 안내",
+    hint: "매 달 하나씩 안내(법인 등 일반 운영).",
+  },
+  {
+    value: "BATCHED",
+    label: "묶음 안내",
+    hint: "여러 달을 한 번에 묶어서 안내(개인사업자 등). 기본 시작·끝 월을 함께 저장.",
+  },
+];
+
+/** 묶음 모드의 기본 시작·끝 월을 [1..12] 안으로 정규화. 시작 > 끝 이면 자동 swap. */
+export function normalizeAnnouncementBatchRange(
+  fromRaw: number | null | undefined,
+  toRaw: number | null | undefined,
+): { fromMonth: number; toMonth: number } {
+  const clamp = (n: number | null | undefined, fallback: number) => {
+    if (n == null || !Number.isFinite(Number(n))) return fallback;
+    const v = Math.round(Number(n));
+    if (v < 1) return 1;
+    if (v > 12) return 12;
+    return v;
+  };
+  const a = clamp(fromRaw, 1);
+  const b = clamp(toRaw, 3);
+  return { fromMonth: Math.min(a, b), toMonth: Math.max(a, b) };
+}
+
 export const TENANT_OPERATION_MODES: { value: TenantOperationMode; label: string; hint: string }[] = [
   {
     value: "GENERAL",
