@@ -11,7 +11,7 @@ import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees } from "@/lib/permissions";
 import { CsvImportClient } from "@/components/CsvImportClient";
 import { EmployeeCsvExportButton } from "@/components/EmployeeCsvExportButton";
-import { EmployeeDirectoryGrid } from "@/components/EmployeeDirectoryGrid";
+import { EmployeeDirectoryTable } from "@/components/EmployeeDirectoryTable";
 import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -80,7 +80,7 @@ export default async function EmployeesPage() {
             }
           />
         ) : (
-          <EmployeeDirectoryGrid
+          <EmployeeDirectoryTable
             employees={list}
             colRepReturn={colRepReturn}
             colSpouseReceipt={colSpouseReceipt}
