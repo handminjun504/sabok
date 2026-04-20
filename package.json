@@ -22,7 +22,9 @@
     "pb:fix-quarterly-schema": "cross-env PB_FIX_COLLECTION=sabok_quarterly_employee_configs node scripts/pb-fix-employees-schema.mjs",
     "pb:fix-level-rules-schema": "cross-env PB_FIX_COLLECTION=sabok_level_payment_rules node scripts/pb-fix-employees-schema.mjs",
     "pb:fix-level5-schema": "cross-env PB_FIX_COLLECTION=sabok_level5_overrides node scripts/pb-fix-employees-schema.mjs",
-    "pb:fix-company-settings-schema": "cross-env PB_FIX_COLLECTION=sabok_company_settings node scripts/pb-fix-employees-schema.mjs"
+    "pb:fix-company-settings-schema": "cross-env PB_FIX_COLLECTION=sabok_company_settings node scripts/pb-fix-employees-schema.mjs",
+    "pb:fix-quarterly-payment-months": "node scripts/pb-fix-quarterly-payment-months.mjs",
+    "pb:fix-quarterly-payment-months:dry": "cross-env DRY_RUN=1 node scripts/pb-fix-quarterly-payment-months.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.3",
