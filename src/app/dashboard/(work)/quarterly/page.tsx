@@ -12,6 +12,7 @@ import {
   saveQuarterlyEmployeeConfigFormAction,
   saveQuarterlyRatesFormAction,
 } from "@/app/actions/quarterly";
+import { QuarterlyConfigDeleteButton } from "@/components/QuarterlyConfigDeleteButton";
 import { CommaWonInput } from "@/components/CommaWonInput";
 import { Tabs } from "@/components/Tabs";
 import { Alert } from "@/components/ui/Alert";
@@ -327,10 +328,10 @@ export default async function QuarterlyPage() {
               <table className="min-w-full border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b-2 border-[var(--border)]">
-                    {(["직원", "항목", "지급 월", "금액"] as const).map((h) => (
+                    {(["직원", "항목", "지급 월", "금액", ""] as const).map((h, i) => (
                       <th
-                        key={h}
-                        className={`dash-table-th-md text-left ${h === "금액" ? "dash-table-vline-strong" : ""}`}
+                        key={h || `c-${i}`}
+                        className={`dash-table-th-md ${h === "금액" ? "dash-table-vline-strong text-right" : "text-left"}`}
                       >
                         {h}
                       </th>
@@ -340,15 +341,45 @@ export default async function QuarterlyPage() {
                 <tbody>
                   {configs.map((c) => {
                     const e = employees.find((x) => x.id === c.employeeId);
+                    /** 한 달짜리만 저장된 행 — 운영자가 의도해서 한 달인지, PB 컬럼 누락인지 한 눈에 알아야 함 */
+                    const onlyOneMonth = c.paymentMonths.length === 1;
+                    const empLabel = e ? `${e.employeeCode} ${e.name}` : c.employeeId;
                     return (
                       <tr key={c.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]">
-                        <td className="py-2 pr-4">{e ? `${e.employeeCode} ${e.name}` : c.employeeId}</td>
+                        <td className="py-2 pr-4">{empLabel}</td>
                         <td className="py-2 pr-4">{QUARTERLY_ITEM_LABELS[c.itemKey as QuarterlyItemKey] ?? c.itemKey}</td>
                         <td className="py-2 pr-4 tabular-nums">
-                          {c.paymentMonths.length ? `${c.paymentMonths.join("·")}월` : "—"}
+                          {c.paymentMonths.length ? (
+                            <span
+                              className={
+                                onlyOneMonth
+                                  ? "rounded bg-[var(--warn-soft)] px-1.5 py-0.5 text-[var(--warn)]"
+                                  : undefined
+                              }
+                              title={
+                                onlyOneMonth
+                                  ? "1개 달만 저장됨. 의도한 게 아니라면 PB 컬럼 paymentMonths 점검 후 다시 저장하세요."
+                                  : undefined
+                              }
+                            >
+                              {c.paymentMonths.join("·")}월
+                            </span>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className="dash-table-vline-strong py-2 text-right font-mono tabular-nums">
                           {Number(c.amount).toLocaleString("ko-KR")}
+                        </td>
+                        <td className="py-2 pl-3 text-right">
+                          <QuarterlyConfigDeleteButton
+                            configId={c.id}
+                            description={`직원: ${empLabel}\n항목: ${
+                              QUARTERLY_ITEM_LABELS[c.itemKey as QuarterlyItemKey] ?? c.itemKey
+                            }\n지급 월: ${c.paymentMonths.length ? c.paymentMonths.join("·") + "월" : "—"}\n금액: ${Number(
+                              c.amount,
+                            ).toLocaleString("ko-KR")}원`}
+                          />
                         </td>
                       </tr>
                     );
@@ -371,13 +402,30 @@ export default async function QuarterlyPage() {
         <p className="mt-1 text-sm text-[var(--muted)]">{year}년 · 분기 지원금은 직원의 연간 “총 지급금액(연간 기금)” 합계와 월별 스케줄 지급월 칸에 자동 합산됩니다.</p>
       </div>
       {onlySingleMonth ? (
-        <Alert tone="warn" title="지급월 선택이 1개씩만 저장되고 있습니다 — PB 컬럼 점검 필요">
-          저장된 분기 설정의 지급월이 모두 한 달짜리입니다. PocketBase{" "}
-          <code className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-xs">sabok_quarterly_employee_configs</code>{" "}
-          컬렉션에 <strong>json 타입 필드 <code className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-xs">paymentMonths</code></strong>
-          {" "}가 빠져 있을 가능성이 큽니다. Admin → Edit collection → Add field → type <strong>json</strong>, name{" "}
-          <strong>paymentMonths</strong>(Required 끔) 으로 추가한 뒤 분기 설정을 다시 저장해 주세요. 이미 단일 달로 저장된 항목도 다시 저장하면
-          여러 달이 정상 반영됩니다.
+        <Alert tone="warn" title="지급월 선택이 1개만 저장되고 있습니다 — PB 컬럼 점검 필요">
+          여러 달을 체크해도 첫 달만 저장되는 증상입니다. PocketBase{" "}
+          <code className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-xs">
+            sabok_quarterly_employee_configs
+          </code>{" "}
+          컬렉션에{" "}
+          <strong>
+            json 타입 필드{" "}
+            <code className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-xs">paymentMonths</code>
+          </strong>
+          {" "}가 빠져 있어서 그렇습니다. 두 가지 중 하나로 한 번에 해결하세요:
+          <ol className="mt-2 ml-5 list-decimal space-y-1">
+            <li>
+              서버에서 한 줄: <code className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-xs">
+                npm run pb:fix-quarterly-payment-months
+              </code>
+              {" "} (필드 추가 + 기존 데이터 마이그레이션 자동)
+            </li>
+            <li>
+              또는 PB Admin UI: 위 컬렉션 → Edit collection → Add field → type{" "}
+              <strong>json</strong>, name <strong>paymentMonths</strong> (Required 끔) → 저장 후, 아래 표의 각 행을
+              새 폼에서 같은 값으로 다시 저장
+            </li>
+          </ol>
         </Alert>
       ) : null}
       <Tabs

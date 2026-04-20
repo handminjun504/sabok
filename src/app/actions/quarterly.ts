@@ -5,6 +5,8 @@ import {
   employeeFindFirst,
   monthlyNoteListByEmployeeYear,
   monthlyNoteUpsert,
+  quarterlyEmployeeConfigDelete,
+  quarterlyEmployeeConfigGetById,
   quarterlyEmployeeConfigUpsert,
   quarterlyRateList,
   quarterlyRateUpsert,
@@ -33,6 +35,48 @@ export async function applyQuarterlyTemplateFormAction(formData: FormData): Prom
 
 export async function saveMonthlyNoteFormAction(formData: FormData): Promise<void> {
   await saveMonthlyNoteAction(null, formData);
+}
+
+export async function deleteQuarterlyEmployeeConfigFormAction(formData: FormData): Promise<void> {
+  await deleteQuarterlyEmployeeConfigAction(null, formData);
+}
+
+/**
+ * “직원별 분기 항목” 한 줄 삭제.
+ *  - 권한: canEditEmployees
+ *  - 보안: 설정의 employeeId 가 현재 활성 테넌트에 속한 직원인지 다시 확인 (IDOR 방지)
+ */
+export async function deleteQuarterlyEmployeeConfigAction(_: QState, formData: FormData): Promise<QState> {
+  const ctx = await resolveActionTenant();
+  if (!ctx.ok) return { 오류: ctx.message };
+  if (!canEditEmployees(ctx.role)) return { 오류: "권한이 없습니다." };
+
+  const id = String(formData.get("configId") ?? "").trim();
+  if (!id) return { 오류: "삭제할 항목 ID 가 없습니다." };
+
+  const cfg = await quarterlyEmployeeConfigGetById(id);
+  if (!cfg) return { 오류: "이미 삭제되었거나 찾을 수 없습니다." };
+
+  /** 다른 업체의 분기 설정을 지우지 못하도록 employeeId → tenantId 검증 */
+  const emp = await employeeFindFirst(cfg.employeeId, ctx.tenantId);
+  if (!emp) return { 오류: "이 업체의 분기 설정이 아닙니다." };
+
+  try {
+    await quarterlyEmployeeConfigDelete(id);
+  } catch (e) {
+    console.error(e);
+    return { 오류: "삭제에 실패했습니다. 잠시 후 다시 시도하세요." };
+  }
+
+  await writeAudit({
+    userId: ctx.userId,
+    tenantId: ctx.tenantId,
+    action: "DELETE",
+    entity: "QuarterlyEmployeeConfig",
+    entityId: `${emp.id}:${cfg.year}:${cfg.itemKey}`,
+  });
+  revalidateQuarterlyArtifacts();
+  return { 성공: true };
 }
 
 export async function saveMonthlyIncentiveAccrualYearFormAction(formData: FormData): Promise<void> {

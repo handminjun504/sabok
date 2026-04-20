@@ -886,6 +886,24 @@ export async function quarterlyRateUpsert(
 }
 
 /** --- Quarterly employee config --- */
+
+/** 단건 조회 (id로). 호출자가 employeeId·tenant 소유권 검증 후 사용. */
+export async function quarterlyEmployeeConfigGetById(id: string): Promise<QuarterlyEmployeeConfig | null> {
+  try {
+    const pb = await getAdminPb();
+    const r = asRecord(await pb.collection(C.quarterlyEmployeeConfigs).getOne(id));
+    return mapQuarterlyCfg(r);
+  } catch (e) {
+    console.error("[pb] quarterlyEmployeeConfigGetById", id, e);
+    return null;
+  }
+}
+
+export async function quarterlyEmployeeConfigDelete(id: string): Promise<void> {
+  const pb = await getAdminPb();
+  await pb.collection(C.quarterlyEmployeeConfigs).delete(id);
+}
+
 export async function quarterlyEmployeeConfigListByTenantYear(
   tenantId: string,
   year: number,
