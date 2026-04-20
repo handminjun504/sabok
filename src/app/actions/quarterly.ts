@@ -4,8 +4,8 @@ import { z } from "zod";
 import {
   employeeFindFirst,
   monthlyNoteListByEmployeeYear,
-  monthlyNoteSetPaidConfirmed,
   monthlyNoteUpsert,
+  monthlyPaymentStatusSet,
   quarterlyEmployeeConfigDelete,
   quarterlyEmployeeConfigGetById,
   quarterlyEmployeeConfigUpsert,
@@ -305,15 +305,14 @@ export async function applyQuarterlyTemplateAction(_: QState, formData: FormData
 export type PaidConfirmedToggleResult = { ok: true } | { ok: false; 오류: string };
 
 /**
- * 월별 스케줄 — 한 직원·한 월의 “지급완료 확인” 체크박스 한 칸만 갱신.
- * 다른 필드(인센·선택 복지 노트)는 절대 건드리지 않는다.
+ * 월별 스케줄 — **테넌트·연·월 단위** ‘지급완료 확인’ 토글.
+ *
+ * 직원별이 아니라 한 달 전체에 대한 한 번의 체크. 단일 책임으로 다른 도메인 데이터(인센·노트·금액)는 건드리지 않는다.
  *
  * - 권한: `canEditEmployees` (스케줄 데이터 갱신 동일 권한).
- * - 보안: `employeeId` 가 현재 활성 테넌트 직원인지 재확인 (IDOR 방지).
  * - month 는 1~12 범위만 허용. 그 밖이면 오류 반환.
  */
-export async function setPaidConfirmedAction(
-  employeeId: string,
+export async function setMonthPaidConfirmedAction(
   year: number,
   month: number,
   paidConfirmed: boolean,
@@ -332,15 +331,10 @@ export async function setPaidConfirmedAction(
   if (!Number.isFinite(monthN) || monthN < 1 || monthN > 12) {
     return { ok: false, 오류: "월(1~12)이 올바르지 않습니다." };
   }
-  const empId = String(employeeId ?? "").trim();
-  if (!empId) return { ok: false, 오류: "직원 ID 가 없습니다." };
-
-  const emp = await employeeFindFirst(empId, ctx.tenantId);
-  if (!emp) return { ok: false, 오류: "직원을 찾을 수 없습니다." };
 
   try {
-    await monthlyNoteSetPaidConfirmed({
-      employeeId: emp.id,
+    await monthlyPaymentStatusSet({
+      tenantId: ctx.tenantId,
       year: yearN,
       month: monthN,
       paidConfirmed: Boolean(paidConfirmed),
@@ -353,9 +347,9 @@ export async function setPaidConfirmedAction(
   await writeAudit({
     userId: ctx.userId,
     tenantId: ctx.tenantId,
-    action: paidConfirmed ? "MARK_PAID" : "UNMARK_PAID",
-    entity: "MonthlyEmployeeNote",
-    entityId: `${emp.id}:${yearN}:${monthN}`,
+    action: paidConfirmed ? "MARK_MONTH_PAID" : "UNMARK_MONTH_PAID",
+    entity: "MonthlyPaymentStatus",
+    entityId: `${ctx.tenantId}:${yearN}:${monthN}`,
   });
   revalidateScheduleArtifacts();
   return { ok: true };

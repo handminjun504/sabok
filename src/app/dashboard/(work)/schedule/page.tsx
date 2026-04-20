@@ -7,6 +7,7 @@ import {
   level5OverrideListByEmployeeIdsYear,
   levelPaymentRuleList,
   monthlyNoteListByTenantYear,
+  monthlyPaymentStatusListByTenantYear,
   quarterlyEmployeeConfigListByTenantYear,
   tenantGetById,
   vendorListByTenant,
@@ -29,7 +30,7 @@ import { additionalReserveStatus, summarizeTenantAdditionalReserve } from "@/lib
 import {
   saveMonthlyIncentiveAccrualYearFormAction,
   saveMonthlyNoteFormAction,
-  setPaidConfirmedAction,
+  setMonthPaidConfirmedAction,
 } from "@/app/actions/quarterly";
 import {
   effectiveSalaryInclusionVarianceMode,
@@ -82,12 +83,19 @@ export default async function SchedulePage() {
   );
   const canEditReserveNote = canEditCompanySettings(role) && settings != null;
 
-  const [rules, overrides, quarterly, notes] = await Promise.all([
+  const [rules, overrides, quarterly, notes, monthPaidStatuses] = await Promise.all([
     levelPaymentRuleList(tenantId, year),
     level5OverrideListByEmployeeIdsYear(ids, year),
     quarterlyEmployeeConfigListByTenantYear(tenantId, year, ids),
     monthlyNoteListByTenantYear(tenantId, year, ids),
+    monthlyPaymentStatusListByTenantYear(tenantId, year),
   ]);
+  /** 1~12 → 해당 월이 ‘지급완료’ 표시되었는지(테넌트·연 단위). 누락된 월은 false. */
+  const paidByMonth: Record<number, boolean> = {};
+  for (let m = 1; m <= 12; m++) paidByMonth[m] = false;
+  for (const s of monthPaidStatuses) {
+    if (s.month >= 1 && s.month <= 12) paidByMonth[s.month] = s.paidConfirmed === true;
+  }
 
   const regularTotalsByLevel = regularAnnualTotalsByLevel(rules, year);
 
@@ -190,8 +198,8 @@ export default async function SchedulePage() {
   });
 
   /**
-   * 표(테이블) 모드용 행 — 카드 행에 직원 활성 상태와 “지급완료 확인” 비트맵을 더한 형태.
-   * 메모리 절약을 위해 위 카드 행을 그대로 활용해 동일 데이터를 두 번 만들지 않는다.
+   * 표(테이블) 모드용 행 — 카드 행에 직원 활성 상태(퇴사자 취소선·비활성 월 표시)를 더한 형태.
+   * 위에서 만든 카드 행을 그대로 활용해 동일 데이터를 두 번 만들지 않는다.
    */
   const scheduleTableRows: ScheduleTableRow[] = rows.map((r, idx) => {
     const card = scheduleCardRows[idx]!;
@@ -202,17 +210,7 @@ export default async function SchedulePage() {
         : status.kind === "AFTER_RESIGN"
           ? { kind: "AFTER_RESIGN", resignYear: status.resignYear, resignMonth: status.resignMonth }
           : { kind: "ACTIVE_FULL_YEAR" };
-    const paidConfirmedByMonth: Record<number, boolean> = {};
-    const empNotes = notes.filter((n) => n.employeeId === r.emp.id);
-    for (let m = 1; m <= 12; m++) {
-      const hit = empNotes.find((n) => n.month === m);
-      paidConfirmedByMonth[m] = hit?.paidConfirmed === true;
-    }
-    return {
-      ...card,
-      status: tableStatus,
-      paidConfirmedByMonth,
-    };
+    return { ...card, status: tableStatus };
   });
 
   const incentiveAccrualRows = employees.map((emp) => {
@@ -235,7 +233,8 @@ export default async function SchedulePage() {
       year={year}
       rows={scheduleTableRows}
       canEdit={canNote}
-      setPaidConfirmed={setPaidConfirmedAction}
+      paidByMonth={paidByMonth}
+      setMonthPaidConfirmed={setMonthPaidConfirmedAction}
     />
   );
 

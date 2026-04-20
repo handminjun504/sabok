@@ -8,6 +8,7 @@ import type {
   LevelPaymentRule,
   LevelTarget,
   MonthlyEmployeeNote,
+  MonthlyPaymentStatus,
   PaymentEventDefsByYear,
   QuarterlyEmployeeConfig,
   QuarterlyRate,
@@ -42,6 +43,7 @@ import {
   mapLevelRule,
   mapLevelTarget,
   mapMonthlyNote,
+  mapMonthlyPaymentStatus,
   mapQuarterlyCfg,
   mapQuarterlyRate,
 } from "./mappers";
@@ -736,6 +738,7 @@ export async function tenantDeleteCascade(tenantId: string): Promise<void> {
   await deleteAllByFilter(C.levelPaymentRules, `tenantId="${esc(tenantId)}"`);
   await deleteAllByFilter(C.levelTargets, `tenantId="${esc(tenantId)}"`);
   await deleteAllByFilter(C.quarterlyRates, `tenantId="${esc(tenantId)}"`);
+  await deleteAllByFilter(C.monthlyPaymentStatus, `tenantId="${esc(tenantId)}"`);
   await deleteAllByFilter(C.companySettings, `tenantId="${esc(tenantId)}"`);
   await deleteAllByFilter(C.userTenants, `tenantId="${esc(tenantId)}"`);
   await deleteAllByFilter(C.auditLogs, `tenantId="${esc(tenantId)}"`);
@@ -1065,10 +1068,6 @@ export async function monthlyNoteUpsert(data: {
   const existing = await firstByFilterStrict(C.monthlyEmployeeNotes, f);
   const pb = await getAdminPb();
   if (existing?.id) {
-    /**
-     * `paidConfirmed` 는 별도 토글 액션에서만 갱신해야 한다.
-     * 이 upsert 는 인센·노트 폼에서 호출되므로 의도치 않은 false 덮어쓰기가 일어나지 않도록 명시적으로 제외.
-     */
     await pb.collection(C.monthlyEmployeeNotes).update(String(existing.id), {
       optionalWelfareText: data.optionalWelfareText,
       optionalExtraAmount: data.optionalExtraAmount,
@@ -1076,39 +1075,43 @@ export async function monthlyNoteUpsert(data: {
       incentiveWelfarePaymentAmount: data.incentiveWelfarePaymentAmount,
     });
   } else {
-    /** 신규 레코드는 paidConfirmed 기본 false */
-    await pb.collection(C.monthlyEmployeeNotes).create({ ...data, paidConfirmed: false });
+    await pb.collection(C.monthlyEmployeeNotes).create(data);
   }
 }
 
+/** --- Monthly payment status (테넌트·연·월 단위 ‘지급완료 확인’) --- */
+export async function monthlyPaymentStatusListByTenantYear(
+  tenantId: string,
+  year: number,
+): Promise<MonthlyPaymentStatus[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.monthlyPaymentStatus).getFullList({
+    filter: `tenantId="${esc(tenantId)}" && year=${year}`,
+  });
+  return rows.map((x) => mapMonthlyPaymentStatus(asRecord(x)));
+}
+
 /**
- * 지급완료 확인 체크박스 한 칸만 갱신.
- * 다른 필드(인센·선택 복지)는 절대 건드리지 않는다 — 미존재 시에만 paidConfirmed 만으로 새 레코드 생성.
+ * 한 업체·연·월의 지급완료 플래그를 갱신.
+ * - 존재하면 paidConfirmed 한 필드만 update.
+ * - 없으면 새 레코드 create.
+ * 다른 도메인 데이터(인센·노트·금액)와 무관 — 단일 책임.
  */
-export async function monthlyNoteSetPaidConfirmed(data: {
-  employeeId: string;
+export async function monthlyPaymentStatusSet(data: {
+  tenantId: string;
   year: number;
   month: number;
   paidConfirmed: boolean;
 }): Promise<void> {
-  const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && month=${data.month}`;
-  const existing = await firstByFilterStrict(C.monthlyEmployeeNotes, f);
+  const f = `tenantId="${esc(data.tenantId)}" && year=${data.year} && month=${data.month}`;
+  const existing = await firstByFilterStrict(C.monthlyPaymentStatus, f);
   const pb = await getAdminPb();
   if (existing?.id) {
-    await pb.collection(C.monthlyEmployeeNotes).update(String(existing.id), {
+    await pb.collection(C.monthlyPaymentStatus).update(String(existing.id), {
       paidConfirmed: data.paidConfirmed,
     });
   } else {
-    await pb.collection(C.monthlyEmployeeNotes).create({
-      employeeId: data.employeeId,
-      year: data.year,
-      month: data.month,
-      optionalWelfareText: null,
-      optionalExtraAmount: null,
-      incentiveAccrualAmount: null,
-      incentiveWelfarePaymentAmount: null,
-      paidConfirmed: data.paidConfirmed,
-    });
+    await pb.collection(C.monthlyPaymentStatus).create(data);
   }
 }
 

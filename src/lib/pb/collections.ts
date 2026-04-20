@@ -11,6 +11,7 @@ export const C = {
   quarterlyRates: "sabok_quarterly_rates",
   quarterlyEmployeeConfigs: "sabok_quarterly_employee_configs",
   monthlyEmployeeNotes: "sabok_monthly_employee_notes",
+  monthlyPaymentStatus: "sabok_monthly_payment_status",
   auditLogs: "sabok_audit_logs",
   glSyncJobs: "sabok_gl_sync_jobs",
   vendors: "sabok_vendors",

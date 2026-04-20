@@ -7,6 +7,7 @@ import type {
   LevelPaymentRule,
   LevelTarget,
   MonthlyEmployeeNote,
+  MonthlyPaymentStatus,
   PaymentEventDefsByYear,
   QuarterlyEmployeeConfig,
   QuarterlyRate,
@@ -183,6 +184,15 @@ export function mapMonthlyNote(r: Record<string, unknown>): MonthlyEmployeeNote 
     optionalExtraAmount: numNull(r.optionalExtraAmount),
     incentiveAccrualAmount: numNull(r.incentiveAccrualAmount),
     incentiveWelfarePaymentAmount: numNull(r.incentiveWelfarePaymentAmount),
+  };
+}
+
+export function mapMonthlyPaymentStatus(r: Record<string, unknown>): MonthlyPaymentStatus {
+  return {
+    id: String(r.id),
+    tenantId: String(r.tenantId),
+    year: num(r.year),
+    month: num(r.month),
     paidConfirmed: bool(r.paidConfirmed),
   };
 }

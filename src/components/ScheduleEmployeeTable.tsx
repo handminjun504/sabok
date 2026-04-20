@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Fragment, useState, useTransition, type ReactNode } from "react";
 import type { ScheduleCapBlock, ScheduleWelfareLine } from "@/components/ScheduleEmployeeCards";
-import type { setPaidConfirmedAction } from "@/app/actions/quarterly";
+import type { setMonthPaidConfirmedAction } from "@/app/actions/quarterly";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
@@ -43,8 +43,6 @@ export type ScheduleTableRow = {
   capBlocks: ScheduleCapBlock[];
   showCapOver: boolean;
   showCapUnder: boolean;
-  /** 1~12월 → 지급완료 확인 여부. 누락된 월은 false 로 본다. */
-  paidConfirmedByMonth: Record<number, boolean>;
 };
 
 function fmt(n: number): string {
@@ -78,36 +76,34 @@ function monthIsActiveForStatus(status: ScheduleTableEmploymentStatus, month: nu
   return false;
 }
 
-type CellKey = `${string}:${number}`;
-function cellKey(employeeId: string, month: number): CellKey {
-  return `${employeeId}:${month}`;
-}
-
 /**
  * 월별 지급 스케줄 — 직원 디렉터리와 동일한 행/펼침 표 패턴.
  *
  * - 행: 직원(코드 ASC). 퇴사자는 이름 취소선 + 행 dim.
- * - 1~12월 셀: 금액 + “지급완료” 체크박스. 비활성 월은 체크박스 숨김 + “—”.
+ * - 1~12월 셀: 금액만. 비활성 월은 “—”. 해당 달이 지급완료로 표시되면 셀 배경에 success 톤.
+ * - 표 위 별도의 “지급완료 진행” 바: 1~12월 각각 한 개씩 체크박스. 클릭 시 그 달 전체가 지급완료로 표시된다.
  * - 펼침 행: 라인 내역(정기/분기/노트) + 급여포함신고 cap blocks.
- *
- * 체크박스는 즉시(optimistic) 토글 후 서버 액션 호출. 실패 시 롤백 + 인라인 오류 표시.
  */
 export function ScheduleEmployeeTable({
   year,
   rows,
   canEdit,
-  setPaidConfirmed,
+  paidByMonth,
+  setMonthPaidConfirmed,
 }: {
   year: number;
   rows: ScheduleTableRow[];
   /** 체크박스 토글 권한. false 면 체크박스는 disabled(읽기 전용). */
   canEdit: boolean;
-  setPaidConfirmed: typeof setPaidConfirmedAction;
+  /** 1~12 → 해당 월 ‘지급완료’ 여부 */
+  paidByMonth: Record<number, boolean>;
+  setMonthPaidConfirmed: typeof setMonthPaidConfirmedAction;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const [optimistic, setOptimistic] = useState<Map<CellKey, boolean>>(() => new Map());
+  const [optimistic, setOptimistic] = useState<Map<number, boolean>>(() => new Map());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pendingMonths, setPendingMonths] = useState<Set<number>>(() => new Set());
+  const [, startTransition] = useTransition();
 
   const allExpanded = rows.length > 0 && rows.every((r) => expanded.has(r.employeeId));
   const totalCols = 1 /* 펼침 */ + 1 /* 코드 */ + 1 /* 이름 */ + 1 /* Lv */ + 1 /* 상태 */ + 12 /* 1~12월 */ + 1 /* 연간 */ + 1 /* 편집 */;
@@ -125,29 +121,38 @@ export function ScheduleEmployeeTable({
     setExpanded(open ? new Set(rows.map((r) => r.employeeId)) : new Set());
   }
 
-  function isCellPaid(employeeId: string, month: number, fallback: boolean): boolean {
-    const k = cellKey(employeeId, month);
-    if (optimistic.has(k)) return optimistic.get(k) === true;
-    return fallback;
+  function isMonthPaid(month: number): boolean {
+    if (optimistic.has(month)) return optimistic.get(month) === true;
+    return paidByMonth[month] === true;
   }
 
-  function onTogglePaid(employeeId: string, month: number, current: boolean) {
+  function onToggleMonthPaid(month: number) {
     if (!canEdit) return;
+    const current = isMonthPaid(month);
     const next = !current;
-    const k = cellKey(employeeId, month);
     setOptimistic((prev) => {
       const m = new Map(prev);
-      m.set(k, next);
+      m.set(month, next);
       return m;
+    });
+    setPendingMonths((prev) => {
+      const s = new Set(prev);
+      s.add(month);
+      return s;
     });
     setErrorMsg(null);
     startTransition(async () => {
-      const res = await setPaidConfirmed(employeeId, year, month, next);
+      const res = await setMonthPaidConfirmed(year, month, next);
+      setPendingMonths((prev) => {
+        const s = new Set(prev);
+        s.delete(month);
+        return s;
+      });
       if (!res.ok) {
         /** 실패 시 즉시 롤백 — 사용자가 본 체크 상태와 서버 상태가 어긋나지 않게. */
         setOptimistic((prev) => {
           const m = new Map(prev);
-          m.set(k, current);
+          m.set(month, current);
           return m;
         });
         setErrorMsg(res.오류);
@@ -159,11 +164,46 @@ export function ScheduleEmployeeTable({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-[var(--muted)]">
-          한 줄에 12달 금액 + 지급완료 체크. 왼쪽 ▶ 를 누르면 월별 내역과 급여포함신고가 펼쳐집니다.
+          한 줄에 12달 금액. 왼쪽 ▶ 를 누르면 월별 내역과 급여포함신고가 펼쳐집니다. 위쪽 “지급완료” 행은 한 달 전체에 대한 확인 체크입니다.
         </p>
         <button type="button" onClick={() => setAll(!allExpanded)} className="btn btn-outline text-xs">
           {allExpanded ? "모두 접기" : "모두 펼치기"}
         </button>
+      </div>
+
+      {/* 월별 ‘지급완료’ 진행 바 — 한 달 전체에 대한 확인 토글 */}
+      <div className="surface flex flex-wrap items-center gap-2 px-3 py-2">
+        <span className="dash-eyebrow shrink-0">지급완료</span>
+        <div className="flex flex-wrap gap-1.5">
+          {MONTHS.map((m) => {
+            const paid = isMonthPaid(m);
+            const pending = pendingMonths.has(m);
+            return (
+              <label
+                key={m}
+                className={
+                  "flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors " +
+                  (paid
+                    ? "border-[var(--success)]/50 bg-[color:color-mix(in_srgb,var(--success)_12%,transparent)] text-[var(--success)]"
+                    : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]") +
+                  (canEdit ? " cursor-pointer hover:border-[var(--border-strong)]" : " cursor-default")
+                }
+                title={paid ? `${m}월 지급완료 — 다시 누르면 해제` : `${m}월 전체를 지급완료로 표시`}
+              >
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 cursor-pointer accent-[var(--success)] disabled:cursor-default"
+                  checked={paid}
+                  disabled={!canEdit || pending}
+                  onChange={() => onToggleMonthPaid(m)}
+                />
+                <span className={"font-semibold tabular-nums " + (paid ? "" : "text-[var(--text)]")}>
+                  {m}월
+                </span>
+              </label>
+            );
+          })}
+        </div>
       </div>
 
       {errorMsg ? (
@@ -181,11 +221,20 @@ export function ScheduleEmployeeTable({
               <th className="dash-table-th-md text-left">이름</th>
               <th className="dash-table-th-md text-center">Lv</th>
               <th className="dash-table-th-md text-left">상태</th>
-              {MONTHS.map((m) => (
-                <th key={m} className="dash-table-th-md min-w-[6rem] text-right">
-                  {m}월
-                </th>
-              ))}
+              {MONTHS.map((m) => {
+                const paid = isMonthPaid(m);
+                return (
+                  <th
+                    key={m}
+                    className={
+                      "dash-table-th-md min-w-[5.5rem] text-right " +
+                      (paid ? "bg-[color:color-mix(in_srgb,var(--success)_10%,transparent)]" : "")
+                    }
+                  >
+                    <span className={paid ? "text-[var(--success)]" : ""}>{m}월</span>
+                  </th>
+                );
+              })}
               <th className="dash-table-th-md text-right">{year}년 합계</th>
               <th className="dash-table-th-md w-20 text-center">편집</th>
             </tr>
@@ -237,53 +286,32 @@ export function ScheduleEmployeeTable({
                       {MONTHS.map((m) => {
                         const v = r.welfareByMonth[m] ?? 0;
                         const active = monthIsActiveForStatus(r.status, m);
-                        const paid = isCellPaid(r.employeeId, m, r.paidConfirmedByMonth[m] === true);
+                        const paid = isMonthPaid(m);
                         const empty = v === 0;
-                        const cellId = `paid-${r.employeeId}-${m}`;
                         return (
                           <td
                             key={m}
                             className={
-                              "px-1.5 py-2 text-right align-top " +
-                              (!active ? "bg-[var(--surface-hover)]/30" : paid ? "bg-[color:color-mix(in_srgb,var(--success)_8%,transparent)]" : "")
+                              "px-2 py-2.5 text-right tabular-nums " +
+                              (!active
+                                ? "bg-[var(--surface-hover)]/30 "
+                                : paid
+                                  ? "bg-[color:color-mix(in_srgb,var(--success)_8%,transparent)] "
+                                  : "")
                             }
                           >
-                            <div className="flex flex-col items-end gap-1">
-                              <span
-                                className={
-                                  "whitespace-nowrap text-sm font-semibold tabular-nums " +
-                                  (!active
-                                    ? "text-[var(--muted)]/40"
-                                    : empty
-                                      ? "text-[var(--muted)]/60"
-                                      : "text-[var(--text)]")
-                                }
-                              >
-                                {!active ? "—" : empty ? "—" : fmt(v)}
-                              </span>
-                              {active ? (
-                                <label
-                                  htmlFor={cellId}
-                                  className={
-                                    "flex items-center gap-1 text-[0.65rem] " +
-                                    (canEdit
-                                      ? "cursor-pointer text-[var(--muted)] hover:text-[var(--text)]"
-                                      : "cursor-default text-[var(--muted)]/70")
-                                  }
-                                  title={paid ? `${m}월 지급완료 체크됨 — 다시 누르면 해제` : `${m}월 지급완료로 표시`}
-                                >
-                                  <input
-                                    id={cellId}
-                                    type="checkbox"
-                                    className="h-3.5 w-3.5 cursor-pointer accent-[var(--success)] disabled:cursor-default"
-                                    checked={paid}
-                                    disabled={!canEdit || pending}
-                                    onChange={() => onTogglePaid(r.employeeId, m, paid)}
-                                  />
-                                  <span className={paid ? "font-semibold text-[var(--success)]" : ""}>지급완료</span>
-                                </label>
-                              ) : null}
-                            </div>
+                            <span
+                              className={
+                                "whitespace-nowrap text-sm font-semibold " +
+                                (!active
+                                  ? "text-[var(--muted)]/40"
+                                  : empty
+                                    ? "text-[var(--muted)]/60"
+                                    : "text-[var(--text)]")
+                              }
+                            >
+                              {!active ? "—" : empty ? "—" : fmt(v)}
+                            </span>
                           </td>
                         );
                       })}
@@ -451,4 +479,3 @@ export function ScheduleEmployeeTable({
     </div>
   );
 }
-

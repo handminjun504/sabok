@@ -118,10 +118,18 @@ export type MonthlyEmployeeNote = {
   incentiveAccrualAmount: number | null;
   /** 그 달 사복으로 지급하기로 한 인센 금액(인센→사복 환류) */
   incentiveWelfarePaymentAmount: number | null;
-  /**
-   * 월별 지급 스케줄에서 “해당 월 지급이 실제로 완료됐다”는 사용자 확인 플래그.
-   * 금액 계산에는 영향 없음(스케줄 표시·체크박스 UI 상태만 결정).
-   */
+};
+
+/**
+ * 업체(테넌트) 단위 “해당 월 지급이 모두 끝났는가” 확인 플래그.
+ * 직원별이 아니라 **연·월** 단위 — 한 번의 체크로 그 달 전체를 ‘지급완료’로 표시한다.
+ * 금액 계산에는 영향 없으며, 월별 스케줄 표의 시각적 진행도와 ‘완료된 달 회수 보기’ 같은 후속 기능 토대.
+ */
+export type MonthlyPaymentStatus = {
+  id: string;
+  tenantId: string;
+  year: number;
+  month: number;
   paidConfirmed: boolean;
 };
 
