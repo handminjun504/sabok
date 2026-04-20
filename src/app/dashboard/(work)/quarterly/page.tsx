@@ -72,95 +72,149 @@ export default async function QuarterlyPage() {
   const onlySingleMonth =
     configs.length > 0 && configs.every((c) => c.paymentMonths.length <= 1);
 
+  /**
+   * 항목별로 “실제로 쓰이는 셀만” 입력하도록 단순화한 요율 표.
+   *  - 자녀 장학금 3종: 자녀 1명당 단가(원/명)
+   *  - 부모 봉양: 부모/시부모 1명당 단가 (두 칸)
+   *  - 보험·이자·월세: 한도(원). 실제 적용은 min(직원 발생액, 한도)
+   *
+   * input name 은 기존과 동일(`${itemKey}_infant` 등) — 서버 액션은 안 바꿔도 됨.
+   */
+  const ITEM_RATE_LAYOUT: Record<
+    QuarterlyItemKey,
+    { hint: string; cells: { name: string; label: string; defaultValue: number | null; suffix?: string }[] }
+  > = {
+    INFANT_SCHOLARSHIP: {
+      hint: "자녀(영유아) 1명당 단가. 직원의 영유아 자녀 수에 곱해집니다.",
+      cells: [
+        {
+          name: `${QUARTERLY_ITEM.INFANT_SCHOLARSHIP}_infant`,
+          label: "영유아 1명당",
+          defaultValue: rateMap.get(QUARTERLY_ITEM.INFANT_SCHOLARSHIP)?.amountPerInfant ?? null,
+          suffix: "원/명",
+        },
+      ],
+    },
+    PRESCHOOL_SCHOLARSHIP: {
+      hint: "자녀(미취학) 1명당 단가. 직원의 미취학 자녀 수에 곱해집니다.",
+      cells: [
+        {
+          name: `${QUARTERLY_ITEM.PRESCHOOL_SCHOLARSHIP}_pre`,
+          label: "미취학 1명당",
+          defaultValue: rateMap.get(QUARTERLY_ITEM.PRESCHOOL_SCHOLARSHIP)?.amountPerPreschool ?? null,
+          suffix: "원/명",
+        },
+      ],
+    },
+    TEEN_SCHOLARSHIP: {
+      hint: "자녀(청소년) 1명당 단가. 직원의 청소년 자녀 수에 곱해집니다.",
+      cells: [
+        {
+          name: `${QUARTERLY_ITEM.TEEN_SCHOLARSHIP}_teen`,
+          label: "청소년 1명당",
+          defaultValue: rateMap.get(QUARTERLY_ITEM.TEEN_SCHOLARSHIP)?.amountPerTeen ?? null,
+          suffix: "원/명",
+        },
+      ],
+    },
+    PARENT_SUPPORT: {
+      hint: "부모·시부모 인원수에 각 단가가 곱해져 합산됩니다.",
+      cells: [
+        {
+          name: `${QUARTERLY_ITEM.PARENT_SUPPORT}_par`,
+          label: "부모 1명당",
+          defaultValue: rateMap.get(QUARTERLY_ITEM.PARENT_SUPPORT)?.amountPerParent ?? null,
+          suffix: "원/명",
+        },
+        {
+          name: `${QUARTERLY_ITEM.PARENT_SUPPORT}_inlaw`,
+          label: "시부모 1명당",
+          defaultValue: rateMap.get(QUARTERLY_ITEM.PARENT_SUPPORT)?.amountPerInLaw ?? null,
+          suffix: "원/명",
+        },
+      ],
+    },
+    HEALTH_INSURANCE: {
+      hint: "직원 보험료 발생액과 한도 중 작은 값이 지급됩니다 (min).",
+      cells: [
+        {
+          name: `${QUARTERLY_ITEM.HEALTH_INSURANCE}_pins`,
+          label: "지급 한도",
+          defaultValue: rateMap.get(QUARTERLY_ITEM.HEALTH_INSURANCE)?.percentInsurance ?? null,
+          suffix: "원",
+        },
+      ],
+    },
+    HOUSING_INTEREST: {
+      hint: "직원 대출이자 발생액과 한도 중 작은 값이 지급됩니다 (min).",
+      cells: [
+        {
+          name: `${QUARTERLY_ITEM.HOUSING_INTEREST}_ploan`,
+          label: "지급 한도",
+          defaultValue: rateMap.get(QUARTERLY_ITEM.HOUSING_INTEREST)?.percentLoanInterest ?? null,
+          suffix: "원",
+        },
+      ],
+    },
+    HOUSING_RENT: {
+      hint: "직원 월세 발생액과 한도 중 작은 값이 지급됩니다 (min, 월 단위).",
+      cells: [
+        {
+          name: `${QUARTERLY_ITEM.HOUSING_RENT}_flat`,
+          label: "월 한도",
+          defaultValue: rateMap.get(QUARTERLY_ITEM.HOUSING_RENT)?.flatAmount ?? null,
+          suffix: "원/월",
+        },
+      ],
+    },
+  };
+
   const ratesTab = (
     <div className="space-y-4">
       {canRates ? (
         <div className="surface dash-panel-pad">
+          <p className="mb-4 text-xs leading-relaxed text-[var(--muted)]">
+            항목별로 사용하는 단가/한도만 입력하면 됩니다. 빈 칸은 0 으로 처리됩니다.
+            보험·이자·월세는 직원의 실제 발생액과 한도 중 작은 값이 지급됩니다.
+          </p>
           <form action={saveQuarterlyRatesFormAction} className="space-y-4">
             <input type="hidden" name="year" value={year} />
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-[var(--border)]">
-                    <th
-                      rowSpan={2}
-                      className="dash-table-th-md border-b-2 border-[var(--border)] align-bottom text-left"
-                    >
-                      항목
-                    </th>
-                    <th colSpan={3} className="dash-table-head text-center font-semibold text-[var(--text)]">
-                      자녀장학금
-                    </th>
-                    <th colSpan={2} className="dash-table-head text-center font-semibold text-[var(--text)]">
-                      부모봉양지원금
-                    </th>
-                    <th
-                      rowSpan={2}
-                      className="dash-table-th-md dash-table-vline-strong border-b-2 border-[var(--border)] align-bottom text-center max-w-[8rem]"
-                    >
-                      정액·월세 한도
-                    </th>
-                    <th
-                      rowSpan={2}
-                      className="dash-table-th-md dash-table-vline border-b-2 border-[var(--border)] align-bottom text-center max-w-[8rem]"
-                    >
-                      보험 한도
-                    </th>
-                    <th
-                      rowSpan={2}
-                      className="dash-table-th-md dash-table-vline border-b-2 border-[var(--border)] align-bottom text-center max-w-[8rem]"
-                    >
-                      이자 한도
-                    </th>
-                  </tr>
                   <tr className="border-b-2 border-[var(--border)]">
-                    {["영유아 단가", "미취학 단가", "청소년 단가", "부모 단가", "시부모 단가"].map((h, i) => (
-                      <th
-                        key={h}
-                        className={`dash-table-th-md text-center ${i === 0 ? "dash-table-vline-strong" : "dash-table-vline"}`}
-                      >
-                        {h}
-                      </th>
-                    ))}
+                    <th className="dash-table-th-md w-[14rem] text-left">항목</th>
+                    <th className="dash-table-th-md text-left">단가 / 한도</th>
+                    <th className="dash-table-th-md hidden text-left md:table-cell">계산 방식</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((itemKey) => {
-                    const r = rateMap.get(itemKey);
+                    const layout = ITEM_RATE_LAYOUT[itemKey];
                     return (
                       <tr key={itemKey} className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]">
-                        <td className="py-2.5 pr-4 text-left text-sm font-medium">{QUARTERLY_ITEM_LABELS[itemKey]}</td>
-                        <td className="dash-table-vline-strong px-2 py-2.5 text-center align-middle">
-                          <CommaWonInput name={`${itemKey}_infant`} defaultValue={r?.amountPerInfant ?? null} className={INPUT_QTR} />
+                        <td className="py-3 pr-4 text-left text-sm font-semibold text-[var(--text)]">
+                          {QUARTERLY_ITEM_LABELS[itemKey]}
                         </td>
-                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
-                          <CommaWonInput name={`${itemKey}_pre`} defaultValue={r?.amountPerPreschool ?? null} className={INPUT_QTR} />
+                        <td className="py-3 pr-4 text-left">
+                          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                            {layout.cells.map((cell) => (
+                              <label key={cell.name} className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                                <span className="whitespace-nowrap">{cell.label}</span>
+                                <CommaWonInput
+                                  name={cell.name}
+                                  defaultValue={cell.defaultValue}
+                                  className={layout.cells.length === 1 ? INPUT_QTR_WIDE : INPUT_QTR}
+                                />
+                                {cell.suffix ? (
+                                  <span className="whitespace-nowrap text-[var(--muted)]">{cell.suffix}</span>
+                                ) : null}
+                              </label>
+                            ))}
+                          </div>
                         </td>
-                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
-                          <CommaWonInput name={`${itemKey}_teen`} defaultValue={r?.amountPerTeen ?? null} className={INPUT_QTR} />
-                        </td>
-                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
-                          <CommaWonInput name={`${itemKey}_par`} defaultValue={r?.amountPerParent ?? null} className={INPUT_QTR} />
-                        </td>
-                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
-                          <CommaWonInput name={`${itemKey}_inlaw`} defaultValue={r?.amountPerInLaw ?? null} className={INPUT_QTR} />
-                        </td>
-                        <td className="dash-table-vline-strong px-2 py-2.5 text-center align-middle">
-                          <CommaWonInput name={`${itemKey}_flat`} defaultValue={r?.flatAmount ?? null} className={INPUT_QTR} />
-                        </td>
-                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
-                          <CommaWonInput
-                            name={`${itemKey}_pins`}
-                            defaultValue={r?.percentInsurance ?? null}
-                            className={INPUT_QTR_WIDE}
-                          />
-                        </td>
-                        <td className="dash-table-vline px-2 py-2.5 text-center align-middle">
-                          <CommaWonInput
-                            name={`${itemKey}_ploan`}
-                            defaultValue={r?.percentLoanInterest ?? null}
-                            className={INPUT_QTR_WIDE}
-                          />
+                        <td className="hidden py-3 pr-2 text-xs leading-relaxed text-[var(--muted)] md:table-cell">
+                          {layout.hint}
                         </td>
                       </tr>
                     );
