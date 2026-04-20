@@ -17,6 +17,7 @@
  * 환경변수 별칭: PB_URL, PB_ADMIN_EMAIL, PB_ADMIN_PASSWORD (GL MCP와 동일)
  */
 
+import "dotenv/config";
 import PocketBase from "pocketbase";
 
 function envTruthy(name) {

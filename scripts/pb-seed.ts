@@ -17,6 +17,8 @@
  *
  * (참고) 예전 다중 역할 시드(admin/senior/junior@reversep.local)는 자동으로 정리한다.
  */
+/** tsx 스크립트는 Next.js 와 달리 `.env` 자동 로드가 없어 직접 로드해 준다. */
+import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PAYMENT_EVENT } from "../src/lib/business-rules";
 import { getAdminPb } from "../src/lib/pb/admin-client";

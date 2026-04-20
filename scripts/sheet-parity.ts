@@ -2,6 +2,7 @@
  * 참고 시트 시나리오 대비 회귀: 도메인 숫자가 문서화된 기대값과 일치하는지 확인.
  * 실행: npm run sheet:parity
  */
+import "dotenv/config";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";

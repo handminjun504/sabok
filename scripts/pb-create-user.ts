@@ -19,6 +19,8 @@
  *   POCKETBASE_URL=http://서버IP:8090 POCKETBASE_ADMIN_EMAIL=... POCKETBASE_ADMIN_PASSWORD=... \\
  *   npx tsx scripts/pb-create-user.ts user@example.com 'pw'
  */
+/** tsx 스크립트는 Next.js 와 달리 `.env` 자동 로드가 없어 직접 로드해 준다. */
+import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { getAdminPb } from "../src/lib/pb/admin-client";
 import { C } from "../src/lib/pb/collections";
