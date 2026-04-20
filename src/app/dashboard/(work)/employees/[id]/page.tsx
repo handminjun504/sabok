@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import {
   companySettingsByTenant,
   employeeFindFirst,
+  employeeListByTenantCodeAsc,
   level5OverrideListByEmployeeYear,
   levelPaymentRuleList,
 } from "@/lib/pb/repository";
@@ -72,9 +73,18 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   const emp = await employeeFindFirst(id, tenantId);
   if (!emp) notFound();
 
-  const settings = await companySettingsByTenant(tenantId);
+  const [settings, allEmployees] = await Promise.all([
+    companySettingsByTenant(tenantId),
+    employeeListByTenantCodeAsc(tenantId),
+  ]);
   const year = settings?.activeYear ?? new Date().getFullYear();
   const minimumAnnualSalaryWon = koreaMinimumAnnualSalaryWon(year);
+  const existingEmployees = allEmployees.map((e) => ({
+    id: e.id,
+    employeeCode: e.employeeCode,
+    name: e.name,
+    position: e.position,
+  }));
 
   return (
     <div className="space-y-6">
@@ -93,6 +103,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           surveyShowRepReturn={settings?.surveyShowRepReturn ?? false}
           surveyShowSpouseReceipt={settings?.surveyShowSpouseReceipt ?? false}
           surveyShowWorkerNet={settings?.surveyShowWorkerNet ?? false}
+          existingEmployees={existingEmployees}
         />
       ) : (
         <p className="text-sm text-[var(--muted)]">조회 전용입니다.</p>

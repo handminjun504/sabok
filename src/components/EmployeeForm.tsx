@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { employeePositionSelectValues } from "@/lib/domain/employee-positions";
@@ -14,6 +15,84 @@ import { CommaWonInput } from "@/components/CommaWonInput";
 import { digitsOnly, formatWon } from "@/lib/util/number";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { Alert } from "@/components/ui/Alert";
+
+/** 동명이인 검출용 — 페이지에서 이미 조회한 직원 목록 일부만 넘긴다(직렬화 비용 최소화). */
+export type EmployeeSimpleRow = {
+  id: string;
+  employeeCode: string;
+  name: string;
+  position: string;
+};
+
+/** 이름 입력 + 같은 이름 직원 즉시 안내 */
+function NameFieldWithDuplicateCheck({
+  inputId,
+  defaultValue,
+  selfId,
+  existing,
+}: {
+  inputId: string;
+  defaultValue: string;
+  /** 수정 모드일 때 자기 자신은 동명이인 비교에서 제외 */
+  selfId: string | null;
+  existing: EmployeeSimpleRow[];
+}) {
+  const [name, setName] = useState(defaultValue ?? "");
+
+  const matches = useMemo(() => {
+    const trimmed = name.trim();
+    if (!trimmed) return [];
+    return existing.filter(
+      (row) => row.id !== selfId && row.name.trim() === trimmed,
+    );
+  }, [name, selfId, existing]);
+
+  return (
+    <div className="space-y-2">
+      <input
+        id={inputId}
+        className="input w-full max-w-xl min-w-0 text-[0.8125rem] leading-normal text-[var(--text)]"
+        name="name"
+        type="text"
+        required
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        autoComplete="off"
+      />
+      {matches.length > 0 ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-lg border border-[color:color-mix(in_srgb,var(--warn)_30%,transparent)] bg-[var(--warn-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--warn)]"
+        >
+          <p className="font-semibold">이미 같은 이름의 직원이 등록돼 있습니다.</p>
+          <ul className="mt-1 space-y-0.5">
+            {matches.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-baseline gap-x-2">
+                <span className="font-mono text-[0.7rem] tabular-nums text-[var(--muted)]">
+                  코드 {row.employeeCode}
+                </span>
+                <span className="font-semibold text-[var(--text)]">{row.name}</span>
+                {row.position ? (
+                  <span className="text-[var(--muted)]">({row.position})</span>
+                ) : null}
+                <Link
+                  href={`/dashboard/employees/${row.id}`}
+                  className="ml-auto text-[var(--accent)] hover:underline"
+                >
+                  상세 보기 →
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[var(--muted)]">
+            동명이인이라면 그대로 저장해도 됩니다. 같은 사람을 다시 등록하려는 거라면 위 직원을 수정해 주세요.
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 const fieldLabelClass = "dash-field-label";
 
@@ -220,6 +299,7 @@ export function EmployeeForm({
   surveyShowRepReturn = false,
   surveyShowSpouseReceipt = false,
   surveyShowWorkerNet = false,
+  existingEmployees = [],
 }: {
   employee?: Employee | null;
   activeYear: number;
@@ -231,6 +311,8 @@ export function EmployeeForm({
   surveyShowRepReturn?: boolean;
   surveyShowSpouseReceipt?: boolean;
   surveyShowWorkerNet?: boolean;
+  /** 동명이인 즉시 안내용 — 페이지에서 조회한 같은 업체 직원 목록(이름·코드·직급만 필요) */
+  existingEmployees?: EmployeeSimpleRow[];
 }) {
   const [state, formAction, savePending] = useActionState<EmployeeActionState, FormData>(
     saveEmployeeAction,
@@ -265,6 +347,7 @@ export function EmployeeForm({
   const positionDefault = (employee?.position ?? "").trim();
   const positionNeedsPlaceholder = !positionDefault;
   const positionId = useId();
+  const nameId = useId();
   const levelId = useId();
   const varianceModeId = useId();
 
@@ -410,7 +493,15 @@ export function EmployeeForm({
                 </div>
               </div>
               <div className="px-3 py-3">
-                <Cell label="이름" name="name" defaultValue={employee?.name} className="max-w-xl" required />
+                <label className={fieldLabelClass} htmlFor={nameId}>
+                  이름
+                </label>
+                <NameFieldWithDuplicateCheck
+                  inputId={nameId}
+                  defaultValue={employee?.name ?? ""}
+                  selfId={employee?.id ?? null}
+                  existing={existingEmployees}
+                />
               </div>
               <div className="px-3 py-3">
                 <label className={fieldLabelClass} htmlFor={positionId}>
