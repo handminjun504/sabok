@@ -16,11 +16,9 @@ import { CommaWonInput } from "@/components/CommaWonInput";
 import { Tabs } from "@/components/Tabs";
 import { Alert } from "@/components/ui/Alert";
 
-/** 요율 표: 셀 가운데·조금 큰 입력 */
-const INPUT_QTR =
-  "mx-auto block w-full min-w-[5.75rem] max-w-[7.5rem] rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-center text-sm tabular-nums focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
+/** 요율 표 입력 — 모든 셀 동일 폭으로 정렬 */
 const INPUT_QTR_WIDE =
-  "mx-auto block w-full min-w-[6.75rem] max-w-[8.5rem] rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-center text-sm tabular-nums focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
+  "block w-[8rem] min-w-[7rem] max-w-[9rem] rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-right text-sm tabular-nums focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)]";
 
 const MONTHS_1_12 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 const DEFAULT_QUARTER_PAY_MONTHS: readonly number[] = [3, 6, 9, 12];
@@ -183,9 +181,9 @@ export default async function QuarterlyPage() {
               <table className="min-w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b-2 border-[var(--border)]">
-                    <th className="dash-table-th-md w-[14rem] text-left">항목</th>
-                    <th className="dash-table-th-md text-left">단가 / 한도</th>
-                    <th className="dash-table-th-md hidden text-left md:table-cell">계산 방식</th>
+                    <th className="dash-table-th-md w-[14rem] text-left align-bottom">항목</th>
+                    <th className="dash-table-th-md text-left align-bottom">단가 / 한도</th>
+                    <th className="dash-table-th-md hidden text-left align-bottom md:table-cell">계산 방식</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -193,27 +191,37 @@ export default async function QuarterlyPage() {
                     const layout = ITEM_RATE_LAYOUT[itemKey];
                     return (
                       <tr key={itemKey} className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]">
-                        <td className="py-3 pr-4 text-left text-sm font-semibold text-[var(--text)]">
+                        <td className="py-4 pr-4 text-left align-middle text-sm font-semibold text-[var(--text)]">
                           {QUARTERLY_ITEM_LABELS[itemKey]}
                         </td>
-                        <td className="py-3 pr-4 text-left">
-                          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                        <td className="py-4 pr-4 text-left align-middle">
+                          <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
                             {layout.cells.map((cell) => (
-                              <label key={cell.name} className="flex items-center gap-2 text-xs text-[var(--muted)]">
-                                <span className="whitespace-nowrap">{cell.label}</span>
-                                <CommaWonInput
-                                  name={cell.name}
-                                  defaultValue={cell.defaultValue}
-                                  className={layout.cells.length === 1 ? INPUT_QTR_WIDE : INPUT_QTR}
-                                />
-                                {cell.suffix ? (
-                                  <span className="whitespace-nowrap text-[var(--muted)]">{cell.suffix}</span>
-                                ) : null}
-                              </label>
+                              <div key={cell.name} className="flex flex-col gap-1">
+                                <label
+                                  htmlFor={`rate-${cell.name}`}
+                                  className="text-[0.7rem] font-semibold uppercase tracking-wide text-[var(--muted)]"
+                                >
+                                  {cell.label}
+                                </label>
+                                <div className="flex items-center gap-1.5">
+                                  <CommaWonInput
+                                    id={`rate-${cell.name}`}
+                                    name={cell.name}
+                                    defaultValue={cell.defaultValue}
+                                    className={INPUT_QTR_WIDE}
+                                  />
+                                  {cell.suffix ? (
+                                    <span className="whitespace-nowrap text-xs text-[var(--muted)]">
+                                      {cell.suffix}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
                             ))}
                           </div>
                         </td>
-                        <td className="hidden py-3 pr-2 text-xs leading-relaxed text-[var(--muted)] md:table-cell">
+                        <td className="hidden py-4 pr-2 text-xs leading-relaxed text-[var(--muted)] align-middle md:table-cell">
                           {layout.hint}
                         </td>
                       </tr>
