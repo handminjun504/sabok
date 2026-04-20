@@ -89,21 +89,29 @@ function isQuarterlyKey(k: string): k is QuarterlyItemKey {
   return Object.values(QUARTERLY_ITEM).includes(k as QuarterlyItemKey);
 }
 
-/** 정기 행사 키 → 법정 구분 코드 */
+/**
+ * 정기 행사 키 → 법정 구분 코드.
+ *
+ * 한 칸(62) 쏠림 방지를 위해 행사 성격별로 분산:
+ *  - 명절·연말·결혼기념(부부 가족 행사) → 62 (체육 문화활동지원)
+ *  - 가정의 달·창립기념(사내 공식 행사) → 64 (근로자의 날 행사 등 지원)
+ *  - 입사축하·생일(개인 기념) → 66 (그 밖의 복지비)
+ *  - 커스텀 정기 행사·미분류 → 66
+ */
 export function legalCategoryForRegularEventKey(eventKey: string): number {
   if (!isBuiltinPaymentKey(eventKey)) return 66;
   switch (eventKey) {
-    case PAYMENT_EVENT.FAMILY_MAY:
-      return 64;
     case PAYMENT_EVENT.NEW_YEAR_FEB:
     case PAYMENT_EVENT.CHUSEOK_AUG:
     case PAYMENT_EVENT.YEAR_END_NOV:
-      return 62;
-    case PAYMENT_EVENT.HIRE_MONTH:
-    case PAYMENT_EVENT.FOUNDING_MONTH:
-    case PAYMENT_EVENT.BIRTH_MONTH:
     case PAYMENT_EVENT.WEDDING_MONTH:
       return 62;
+    case PAYMENT_EVENT.FAMILY_MAY:
+    case PAYMENT_EVENT.FOUNDING_MONTH:
+      return 64;
+    case PAYMENT_EVENT.HIRE_MONTH:
+    case PAYMENT_EVENT.BIRTH_MONTH:
+      return 66;
     default:
       return 66;
   }
