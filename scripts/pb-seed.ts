@@ -1,8 +1,21 @@
 /**
- * PocketBase 시드 (Admin API). `docs/pb-collections.md` 컬렉션이 준비된 뒤 실행.
+ * 단일 사용자 시드 — 계정 한 명만 만들고, 그 한 계정으로 모든 업체(다업체)를 관리한다.
  *
- * 계정(이메일): admin@reversep.local · senior@reversep.local · junior@reversep.local
- * 비밀번호: 환경변수 `SABOK_SEED_PASSWORD` — 없으면 기본값 `Reversep2026!` (로컬·데모 전용)
+ * 사용 흐름:
+ *   1) `.env` 에 PocketBase 관리자 정보 + 시드 입력값 채움 (`.env.example` 참고)
+ *   2) `npm run pb:seed` 실행
+ *   3) 로그인 → 「거래처 선택」 화면에서 업체를 자유롭게 추가·전환·삭제
+ *
+ * 시드 입력 환경변수:
+ *   - SABOK_USER_EMAIL       (필수) 로그인 이메일
+ *   - SABOK_USER_PASSWORD    (필수) 평문 비밀번호 — bcrypt 해시되어 저장
+ *   - SABOK_USER_NAME        (선택, 기본: 이메일 @ 앞부분)
+ *   - SABOK_TENANT_CODE      (선택) 함께 만들 첫 업체 코드. 비우면 업체는 생성하지 않음.
+ *   - SABOK_TENANT_NAME      (선택) 첫 업체명. 코드만 있고 이름이 비면 코드를 이름으로 사용.
+ *
+ * 계정·업체가 이미 있으면 비밀번호·이름·역할만 갱신(upsert) — 비밀번호 분실 시 재실행으로 복구 가능.
+ *
+ * (참고) 예전 다중 역할 시드(admin/senior/junior@reversep.local)는 자동으로 정리한다.
  */
 import bcrypt from "bcryptjs";
 import { PAYMENT_EVENT } from "../src/lib/business-rules";
@@ -19,31 +32,24 @@ async function firstByFilter(collection: string, filter: string) {
   return items[0] as Record<string, unknown> | undefined;
 }
 
-async function upsertUser(email: string, data: Record<string, unknown>) {
-  const existing = await firstByFilter(C.users, `email="${esc(email)}"`);
-  const pb = await pbReady();
-  if (existing?.id) {
-    await pb.collection(C.users).update(String(existing.id), data);
-    return String(existing.id);
-  }
-  const created = await pb.collection(C.users).create({ email, ...data });
-  return String((created as Record<string, unknown>).id);
-}
-
 const tenantProfileDefaults = {
   clientEntityType: "INDIVIDUAL",
   operationMode: "GENERAL",
 } as const;
 
-/** 예전 시드 이메일 — 실행 시 삭제 후 아래 신규 3계정만 둠 */
+/** 예전 다중 역할 시드 — 단일 사용자 모드로 옮기면서 자동 정리 */
 const LEGACY_SEED_EMAILS = [
   "admin@sabok.local",
   "senior@sabok.local",
   "junior@sabok.local",
   "outsourcer@sabok.local",
+  "admin@reversep.local",
+  "senior@reversep.local",
+  "junior@reversep.local",
 ] as const;
 
-async function deleteUserByEmailIfExists(email: string) {
+async function deleteUserByEmailIfExists(email: string, keepEmail: string) {
+  if (email.toLowerCase() === keepEmail.toLowerCase()) return;
   const existing = await firstByFilter(C.users, `email="${esc(email)}"`);
   if (!existing?.id) return;
   const userId = String(existing.id);
@@ -53,7 +59,7 @@ async function deleteUserByEmailIfExists(email: string) {
     await pb.collection(C.userTenants).delete(String((row as { id: string }).id));
   }
   await pb.collection(C.users).delete(userId);
-  console.log("삭제됨(기존 시드):", email);
+  console.log("정리(기존 시드 계정 삭제):", email);
 }
 
 async function upsertTenantByCode(code: string, name: string) {
@@ -72,217 +78,152 @@ async function upsertTenantByCode(code: string, name: string) {
   return String((created as Record<string, unknown>).id);
 }
 
-async function main() {
-  for (const em of LEGACY_SEED_EMAILS) {
-    await deleteUserByEmailIfExists(em);
+async function upsertUser(email: string, data: Record<string, unknown>) {
+  const existing = await firstByFilter(C.users, `email="${esc(email)}"`);
+  const pb = await pbReady();
+  if (existing?.id) {
+    await pb.collection(C.users).update(String(existing.id), data);
+    return String(existing.id);
   }
+  const created = await pb.collection(C.users).create({ email, ...data });
+  return String((created as Record<string, unknown>).id);
+}
 
-  const seedPassword = process.env.SABOK_SEED_PASSWORD?.trim() || "Reversep2026!";
-  const passwordHash = await bcrypt.hash(seedPassword, 12);
-  const tenantId = await upsertTenantByCode("demo", "데모 고객사");
+type SeedInput = {
+  email: string;
+  password: string;
+  displayName: string;
+  /** 비어 있으면 업체를 만들지 않고 사용자만 시드한다(다업체 운영자가 화면에서 직접 추가) */
+  tenant: { code: string; name: string } | null;
+};
 
-  const adminId = await upsertUser("admin@reversep.local", {
+function readSeedInput(): SeedInput {
+  const email = process.env.SABOK_USER_EMAIL?.trim().toLowerCase();
+  const password = process.env.SABOK_USER_PASSWORD;
+  if (!email || !password) {
+    console.error(
+      [
+        "필수 환경변수가 비었습니다.",
+        "  SABOK_USER_EMAIL = 로그인 이메일",
+        "  SABOK_USER_PASSWORD = 비밀번호 (평문 — 해시되어 저장)",
+        "선택:",
+        "  SABOK_USER_NAME    표시 이름 (기본: 이메일 @ 앞부분)",
+        "  SABOK_TENANT_CODE  함께 만들 첫 업체 코드 (비우면 업체는 화면에서 직접 추가)",
+        "  SABOK_TENANT_NAME  첫 업체명 (생략 시 코드를 이름으로 사용)",
+        ".env 또는 셸에서 export 후 다시 실행하세요.",
+      ].join("\n"),
+    );
+    process.exit(1);
+  }
+  const tenantCode = process.env.SABOK_TENANT_CODE?.trim();
+  const tenantName = process.env.SABOK_TENANT_NAME?.trim();
+  return {
+    email,
+    password,
+    displayName: process.env.SABOK_USER_NAME?.trim() || email.split("@")[0] || "관리자",
+    tenant: tenantCode ? { code: tenantCode, name: tenantName || tenantCode } : null,
+  };
+}
+
+async function main() {
+  const input = readSeedInput();
+
+  /** 1) 사용자 (단일 ADMIN + isPlatformAdmin + accessAllTenants)
+   *     - isPlatformAdmin: 거래처(테넌트) 추가·삭제·전환, 사용자 관리 등 전권
+   *     - accessAllTenants: 멤버십(user_tenants) 등록 없이도 모든 업체 데이터 접근 */
+  const passwordHash = await bcrypt.hash(input.password, 12);
+  const userId = await upsertUser(input.email, {
     passwordHash,
-    name: "시스템 관리자",
+    name: input.displayName,
     role: Role.ADMIN,
     isPlatformAdmin: true,
-    accessAllTenants: false,
-  });
-  const seniorId = await upsertUser("senior@reversep.local", {
-    passwordHash,
-    name: "김선임",
-    role: Role.SENIOR,
-    isPlatformAdmin: false,
-    accessAllTenants: false,
-  });
-  const juniorId = await upsertUser("junior@reversep.local", {
-    passwordHash,
-    name: "이후임",
-    role: Role.JUNIOR,
-    isPlatformAdmin: false,
-    accessAllTenants: false,
+    accessAllTenants: true,
   });
 
-  const pb = await pbReady();
-  for (const [uid, role] of [
-    [adminId, Role.ADMIN],
-    [seniorId, Role.SENIOR],
-    [juniorId, Role.JUNIOR],
-  ] as const) {
-    const l = await firstByFilter(C.userTenants, `userId="${esc(uid)}" && tenantId="${esc(tenantId)}"`);
-    if (l?.id) {
-      await pb.collection(C.userTenants).update(String(l.id), { role });
+  /** 2) (선택) 첫 업체 — 환경변수가 있을 때만 만든다 */
+  let firstTenantId: string | null = null;
+  if (input.tenant) {
+    firstTenantId = await upsertTenantByCode(input.tenant.code, input.tenant.name);
+
+    const pb = await pbReady();
+    const link = await firstByFilter(
+      C.userTenants,
+      `userId="${esc(userId)}" && tenantId="${esc(firstTenantId)}"`,
+    );
+    if (link?.id) {
+      await pb.collection(C.userTenants).update(String(link.id), { role: Role.ADMIN });
     } else {
-      await pb.collection(C.userTenants).create({ userId: uid, tenantId, role });
+      await pb.collection(C.userTenants).create({ userId, tenantId: firstTenantId, role: Role.ADMIN });
     }
-  }
 
-  const cs = await firstByFilter(C.companySettings, `tenantId="${esc(tenantId)}"`);
-  if (cs?.id) {
-    /* keep */
-  } else {
-    await pb.collection(C.companySettings).create({
-      tenantId,
-      foundingMonth: 1,
-      defaultPayDay: 25,
-      activeYear: 2026,
-      accrualCurrentMonthPayNext: false,
-      paymentEventDefs: {},
-    });
-  }
+    /** 전사 설정 — 없으면 기본값 생성 (있으면 그대로 유지) */
+    const cs = await firstByFilter(C.companySettings, `tenantId="${esc(firstTenantId)}"`);
+    if (!cs?.id) {
+      await pb.collection(C.companySettings).create({
+        tenantId: firstTenantId,
+        foundingMonth: 1,
+        defaultPayDay: 25,
+        activeYear: new Date().getFullYear(),
+        accrualCurrentMonthPayNext: false,
+        paymentEventDefs: {},
+      });
+    }
 
-  const demoVendorF = `tenantId="${esc(tenantId)}" && code="DEMO-VENDOR"`;
-  const demoVendor = await firstByFilter(C.vendors, demoVendorF);
-  if (!demoVendor?.id) {
-    await pb.collection(C.vendors).create({
-      tenantId,
-      code: "DEMO-VENDOR",
-      name: "데모 거래처",
-      businessType: "INDIVIDUAL",
-      workplaceCapital: 0,
-      accumulatedReserve: 0,
-      active: true,
-      memo: null,
-    });
-  }
-
-  const year = 2026;
-  const events = Object.values(PAYMENT_EVENT);
-  for (let level = 1; level <= 5; level++) {
-    for (const eventKey of events) {
-      const base = level * 100_000;
-      const f = `tenantId="${esc(tenantId)}" && year=${year} && level=${level} && eventKey="${esc(eventKey)}"`;
-      const ex = await firstByFilter(C.levelPaymentRules, f);
-      if (ex?.id) {
-        await pb.collection(C.levelPaymentRules).update(String(ex.id), { amount: base });
-      } else {
-        await pb.collection(C.levelPaymentRules).create({ tenantId, year, level, eventKey, amount: base });
+    /** 레벨별 정기 지급 규칙 — 비어 있을 때만 가벼운 기본값 채움 */
+    const year = new Date().getFullYear();
+    const events = Object.values(PAYMENT_EVENT);
+    for (let level = 1; level <= 5; level++) {
+      for (const eventKey of events) {
+        const f = `tenantId="${esc(firstTenantId)}" && year=${year} && level=${level} && eventKey="${esc(eventKey)}"`;
+        const ex = await firstByFilter(C.levelPaymentRules, f);
+        if (!ex?.id) {
+          const base = level * 100_000;
+          await pb.collection(C.levelPaymentRules).create({
+            tenantId: firstTenantId,
+            year,
+            level,
+            eventKey,
+            amount: base,
+          });
+        }
       }
     }
   }
 
-  for (let level = 1; level <= 5; level++) {
-    const f = `tenantId="${esc(tenantId)}" && year=${year} && level=${level}`;
-    const ex = await firstByFilter(C.levelTargets, f);
-    if (ex?.id) {
-      /* ok */
-    } else {
-      await pb.collection(C.levelTargets).create({
-        tenantId,
-        year,
-        level,
-        targetAmount: 5_000_000,
-      });
-    }
+  /** 3) 예전 다중 역할 시드 청소 (지금 만든 계정은 보존) */
+  for (const em of LEGACY_SEED_EMAILS) {
+    await deleteUserByEmailIfExists(em, input.email);
   }
 
-  const empFilter = `tenantId="${esc(tenantId)}" && employeeCode="1"`;
-  let empRec = await firstByFilter(C.employees, empFilter);
-  if (empRec?.id) {
-    /* sample exists */
-  } else {
-    empRec = (await pb.collection(C.employees).create({
-      tenantId,
-      employeeCode: "1",
-      name: "샘플 직원",
-      position: "대리",
-      baseSalary: 45_600_000,
-      adjustedSalary: 15_000_000,
-      welfareAllocation: 3_000_000,
-      birthMonth: 7,
-      hireMonth: 9,
-      weddingMonth: 10,
-      childrenInfant: 0,
-      childrenPreschool: 1,
-      childrenTeen: 0,
-      parentsCount: 2,
-      parentsInLawCount: 0,
-      insurancePremium: 200_000,
-      loanInterest: 150_000,
-      monthlyRentAmount: 450_000,
-      payDay: 10,
-      level: 3,
-      flagAutoAmount: true,
-      flagRepReturn: false,
-      flagSpouseReceipt: false,
-      flagWorkerNet: false,
-    })) as Record<string, unknown>;
-  }
-  const empId = String(empRec.id);
+  const tenantBlock = input.tenant
+    ? [
+        `첫 업체 코드 : ${input.tenant.code}`,
+        `첫 업체명    : ${input.tenant.name}`,
+        `업체 ID      : ${firstTenantId}`,
+      ]
+    : ["첫 업체     : (생략) — 로그인 후 「거래처 선택」 화면에서 직접 추가하세요."];
 
-  const items = [
-    "INFANT_SCHOLARSHIP",
-    "PRESCHOOL_SCHOLARSHIP",
-    "TEEN_SCHOLARSHIP",
-    "PARENT_SUPPORT",
-    "HEALTH_INSURANCE",
-    "HOUSING_INTEREST",
-    "HOUSING_RENT",
-  ] as const;
-  for (const itemKey of items) {
-    const f = `tenantId="${esc(tenantId)}" && year=${year} && itemKey="${esc(itemKey)}"`;
-    const ex = await firstByFilter(C.quarterlyRates, f);
-    const body = {
-      tenantId,
-      year,
-      itemKey,
-      amountPerInfant: itemKey === "INFANT_SCHOLARSHIP" ? 300_000 : null,
-      amountPerPreschool: itemKey === "PRESCHOOL_SCHOLARSHIP" ? 250_000 : null,
-      amountPerTeen: itemKey === "TEEN_SCHOLARSHIP" ? 400_000 : null,
-      amountPerParent: itemKey === "PARENT_SUPPORT" ? 100_000 : null,
-      amountPerInLaw: itemKey === "PARENT_SUPPORT" ? 80_000 : null,
-      percentInsurance: itemKey === "HEALTH_INSURANCE" ? 150_000 : null,
-      percentLoanInterest: itemKey === "HOUSING_INTEREST" ? 120_000 : null,
-      flatAmount: itemKey === "HOUSING_RENT" ? 400_000 : null,
-    };
-    if (ex?.id) {
-      await pb.collection(C.quarterlyRates).update(String(ex.id), body);
-    } else {
-      await pb.collection(C.quarterlyRates).create(body);
-    }
-  }
-
-  const qf = `employeeId="${esc(empId)}" && year=${year} && itemKey="PRESCHOOL_SCHOLARSHIP"`;
-  const qx = await firstByFilter(C.quarterlyEmployeeConfigs, qf);
-  if (qx?.id) {
-    await pb.collection(C.quarterlyEmployeeConfigs).update(String(qx.id), {
-      paymentMonth: 3,
-      paymentMonths: [3],
-      amount: 250_000,
-    });
-  } else {
-    await pb.collection(C.quarterlyEmployeeConfigs).create({
-      employeeId: empId,
-      year,
-      itemKey: "PRESCHOOL_SCHOLARSHIP",
-      paymentMonth: 3,
-      paymentMonths: [3],
-      amount: 250_000,
-    });
-  }
-
-  const usedCustomSeedPw = Boolean(process.env.SABOK_SEED_PASSWORD?.trim());
-  const passwordExplain = usedCustomSeedPw
-    ? "앱 로그인 비밀번호: .env 의 SABOK_SEED_PASSWORD 에 넣은 값과 동일합니다."
-    : "앱 로그인 비밀번호(평문): Reversep2026!";
-
-  console.log(`
-================================================================
-PB 시드 완료 — 사복 앱 로그인 안내
-----------------------------------------------------------------
-이메일 (세 계정 중 아무거나):
-  admin@reversep.local
-  senior@reversep.local
-  junior@reversep.local
-${passwordExplain}
-업체 코드: demo (로그인 후 업체 선택 시)
-----------------------------------------------------------------
-비밀번호를 잊었을 때:
-  .env 에 SABOK_SEED_PASSWORD=<새비밀번호> 를 넣고 시드를 다시 실행하면
-  위 세 계정 비밀번호가 모두 그 값으로 바뀝니다.
-한 명만 바꾸려면: npm run pb:create-user -- <이메일> <새비밀번호> ...
-================================================================
-`.trim());
+  console.log(
+    [
+      "",
+      "================================================================",
+      "단일 사용자 / 다업체 시드 완료",
+      "----------------------------------------------------------------",
+      `이메일       : ${input.email}`,
+      `비밀번호     : (방금 입력한 SABOK_USER_PASSWORD 값)`,
+      `이름         : ${input.displayName}`,
+      `역할         : ADMIN · isPlatformAdmin · accessAllTenants (모든 업체·메뉴 ON)`,
+      ...tenantBlock,
+      "----------------------------------------------------------------",
+      "주의: .env 의 SABOK_SINGLE_TENANT_ID 는 비워 두세요.",
+      "       (값이 있으면 거래처 선택 화면이 사라져 다업체 모드를 쓸 수 없습니다.)",
+      "----------------------------------------------------------------",
+      "다른 업체 추가:  로그인 → 우측 상단/사이드바 → 「거래처 선택」 → 새 업체 등록",
+      "비밀번호 갱신:   .env 의 SABOK_USER_PASSWORD 새 값 + `npm run pb:seed` 재실행",
+      "================================================================",
+      "",
+    ].join("\n"),
+  );
 }
 
 main().catch((e: unknown) => {

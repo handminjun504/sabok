@@ -1,14 +1,18 @@
 /**
- * 단일 사용자 생성 또는 비밀번호·역할 갱신 후 테넌트에 연결.
+ * 추가 사용자 생성 또는 비밀번호·역할 갱신 후 테넌트에 연결.
+ *
+ * 단일 사용자 모드(권장)에서는 `npm run pb:seed` 만으로 충분하며,
+ * 이 스크립트는 “별도 계정을 더 만들고 싶을 때”만 쓴다.
  * 평문 비밀번호는 저장소에 커밋하지 말 것. `POCKETBASE_URL` 등은 `.env` 또는 셸에서 설정.
  *
  * 1) 인자 모드 (로컬에서 실행):
- *   npx tsx scripts/pb-create-user.ts user@example.com 'pw' '이름' demo SENIOR
+ *   npx tsx scripts/pb-create-user.ts user@example.com 'pw' '이름' default SENIOR
+ *   (역할 생략 시 SENIOR. 단일 사용자만 쓰면 ADMIN 권장)
  *
- * 2) 환경변수 모드 (서버에서 export 후 한 줄 실행에 적합):
+ * 2) 환경변수 모드:
  *   export SABOK_CREATE_USER_EMAIL=...
  *   export SABOK_CREATE_USER_PASSWORD=...
- *   optional: SABOK_CREATE_USER_NAME, SABOK_CREATE_USER_TENANT (기본 demo), SABOK_CREATE_USER_ROLE
+ *   optional: SABOK_CREATE_USER_NAME, SABOK_CREATE_USER_TENANT (기본 default), SABOK_CREATE_USER_ROLE
  *   npm run pb:create-user
  *
  * 3) 노트북 → 서버 PocketBase만 쓰고 싶을 때 (SSH 없이):
@@ -95,7 +99,7 @@ function readFromEnv(): Input | null {
   if (!email || !password) return null;
   const displayName =
     process.env.SABOK_CREATE_USER_NAME?.trim() || email.split("@")[0] || "사용자";
-  const tenantCode = process.env.SABOK_CREATE_USER_TENANT?.trim() || "demo";
+  const tenantCode = process.env.SABOK_CREATE_USER_TENANT?.trim() || "default";
   const role = parseRoleArg(process.env.SABOK_CREATE_USER_ROLE);
   return { email, password, displayName, tenantCode, role };
 }
@@ -117,7 +121,7 @@ async function main() {
       email,
       password: passwordRaw,
       displayName: nameOpt?.trim() || email.split("@")[0] || "사용자",
-      tenantCode: tenantCodeOpt?.trim() || "demo",
+      tenantCode: tenantCodeOpt?.trim() || "default",
       role: parseRoleArg(roleOpt),
     });
     return;
