@@ -14,6 +14,7 @@ import {
 } from "@/app/actions/quarterly";
 import { CommaWonInput } from "@/components/CommaWonInput";
 import { Tabs } from "@/components/Tabs";
+import { Alert } from "@/components/ui/Alert";
 
 /** 요율 표: 셀 가운데·조금 큰 입력 */
 const INPUT_QTR =
@@ -62,6 +63,14 @@ export default async function QuarterlyPage() {
   const items = Object.values(QUARTERLY_ITEM) as QuarterlyItemKey[];
   const canRates = canEditLevelRules(role);
   const canCfg = canEditEmployees(role);
+
+  /**
+   * “지급월 선택이 반영 안 됨” 사고를 빠르게 진단:
+   * 저장된 설정 중 paymentMonths 가 1개뿐인 항목이 있으면, PB 컬렉션에 json 필드 paymentMonths 가 없거나
+   * 저장이 단일 paymentMonth 로만 떨어졌을 가능성을 한 번에 알려준다.
+   */
+  const onlySingleMonth =
+    configs.length > 0 && configs.every((c) => c.paymentMonths.length <= 1);
 
   const ratesTab = (
     <div className="space-y-4">
@@ -297,8 +306,18 @@ export default async function QuarterlyPage() {
     <div className="space-y-6">
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">분기 지원금</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">{year}년</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">{year}년 · 분기 지원금은 직원의 연간 “총 지급금액(연간 기금)” 합계와 월별 스케줄 지급월 칸에 자동 합산됩니다.</p>
       </div>
+      {onlySingleMonth ? (
+        <Alert tone="warn" title="지급월 선택이 1개씩만 저장되고 있습니다 — PB 컬럼 점검 필요">
+          저장된 분기 설정의 지급월이 모두 한 달짜리입니다. PocketBase{" "}
+          <code className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-xs">sabok_quarterly_employee_configs</code>{" "}
+          컬렉션에 <strong>json 타입 필드 <code className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-xs">paymentMonths</code></strong>
+          {" "}가 빠져 있을 가능성이 큽니다. Admin → Edit collection → Add field → type <strong>json</strong>, name{" "}
+          <strong>paymentMonths</strong>(Required 끔) 으로 추가한 뒤 분기 설정을 다시 저장해 주세요. 이미 단일 달로 저장된 항목도 다시 저장하면
+          여러 달이 정상 반영됩니다.
+        </Alert>
+      ) : null}
       <Tabs
         tabs={[
           { label: "요율 템플릿", content: ratesTab },

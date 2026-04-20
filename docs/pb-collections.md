@@ -175,7 +175,7 @@ Unique: `(tenantId, year, itemKey)`
 | year         | number | yes  |
 | itemKey      | text   | yes  |
 | paymentMonth | number | yes  | 호환·정렬용: `paymentMonths`의 첫 달과 동일 권장 |
-| paymentMonths | json  | no   | 지급 반영 월 배열 `[3,6,9,12]` 등. 없으면 앱이 `paymentMonth`만 사용 |
+| paymentMonths | **json** | **반드시 추가** | 지급 반영 월 배열 `[3,6,9,12]` 등. **없으면 첫 달만 저장되어 “지급월 선택이 반영 안 됨” 증상이 생김.** Admin → Edit collection → Add field → type=`json`, name=`paymentMonths`, Required 끔 |
 | amount       | number | yes  |
 
 Unique: `(employeeId, year, itemKey)`

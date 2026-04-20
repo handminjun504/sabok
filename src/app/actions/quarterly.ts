@@ -17,7 +17,7 @@ import { resolveActionTenant } from "@/lib/tenant-context";
 import { toNum0, toNumOrNull } from "@/lib/util/number";
 import { revalidateQuarterlyArtifacts, revalidateScheduleArtifacts } from "@/lib/util/revalidate";
 
-export type QState = { 오류?: string; 성공?: boolean } | null;
+export type QState = { 오류?: string; 경고?: string; 성공?: boolean } | null;
 
 export async function saveQuarterlyRatesFormAction(formData: FormData): Promise<void> {
   await saveQuarterlyRatesAction(null, formData);
@@ -168,22 +168,35 @@ export async function saveQuarterlyEmployeeConfigAction(_: QState, formData: For
   if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
 
   const amount = toNum0(parsed.data.amount);
-  await quarterlyEmployeeConfigUpsert({
-    employeeId: emp.id,
-    year: parsed.data.year,
-    itemKey: parsed.data.itemKey,
-    paymentMonths,
-    amount,
-  });
+  let 경고: string | undefined;
+  try {
+    await quarterlyEmployeeConfigUpsert({
+      employeeId: emp.id,
+      year: parsed.data.year,
+      itemKey: parsed.data.itemKey,
+      paymentMonths,
+      amount,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    /** repository 에서 “첫 달만 저장됨” 경고 throw — 저장 자체는 부분 성공이라 사용자에게 경고로 통지 */
+    if (/첫 달|paymentMonths/.test(msg)) {
+      경고 = msg;
+    } else {
+      console.error(e);
+      return { 오류: "분기 지급 저장 실패." };
+    }
+  }
   await writeAudit({
     userId: ctx.userId,
     tenantId: ctx.tenantId,
     action: "UPSERT",
     entity: "QuarterlyEmployeeConfig",
     entityId: `${emp.id}:${parsed.data.year}:${parsed.data.itemKey}`,
+    payload: { paymentMonths, partialOnly: 경고 != null },
   });
   revalidateQuarterlyArtifacts();
-  return { 성공: true };
+  return 경고 ? { 성공: true, 경고 } : { 성공: true };
 }
 
 export async function applyQuarterlyTemplateAction(_: QState, formData: FormData): Promise<QState> {
@@ -207,17 +220,29 @@ export async function applyQuarterlyTemplateAction(_: QState, formData: FormData
   const { computeQuarterlyAmountFromRates } = await import("@/lib/domain/schedule");
   const items = Object.values(QUARTERLY_ITEM) as QuarterlyItemKey[];
 
+  let 경고: string | undefined;
   for (const itemKey of items) {
     const r = rateMap.get(itemKey) ?? null;
     const amountN = computeQuarterlyAmountFromRates(emp, itemKey, r);
     if (amountN <= 0) continue;
-    await quarterlyEmployeeConfigUpsert({
-      employeeId: emp.id,
-      year,
-      itemKey,
-      paymentMonths,
-      amount: amountN,
-    });
+    try {
+      await quarterlyEmployeeConfigUpsert({
+        employeeId: emp.id,
+        year,
+        itemKey,
+        paymentMonths,
+        amount: amountN,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/첫 달|paymentMonths/.test(msg)) {
+        /** 같은 PB 환경에서 모든 항목이 동일하게 부분 저장됨 — 메시지 한 번만 보여줌 */
+        경고 = msg;
+      } else {
+        console.error(e);
+        return { 오류: `분기 일괄 적용 실패: ${msg}` };
+      }
+    }
   }
 
   await writeAudit({
@@ -226,10 +251,10 @@ export async function applyQuarterlyTemplateAction(_: QState, formData: FormData
     action: "BULK_APPLY",
     entity: "QuarterlyEmployeeConfig",
     entityId: emp.id,
-    payload: { year, paymentMonths },
+    payload: { year, paymentMonths, partialOnly: 경고 != null },
   });
   revalidateQuarterlyArtifacts();
-  return { 성공: true };
+  return 경고 ? { 성공: true, 경고 } : { 성공: true };
 }
 
 export async function saveMonthlyNoteAction(_: QState, formData: FormData): Promise<QState> {

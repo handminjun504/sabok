@@ -916,20 +916,63 @@ export async function quarterlyEmployeeConfigUpsert(data: {
   const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && itemKey="${esc(data.itemKey)}"`;
   const existing = await firstByFilterStrict(C.quarterlyEmployeeConfigs, f);
   const pb = await getAdminPb();
-  const body = {
+
+  /**
+   * `paymentMonths` 는 PB json 배열 컬럼. 컬럼이 없는 PB 환경에서는 unknown field 로 400 이 나거나
+   * silent ignore 되어 첫 달만 적용되는 사고가 자주 발생한다.
+   *  → 1차로 paymentMonths 포함해 저장하고, 실패 시 단일 paymentMonth 로만 재시도하면서 명확히 throw 한다.
+   *    화면에서는 사용자에게 “PB sabok_quarterly_employee_configs 에 json 필드 paymentMonths 추가 필요” 메시지로 노출.
+   */
+  const fullBody = {
     paymentMonth: months[0],
     paymentMonths: months,
     amount: data.amount,
   };
-  if (existing?.id) {
-    await pb.collection(C.quarterlyEmployeeConfigs).update(String(existing.id), body);
-  } else {
-    await pb.collection(C.quarterlyEmployeeConfigs).create({
-      employeeId: data.employeeId,
-      year: data.year,
-      itemKey: data.itemKey,
-      ...body,
-    });
+  const legacyBody = {
+    paymentMonth: months[0],
+    amount: data.amount,
+  };
+
+  const upsert = async (body: Record<string, unknown>) => {
+    if (existing?.id) {
+      await pb.collection(C.quarterlyEmployeeConfigs).update(String(existing.id), body);
+    } else {
+      await pb.collection(C.quarterlyEmployeeConfigs).create({
+        employeeId: data.employeeId,
+        year: data.year,
+        itemKey: data.itemKey,
+        ...body,
+      });
+    }
+  };
+
+  try {
+    await upsert(fullBody);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const isUnknownField = /paymentMonths|unknown field|invalid_value|not allowed/i.test(msg);
+    if (!isUnknownField) {
+      throw e;
+    }
+    console.warn(
+      "[pb] quarterlyEmployeeConfigUpsert: PB 'sabok_quarterly_employee_configs' 컬렉션에 json 필드 'paymentMonths' 가 없습니다. " +
+        "단일 paymentMonth 만 저장합니다 — 첫 달(",
+      months[0],
+      ") 만 분기 지급에 반영됩니다. PB Admin 에서 type=json, name='paymentMonths' 필드를 추가하면 여러 달이 정상 반영됩니다.",
+    );
+    /** legacy 라도 저장 시도 — 그래도 실패하면 사용자에게 친절한 에러로 throw */
+    try {
+      await upsert(legacyBody);
+    } catch (e2) {
+      const detail = e2 instanceof Error ? e2.message : String(e2);
+      throw new Error(
+        `분기 지급 저장 실패. PB 'sabok_quarterly_employee_configs' 컬렉션에 json 필드 'paymentMonths' 가 없어 단일 'paymentMonth' 로 재시도했지만 실패했습니다. 원본 오류: ${detail}`,
+      );
+    }
+    /** 호출자가 “여러 달 중 첫 달만 저장됨” 을 인지할 수 있도록 친절한 경고로 throw */
+    throw new Error(
+      `여러 지급 월(${months.join(", ")}) 중 첫 달(${months[0]}월) 만 저장되었습니다. PB 'sabok_quarterly_employee_configs' 컬렉션에 json 필드 'paymentMonths' 를 추가한 뒤 다시 저장하세요.`,
+    );
   }
 }
 
