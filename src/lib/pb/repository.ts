@@ -666,9 +666,34 @@ export async function employeeListByTenantCodeAsc(tenantId: string): Promise<Emp
   const pb = await getAdminPb();
   const rows = await pb.collection(C.employees).getFullList({
     filter: `tenantId="${esc(tenantId)}"`,
-    sort: "employeeCode",
+    /**
+     * PB 의 `sort: "employeeCode"` 는 문자열 정렬이라 1, 10, 11, 2, 3 식으로 나온다.
+     * 코드가 거의 항상 숫자(대표이사 0 포함) 라서 JS 단계에서 자연 정렬로 다시 묶는다.
+     * - 양쪽 다 숫자 → 숫자 오름차순
+     * - 한쪽만 숫자 → 숫자 우선
+     * - 양쪽 다 비숫자 → 한국어 로케일 자연 정렬(`numeric: true`)
+     */
+    sort: "created",
   });
-  return rows.map((x) => mapEmployee(asRecord(x)));
+  return rows
+    .map((x) => mapEmployee(asRecord(x)))
+    .sort(compareEmployeeCodeAsc);
+}
+
+function compareEmployeeCodeAsc(a: Employee, b: Employee): number {
+  const ax = a.employeeCode?.trim() ?? "";
+  const bx = b.employeeCode?.trim() ?? "";
+  const aIsNum = /^\d+$/.test(ax);
+  const bIsNum = /^\d+$/.test(bx);
+  if (aIsNum && bIsNum) {
+    const an = parseInt(ax, 10);
+    const bn = parseInt(bx, 10);
+    if (an !== bn) return an - bn;
+    return ax.localeCompare(bx);
+  }
+  if (aIsNum) return -1;
+  if (bIsNum) return 1;
+  return ax.localeCompare(bx, "ko", { numeric: true, sensitivity: "base" });
 }
 
 /**
