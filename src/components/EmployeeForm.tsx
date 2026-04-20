@@ -615,15 +615,14 @@ export function EmployeeForm({
 
       <button
         type="submit"
-        disabled={savePending || !salaryRangeOk}
+        disabled={savePending}
         className="btn btn-primary px-8 py-2.5 disabled:opacity-60"
-        title={!salaryRangeOk ? "조정급여 범위(80~100%)를 먼저 맞추세요." : undefined}
       >
         {savePending ? "저장 중…" : "저장"}
       </button>
       {!salaryRangeOk ? (
-        <p className="text-sm text-[var(--danger)]" role="alert">
-          조정급여가 기존연봉의 80~100% 범위를 벗어났습니다. 범위 안으로 조정한 뒤 저장하세요.
+        <p className="text-xs text-[var(--warn)]" role="status">
+          참고: 조정급여가 기존연봉의 80~100% 범위를 벗어났습니다. 그대로 저장됩니다 — 의도된 입력인지만 확인하세요.
         </p>
       ) : null}
     </form>

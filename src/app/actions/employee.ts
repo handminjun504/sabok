@@ -61,12 +61,14 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
   const baseSalary = toNum0(formData.get("baseSalary"));
   const adjustedSalary = toNum0(formData.get("adjustedSalary"));
 
+  /** 80~100% 범위는 거절하지 않고 경고만 — 사용자 요청에 따라 저장은 항상 진행 */
+  const warnings: string[] = [];
   if (baseSalary > 0 && adjustedSalary > 0) {
     const minAdj = Math.floor(baseSalary * 0.8);
     if (adjustedSalary < minAdj || adjustedSalary > baseSalary) {
-      return {
-        오류: `조정급여는 기존연봉의 80%~100% 범위(최대 20% 감액)여야 합니다. 허용: ${minAdj.toLocaleString("ko-KR")}원 ~ ${baseSalary.toLocaleString("ko-KR")}원.`,
-      };
+      warnings.push(
+        `참고: 조정급여(${adjustedSalary.toLocaleString("ko-KR")}원)가 기존연봉의 80~100% 범위(${minAdj.toLocaleString("ko-KR")}~${baseSalary.toLocaleString("ko-KR")}원)를 벗어납니다. 의도된 입력인지 확인하세요.`,
+      );
     }
   }
 
@@ -74,10 +76,12 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
   const payYear = settings?.activeYear ?? new Date().getFullYear();
   const minAnnual = koreaMinimumAnnualSalaryWon(payYear);
   const effectiveAnnual = adjustedSalary > 0 ? adjustedSalary : baseSalary;
-  let 경고: string | undefined;
   if (effectiveAnnual > 0 && effectiveAnnual < minAnnual) {
-    경고 = `${payYear}년 최저임금(연 환산 약 ${minAnnual.toLocaleString("ko-KR")}원)보다 적용 연봉(${effectiveAnnual.toLocaleString("ko-KR")}원)이 낮습니다. 확인하세요.`;
+    warnings.push(
+      `${payYear}년 최저임금(연 환산 약 ${minAnnual.toLocaleString("ko-KR")}원)보다 적용 연봉(${effectiveAnnual.toLocaleString("ko-KR")}원)이 낮습니다. 확인하세요.`,
+    );
   }
+  const 경고 = warnings.length > 0 ? warnings.join("\n") : undefined;
 
   const existingEmp = id ? await employeeFindFirst(id, ctx.tenantId) : null;
   if (id && !existingEmp) return { 오류: "직원을 찾을 수 없습니다." };
