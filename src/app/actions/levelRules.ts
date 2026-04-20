@@ -297,6 +297,77 @@ export async function saveLevel5OverrideFormAction(formData: FormData): Promise<
   await saveLevel5OverrideAction(null, formData);
 }
 
+export type Level5OverrideCellResult = { ok: true } | { ok: false; 오류: string };
+
+/**
+ * 레벨 5 직원의 한 행사 오버라이드 셀 저장.
+ * - amount === 0 또는 빈 값(0)이면 기존 오버라이드를 삭제(레벨 공통 금액으로 자동 복귀)
+ * - 그 외에는 upsert
+ *
+ * `LevelRulesMatrixForm` 과 동일한 “셀에 입력 후 자동 저장” 패턴을 위해 만들어졌다.
+ */
+export async function saveLevel5OverrideCellAction(
+  employeeId: string,
+  year: number,
+  eventKey: string,
+  amount: number,
+): Promise<Level5OverrideCellResult> {
+  const ctx = await resolveActionTenant();
+  if (!ctx.ok) return { ok: false, 오류: ctx.message };
+  if (!canEditLevelRules(ctx.role)) {
+    return { ok: false, 오류: "레벨 규칙을 수정할 권한이 없습니다." };
+  }
+
+  const yearN = Math.round(Number(year));
+  if (!Number.isFinite(yearN) || yearN < 2000 || yearN > 2100) {
+    return { ok: false, 오류: "연도가 올바르지 않습니다." };
+  }
+  const key = String(eventKey ?? "").trim();
+  if (!key) return { ok: false, 오류: "행사 키가 없습니다." };
+  const empId = String(employeeId ?? "").trim();
+  if (!empId) return { ok: false, 오류: "직원 ID 가 없습니다." };
+
+  const settings = await companySettingsByTenant(ctx.tenantId);
+  const allowed = allPaymentEventKeysForYear(settings, yearN);
+  if (!allowed.includes(key)) return { ok: false, 오류: "유효하지 않은 행사입니다." };
+
+  const emp = await employeeFindFirst(empId, ctx.tenantId);
+  if (!emp) return { ok: false, 오류: "직원을 찾을 수 없습니다." };
+  if (emp.level !== 5) {
+    return { ok: false, 오류: "레벨 5 직원만 오버라이드할 수 있습니다." };
+  }
+
+  const amt = Number(amount);
+  const amountN = Number.isFinite(amt) ? Math.max(0, Math.round(amt)) : 0;
+
+  try {
+    if (amountN <= 0) {
+      /** 0/빈값 = “레벨 공통 금액으로 복귀” — 기존 오버라이드 있으면 삭제 */
+      await level5OverrideDelete(empId, yearN, key);
+    } else {
+      await level5OverrideUpsert({ employeeId: empId, year: yearN, eventKey: key, amount: amountN });
+    }
+  } catch (e) {
+    console.error(e);
+    if (e instanceof ClientResponseError) {
+      const detail = pocketBaseRecordErrorMessage(e);
+      return { ok: false, 오류: `${detail}${pocketBaseNonemptyBlankHint(detail)}` };
+    }
+    return { ok: false, 오류: "저장에 실패했습니다." };
+  }
+
+  await writeAudit({
+    userId: ctx.userId,
+    tenantId: ctx.tenantId,
+    action: amountN <= 0 ? "DELETE" : "UPSERT",
+    entity: "Level5Override",
+    entityId: `${empId}:${yearN}:${key}`,
+  });
+
+  revalidateEmployeeArtifacts();
+  return { ok: true };
+}
+
 export async function deleteLevel5OverrideFormAction(formData: FormData): Promise<void> {
   const employeeId = String(formData.get("employeeId") ?? "");
   const year = parseInt(String(formData.get("year") ?? ""), 10);

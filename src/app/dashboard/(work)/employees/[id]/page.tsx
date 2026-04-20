@@ -3,87 +3,66 @@ import {
   companySettingsByTenant,
   employeeFindFirst,
   level5OverrideListByEmployeeYear,
+  levelPaymentRuleList,
 } from "@/lib/pb/repository";
-import type { CustomPaymentEventDef } from "@/types/models";
 import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
 import { EmployeeForm } from "@/components/EmployeeForm";
 import {
+  allPaymentEventKeysForYear,
   customPaymentDefsForYear,
-  orderedBuiltinPaymentEventKeys,
   paymentEventLabel,
-  paymentEventLabelSingleLine,
 } from "@/lib/domain/payment-events";
-import { deleteLevel5OverrideFormAction, saveLevel5OverrideFormAction } from "@/app/actions/levelRules";
-import { CommaWonInput } from "@/components/CommaWonInput";
 import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
+import { Level5OverrideMatrixForm, type Level5OverrideRow } from "@/components/Level5OverrideMatrixForm";
 
-async function OverrideForm({
+async function OverrideMatrix({
   employeeId,
+  tenantId,
   year,
-  customDefs,
 }: {
   employeeId: string;
+  tenantId: string;
   year: number;
-  customDefs: CustomPaymentEventDef[];
 }) {
-  const existing = await level5OverrideListByEmployeeYear(employeeId, year);
-  const builtinKeys = orderedBuiltinPaymentEventKeys();
+  const settings = await companySettingsByTenant(tenantId);
+  const customDefs = customPaymentDefsForYear(settings, year);
+  const eventKeys = allPaymentEventKeysForYear(settings, year);
+
+  const [rules, overrides] = await Promise.all([
+    levelPaymentRuleList(tenantId, year),
+    level5OverrideListByEmployeeYear(employeeId, year),
+  ]);
+
+  const level5DefaultByEvent = new Map<string, number>();
+  for (const r of rules) {
+    if (r.year === year && r.level === 5) {
+      level5DefaultByEvent.set(r.eventKey, Math.round(r.amount));
+    }
+  }
+  const overrideByEvent = new Map<string, number>();
+  for (const o of overrides) {
+    overrideByEvent.set(o.eventKey, Math.round(o.amount));
+  }
+
+  const rows: Level5OverrideRow[] = eventKeys.map((ev) => ({
+    eventKey: ev,
+    label: paymentEventLabel(ev, customDefs),
+    defaultAmountWon: level5DefaultByEvent.get(ev) ?? 0,
+    overrideAmountWon: overrideByEvent.has(ev) ? (overrideByEvent.get(ev) ?? 0) : null,
+  }));
+
+  /** 행사 추가/삭제 등 구조 변경 시에만 바뀌는 키 */
+  const rulesSignature = `${year}|${eventKeys.join(",")}`;
 
   return (
-    <div className="space-y-4">
-      <form action={saveLevel5OverrideFormAction} className="grid gap-3 sm:grid-cols-2">
-        <input type="hidden" name="employeeId" value={employeeId} />
-        <input type="hidden" name="year" value={year} />
-        <div className="sm:col-span-2">
-          <label className="text-xs text-[var(--muted)]">이벤트</label>
-          <select name="eventKey" className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm" required>
-            {builtinKeys.map((k) => (
-              <option key={k} value={k}>
-                {paymentEventLabelSingleLine(k, customDefs)}
-              </option>
-            ))}
-            {customDefs.map((d) => (
-              <option key={d.eventKey} value={d.eventKey}>
-                {paymentEventLabelSingleLine(d.eventKey, customDefs)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-[var(--muted)]">금액</label>
-          <CommaWonInput
-            name="amount"
-            required
-            className="input mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm"
-          />
-        </div>
-        <div className="flex items-end">
-          <button type="submit" className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm text-white">
-            오버라이드 저장
-          </button>
-        </div>
-      </form>
-      <ul className="mt-4 space-y-2 text-sm">
-        {existing.map((o) => (
-          <li key={o.id} className="flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2">
-            <span className="whitespace-pre-line">
-              {paymentEventLabel(o.eventKey, customDefs)}:{" "}
-              <strong>{o.amount.toLocaleString("ko-KR")}</strong> 원
-            </span>
-            <form action={deleteLevel5OverrideFormAction}>
-              <input type="hidden" name="employeeId" value={employeeId} />
-              <input type="hidden" name="year" value={year} />
-              <input type="hidden" name="eventKey" value={o.eventKey} />
-              <button type="submit" className="text-xs text-[var(--danger)] hover:underline">
-                삭제
-              </button>
-            </form>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Level5OverrideMatrixForm
+      employeeId={employeeId}
+      year={year}
+      rows={rows}
+      rulesSignature={rulesSignature}
+    />
   );
 }
 
@@ -122,12 +101,12 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
       {emp.level === 5 && canEditLevelRules(role) && (
         <CollapsibleEditorPanel
           title="레벨 5 · 이벤트별 금액 오버라이드"
-          description="직원별 금액이 레벨 공통보다 우선합니다. 삭제하면 공통 금액이 다시 적용됩니다."
+          description="직원별 금액이 레벨 공통보다 우선합니다. 셀에 입력하면 자동 저장되고, 0/빈값이면 공통 금액이 다시 적용됩니다."
           triggerLabel="오버라이드 열기"
           defaultOpen={false}
-          summary={<p className="text-sm text-[var(--muted)]">직원별 정기 지급액을 레벨 공통보다 우선 적용합니다.</p>}
+          summary={<p className="text-sm text-[var(--muted)]">행사별 금액을 표에서 바로 입력·자동 저장합니다.</p>}
         >
-          <OverrideForm employeeId={emp.id} year={year} customDefs={customPaymentDefsForYear(settings, year)} />
+          <OverrideMatrix employeeId={emp.id} tenantId={tenantId} year={year} />
         </CollapsibleEditorPanel>
       )}
     </div>
