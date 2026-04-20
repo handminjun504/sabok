@@ -42,6 +42,8 @@ import { MonthlyIncentiveAccrualGrid } from "@/components/MonthlyIncentiveAccrua
 import { ScheduleAnnouncementPanel } from "@/components/ScheduleAnnouncementPanel";
 import { ScheduleEmployeeCards } from "@/components/ScheduleEmployeeCards";
 import { ScheduleReserveTab } from "@/components/ScheduleReserveTab";
+import { Alert } from "@/components/ui/Alert";
+import Link from "next/link";
 
 export default async function SchedulePage() {
   const { tenantId, role } = await requireTenantContext();
@@ -88,7 +90,7 @@ export default async function SchedulePage() {
     /** 1~12월 열: 정기=귀속월, 분기·선택 복지=지급월 */
     welfareByMonth: Map<number, number>;
     /** 월별 항목 내역(합계와 동일 귀속·지급 기준) */
-    welfareLinesByMonth: Map<number, { label: string; amount: number }[]>;
+    welfareLinesByMonth: Map<number, { label: string; amount: number; kind: "regular" | "quarterly" | "note" }[]>;
     yearlyWelfare: number;
     salaryMonth: number;
     capBlocks: ReturnType<typeof computeSalaryInclusionCapBlocks>;
@@ -145,10 +147,14 @@ export default async function SchedulePage() {
 
   const scheduleCardRows = rows.map((r) => {
     const welfareByMonth: Record<number, number> = {};
-    const linesByMonth: Record<number, { label: string; amount: number }[]> = {};
+    const linesByMonth: Record<number, { label: string; amount: number; kind?: "regular" | "quarterly" | "note" }[]> = {};
     for (let m = 1; m <= 12; m++) {
       welfareByMonth[m] = r.welfareByMonth.get(m) ?? 0;
-      linesByMonth[m] = r.welfareLinesByMonth.get(m) ?? [];
+      linesByMonth[m] = (r.welfareLinesByMonth.get(m) ?? []).map((line) => ({
+        label: line.label,
+        amount: line.amount,
+        kind: line.kind,
+      }));
     }
     const eff = effectiveSalaryInclusionVarianceMode(r.emp, tenantVarianceMode);
     return {
@@ -297,17 +303,46 @@ export default async function SchedulePage() {
     <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
   );
 
+  /** 분기 항목이 등록은 됐지만 paymentMonths 가 한 달뿐인 게 전부면, PB 컬럼이 빠진 사고일 가능성 — 스케줄 카드에 분기 합이 한 달만 잡혀 보일 수 있어 한 번 더 안내. */
+  const quarterlyOnlySingleMonth =
+    quarterly.length > 0 && quarterly.every((c) => c.paymentMonths.length <= 1);
+  /** 등록된 분기 항목 자체가 0건 — “분기가 안 보인다” 가 사실 “등록을 안 했다” 인 경우. */
+  const quarterlyEmpty = quarterly.length === 0;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">{year}년</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">{year}년 — 정기 지급(귀속월) + 분기 지원(지급월) + 선택 복지를 같은 칸에 합산해 표시합니다.</p>
         <p className="mt-2 text-sm text-[var(--muted)]">
           카카오·문자 안내문은 <span className="font-semibold text-[var(--text)]">「안내 멘트」</span> 탭에서,
           자본금 50% 한도·추가 적립 누적·메모는 <span className="font-semibold text-[var(--text)]">「적립금」</span>{" "}
           탭에서 확인할 수 있습니다.
         </p>
       </div>
+
+      {quarterlyEmpty ? (
+        <Alert tone="info" title="분기 지원이 아직 등록되지 않았습니다">
+          월별 스케줄에는 정기 지급만 표시되고 있습니다. 분기 지원 금액을 함께 보려면{" "}
+          <Link href="/dashboard/quarterly" className="font-semibold text-[var(--accent)] hover:underline">
+            「분기 지원금」
+          </Link>{" "}
+          메뉴에서 항목·지급 월·금액을 등록하세요.
+        </Alert>
+      ) : quarterlyOnlySingleMonth ? (
+        <Alert tone="warn" title="분기 지원의 지급 월이 1개씩만 저장되어 있습니다">
+          PocketBase{" "}
+          <code className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-xs">
+            sabok_quarterly_employee_configs
+          </code>{" "}
+          컬렉션에 <strong>json 필드 paymentMonths</strong> 가 없으면 첫 달만 저장돼 스케줄·총 지급금액에도 일부만
+          반영됩니다.{" "}
+          <Link href="/dashboard/quarterly" className="font-semibold text-[var(--accent)] hover:underline">
+            「분기 지원금」
+          </Link>{" "}
+          페이지의 진단 배너를 따라 PB 필드를 추가한 뒤, 각 항목을 다시 저장해 주세요.
+        </Alert>
+      ) : null}
       <Tabs
         tabs={[
           { label: "월별 스케줄", content: scheduleTab },

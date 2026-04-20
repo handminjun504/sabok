@@ -429,7 +429,12 @@ export function welfareByScheduleDisplayMonth(
 }
 
 /** 스케줄 표 열(월)에 맞춘 내역 — 정기는 귀속월, 분기·노트는 지급월 (`welfareByScheduleDisplayMonth` 와 동일 기준) */
-export type WelfareScheduleDisplayLine = { label: string; amount: number };
+export type WelfareScheduleDisplayLine = {
+  label: string;
+  amount: number;
+  /** 출처 — UI 에서 “정기/분기/선택 복지”를 색상·뱃지로 구분하기 위함 */
+  kind: "regular" | "quarterly" | "note";
+};
 
 function eventLabelForScheduleRow(eventKey: string, customDefs: CustomPaymentEventDef[]): string {
   if (Object.prototype.hasOwnProperty.call(PAYMENT_EVENT_LABELS, eventKey)) {
@@ -453,6 +458,7 @@ export function welfareScheduleLinesByMonth(
         lines.push({
           label: eventLabelForScheduleRow(ev.eventKey, customDefs),
           amount: ev.amount,
+          kind: "regular",
         });
       }
     }
@@ -463,12 +469,12 @@ export function welfareScheduleLinesByMonth(
         const lab = Object.prototype.hasOwnProperty.call(QUARTERLY_ITEM_LABELS, q.itemKey)
           ? QUARTERLY_ITEM_LABELS[q.itemKey as QuarterlyItemKey]
           : q.itemKey;
-        lines.push({ label: lab, amount: q.amount });
+        lines.push({ label: lab, amount: q.amount, kind: "quarterly" });
       }
     }
     const noteExtra = noteExtrasByPaidMonth?.get(m) ?? 0;
     if (noteExtra > 0) {
-      lines.push({ label: "선택적 복지(월별 노트)", amount: noteExtra });
+      lines.push({ label: "선택적 복지(월별 노트)", amount: noteExtra, kind: "note" });
     }
     if (lines.length > 0) byMonth.set(m, lines);
   }
