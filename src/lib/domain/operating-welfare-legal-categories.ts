@@ -1,7 +1,11 @@
 /**
- * 근로복지기금 운영상황 보고용 — 연간 지급액을 법정 복지비 구분(57~66)으로 배분.
+ * 근로복지기금 운영상황 보고용 — 연간 지급액을 법정 복지비 구분(57~66, 71)으로 배분.
  * 정기 지급(eventKey)·분기 항목(itemKey)을 법정 코드에 **의미상 가장 가깝게** 매핑한 뒤,
  * 연간 합(`totalExpected`)과의 차액만 **이미 잡힌 비중에 비례**해 나눈다(빈 칸에 균등 쪼개기 없음).
+ *
+ * 코드 71(선택적 복지비)은 운영상황 보고서에서 별도 칸으로 적는 항목이라
+ * 직원 월별 노트의 `optionalExtraAmount`(선택적 복지)는 66(그 밖의 복지비)이 아닌
+ * 71 칸으로 자동 집계된다.
  */
 import type { Employee, Level5Override, LevelPaymentRule, MonthlyEmployeeNote, QuarterlyEmployeeConfig } from "@/types/models";
 import { PAYMENT_EVENT, QUARTERLY_ITEM, type PaymentEventKey, type QuarterlyItemKey } from "@/lib/business-rules";
@@ -18,7 +22,11 @@ export const LEGAL_WELFARE_CATEGORY_ROWS: { code: number; label: string }[] = [
   { code: 64, label: "근로자의 날 행사 등 지원" },
   { code: 65, label: "근로복지시설 설치 및 운영" },
   { code: 66, label: "그 밖의 복지비" },
+  { code: 71, label: "선택적 복지비" },
 ];
+
+/** 보고서 칸 순서 — 57~66 다음에 71. 차액 분배·합산도 이 순서를 사용. */
+const LEGAL_CODES_ORDER: readonly number[] = [57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 71];
 
 export type WelfareSpendBySource = {
   regularByEventKey: Record<string, number>;
@@ -123,11 +131,9 @@ export function legalCategoryForQuarterlyItemKey(itemKey: string): number {
 
 function sumAlloc(alloc: Map<number, number>): number {
   let s = 0;
-  for (let c = 57; c <= 66; c++) s += alloc.get(c) ?? 0;
+  for (const c of LEGAL_CODES_ORDER) s += alloc.get(c) ?? 0;
   return s;
 }
-
-const LEGAL_CODES_ORDER: readonly number[] = [57, 58, 59, 60, 61, 62, 63, 64, 65, 66];
 
 /**
  * `totalDelta`만큼을 이미 쌓인 alloc의 **양수 칸 비중**에 맞춰 더한다(균등 분배 아님).
@@ -188,7 +194,7 @@ export function allocateYearlyWelfareToLegalCategories(
   totalExpected: number
 ): Map<number, number> {
   const alloc = new Map<number, number>();
-  for (let c = 57; c <= 66; c++) alloc.set(c, 0);
+  for (const c of LEGAL_CODES_ORDER) alloc.set(c, 0);
 
   for (const [key, amt] of Object.entries(spend.regularByEventKey)) {
     if (amt === 0) continue;
@@ -200,8 +206,9 @@ export function allocateYearlyWelfareToLegalCategories(
     const code = legalCategoryForQuarterlyItemKey(key);
     alloc.set(code, (alloc.get(code) ?? 0) + amt);
   }
+  /** 선택적 복지(월별 노트의 optionalExtraAmount) 는 코드 71(선택적 복지비)로 적는다. */
   if (spend.optionalExtraTotal !== 0) {
-    alloc.set(66, (alloc.get(66) ?? 0) + spend.optionalExtraTotal);
+    alloc.set(71, (alloc.get(71) ?? 0) + spend.optionalExtraTotal);
   }
 
   const s = sumAlloc(alloc);
