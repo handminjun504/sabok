@@ -18,6 +18,7 @@ import {
   buildMonthlyBreakdown,
   computeActualYearlyWelfareForEmployee,
   computeSalaryInclusionCapBlocks,
+  employeeStatusForYear,
   monthlySalaryPortion,
   regularAnnualTotalsByLevel,
   welfareByScheduleDisplayMonth,
@@ -28,6 +29,7 @@ import { additionalReserveStatus, summarizeTenantAdditionalReserve } from "@/lib
 import {
   saveMonthlyIncentiveAccrualYearFormAction,
   saveMonthlyNoteFormAction,
+  setPaidConfirmedAction,
 } from "@/app/actions/quarterly";
 import {
   effectiveSalaryInclusionVarianceMode,
@@ -40,7 +42,11 @@ import { Tabs } from "@/components/Tabs";
 import { ScheduleEmployeeLevelAssignments } from "@/components/ScheduleEmployeeLevelAssignments";
 import { MonthlyIncentiveAccrualGrid } from "@/components/MonthlyIncentiveAccrualGrid";
 import { ScheduleAnnouncementPanel } from "@/components/ScheduleAnnouncementPanel";
-import { ScheduleEmployeeCards } from "@/components/ScheduleEmployeeCards";
+import {
+  ScheduleEmployeeTable,
+  type ScheduleTableEmploymentStatus,
+  type ScheduleTableRow,
+} from "@/components/ScheduleEmployeeTable";
 import { ScheduleReserveTab } from "@/components/ScheduleReserveTab";
 import { Alert } from "@/components/ui/Alert";
 import Link from "next/link";
@@ -183,6 +189,32 @@ export default async function SchedulePage() {
     };
   });
 
+  /**
+   * 표(테이블) 모드용 행 — 카드 행에 직원 활성 상태와 “지급완료 확인” 비트맵을 더한 형태.
+   * 메모리 절약을 위해 위 카드 행을 그대로 활용해 동일 데이터를 두 번 만들지 않는다.
+   */
+  const scheduleTableRows: ScheduleTableRow[] = rows.map((r, idx) => {
+    const card = scheduleCardRows[idx]!;
+    const status = employeeStatusForYear(r.emp, year);
+    const tableStatus: ScheduleTableEmploymentStatus =
+      status.kind === "ACTIVE_PARTIAL"
+        ? { kind: "ACTIVE_PARTIAL", fromMonth: status.range.fromMonth, toMonth: status.range.toMonth }
+        : status.kind === "AFTER_RESIGN"
+          ? { kind: "AFTER_RESIGN", resignYear: status.resignYear, resignMonth: status.resignMonth }
+          : { kind: "ACTIVE_FULL_YEAR" };
+    const paidConfirmedByMonth: Record<number, boolean> = {};
+    const empNotes = notes.filter((n) => n.employeeId === r.emp.id);
+    for (let m = 1; m <= 12; m++) {
+      const hit = empNotes.find((n) => n.month === m);
+      paidConfirmedByMonth[m] = hit?.paidConfirmed === true;
+    }
+    return {
+      ...card,
+      status: tableStatus,
+      paidConfirmedByMonth,
+    };
+  });
+
   const incentiveAccrualRows = employees.map((emp) => {
     const empNotes = notes.filter((n) => n.employeeId === emp.id);
     const incentiveAccrualByMonth: Record<number, number | null> = {};
@@ -198,7 +230,14 @@ export default async function SchedulePage() {
     };
   });
 
-  const scheduleTab = <ScheduleEmployeeCards year={year} rows={scheduleCardRows} />;
+  const scheduleTab = (
+    <ScheduleEmployeeTable
+      year={year}
+      rows={scheduleTableRows}
+      canEdit={canNote}
+      setPaidConfirmed={setPaidConfirmedAction}
+    />
+  );
 
   const announcementTab = (
     <ScheduleAnnouncementPanel

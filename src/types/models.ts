@@ -118,6 +118,11 @@ export type MonthlyEmployeeNote = {
   incentiveAccrualAmount: number | null;
   /** 그 달 사복으로 지급하기로 한 인센 금액(인센→사복 환류) */
   incentiveWelfarePaymentAmount: number | null;
+  /**
+   * 월별 지급 스케줄에서 “해당 월 지급이 실제로 완료됐다”는 사용자 확인 플래그.
+   * 금액 계산에는 영향 없음(스케줄 표시·체크박스 UI 상태만 결정).
+   */
+  paidConfirmed: boolean;
 };
 
 /** 연도 문자열 키(예: "2026") → 추가 정기 지급 행사(귀속 월 지정) */

@@ -1065,6 +1065,10 @@ export async function monthlyNoteUpsert(data: {
   const existing = await firstByFilterStrict(C.monthlyEmployeeNotes, f);
   const pb = await getAdminPb();
   if (existing?.id) {
+    /**
+     * `paidConfirmed` 는 별도 토글 액션에서만 갱신해야 한다.
+     * 이 upsert 는 인센·노트 폼에서 호출되므로 의도치 않은 false 덮어쓰기가 일어나지 않도록 명시적으로 제외.
+     */
     await pb.collection(C.monthlyEmployeeNotes).update(String(existing.id), {
       optionalWelfareText: data.optionalWelfareText,
       optionalExtraAmount: data.optionalExtraAmount,
@@ -1072,7 +1076,39 @@ export async function monthlyNoteUpsert(data: {
       incentiveWelfarePaymentAmount: data.incentiveWelfarePaymentAmount,
     });
   } else {
-    await pb.collection(C.monthlyEmployeeNotes).create(data);
+    /** 신규 레코드는 paidConfirmed 기본 false */
+    await pb.collection(C.monthlyEmployeeNotes).create({ ...data, paidConfirmed: false });
+  }
+}
+
+/**
+ * 지급완료 확인 체크박스 한 칸만 갱신.
+ * 다른 필드(인센·선택 복지)는 절대 건드리지 않는다 — 미존재 시에만 paidConfirmed 만으로 새 레코드 생성.
+ */
+export async function monthlyNoteSetPaidConfirmed(data: {
+  employeeId: string;
+  year: number;
+  month: number;
+  paidConfirmed: boolean;
+}): Promise<void> {
+  const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && month=${data.month}`;
+  const existing = await firstByFilterStrict(C.monthlyEmployeeNotes, f);
+  const pb = await getAdminPb();
+  if (existing?.id) {
+    await pb.collection(C.monthlyEmployeeNotes).update(String(existing.id), {
+      paidConfirmed: data.paidConfirmed,
+    });
+  } else {
+    await pb.collection(C.monthlyEmployeeNotes).create({
+      employeeId: data.employeeId,
+      year: data.year,
+      month: data.month,
+      optionalWelfareText: null,
+      optionalExtraAmount: null,
+      incentiveAccrualAmount: null,
+      incentiveWelfarePaymentAmount: null,
+      paidConfirmed: data.paidConfirmed,
+    });
   }
 }
 

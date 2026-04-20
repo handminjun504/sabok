@@ -183,6 +183,7 @@ export function mapMonthlyNote(r: Record<string, unknown>): MonthlyEmployeeNote 
     optionalExtraAmount: numNull(r.optionalExtraAmount),
     incentiveAccrualAmount: numNull(r.incentiveAccrualAmount),
     incentiveWelfarePaymentAmount: numNull(r.incentiveWelfarePaymentAmount),
+    paidConfirmed: bool(r.paidConfirmed),
   };
 }
 

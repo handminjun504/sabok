@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   employeeFindFirst,
   monthlyNoteListByEmployeeYear,
+  monthlyNoteSetPaidConfirmed,
   monthlyNoteUpsert,
   quarterlyEmployeeConfigDelete,
   quarterlyEmployeeConfigGetById,
@@ -299,6 +300,65 @@ export async function applyQuarterlyTemplateAction(_: QState, formData: FormData
   });
   revalidateQuarterlyArtifacts();
   return 경고 ? { 성공: true, 경고 } : { 성공: true };
+}
+
+export type PaidConfirmedToggleResult = { ok: true } | { ok: false; 오류: string };
+
+/**
+ * 월별 스케줄 — 한 직원·한 월의 “지급완료 확인” 체크박스 한 칸만 갱신.
+ * 다른 필드(인센·선택 복지 노트)는 절대 건드리지 않는다.
+ *
+ * - 권한: `canEditEmployees` (스케줄 데이터 갱신 동일 권한).
+ * - 보안: `employeeId` 가 현재 활성 테넌트 직원인지 재확인 (IDOR 방지).
+ * - month 는 1~12 범위만 허용. 그 밖이면 오류 반환.
+ */
+export async function setPaidConfirmedAction(
+  employeeId: string,
+  year: number,
+  month: number,
+  paidConfirmed: boolean,
+): Promise<PaidConfirmedToggleResult> {
+  const ctx = await resolveActionTenant();
+  if (!ctx.ok) return { ok: false, 오류: ctx.message };
+  if (!canEditEmployees(ctx.role)) {
+    return { ok: false, 오류: "스케줄을 수정할 권한이 없습니다." };
+  }
+
+  const yearN = Math.round(Number(year));
+  if (!Number.isFinite(yearN) || yearN < 2000 || yearN > 2100) {
+    return { ok: false, 오류: "연도가 올바르지 않습니다." };
+  }
+  const monthN = Math.round(Number(month));
+  if (!Number.isFinite(monthN) || monthN < 1 || monthN > 12) {
+    return { ok: false, 오류: "월(1~12)이 올바르지 않습니다." };
+  }
+  const empId = String(employeeId ?? "").trim();
+  if (!empId) return { ok: false, 오류: "직원 ID 가 없습니다." };
+
+  const emp = await employeeFindFirst(empId, ctx.tenantId);
+  if (!emp) return { ok: false, 오류: "직원을 찾을 수 없습니다." };
+
+  try {
+    await monthlyNoteSetPaidConfirmed({
+      employeeId: emp.id,
+      year: yearN,
+      month: monthN,
+      paidConfirmed: Boolean(paidConfirmed),
+    });
+  } catch (e) {
+    console.error(e);
+    return { ok: false, 오류: "지급완료 상태 저장에 실패했습니다." };
+  }
+
+  await writeAudit({
+    userId: ctx.userId,
+    tenantId: ctx.tenantId,
+    action: paidConfirmed ? "MARK_PAID" : "UNMARK_PAID",
+    entity: "MonthlyEmployeeNote",
+    entityId: `${emp.id}:${yearN}:${monthN}`,
+  });
+  revalidateScheduleArtifacts();
+  return { ok: true };
 }
 
 export async function saveMonthlyNoteAction(_: QState, formData: FormData): Promise<QState> {
