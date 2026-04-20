@@ -5,6 +5,7 @@ node_modules
 dist
 src-tauri/target
 .mcp
+.cursor/mcp.json
 *.log
 logs/
 ._*
