@@ -30,6 +30,10 @@ export async function POST(req: Request) {
       baseSalary: Number(f.baseSalary),
       adjustedSalary: Number(f.adjustedSalary),
       welfareAllocation: Number(f.welfareAllocation),
+      priorOverpaidWelfareWon:
+        f.priorOverpaidWelfareWon != null && f.priorOverpaidWelfareWon !== ""
+          ? Number(f.priorOverpaidWelfareWon)
+          : null,
       incentiveAmount:
         f.incentiveAmount != null && f.incentiveAmount !== "" ? Number(f.incentiveAmount) : null,
       discretionaryAmount:

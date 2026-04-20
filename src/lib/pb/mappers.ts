@@ -45,6 +45,7 @@ export function mapEmployee(r: Record<string, unknown>): Employee {
   baseSalary: num(r.baseSalary),
   adjustedSalary: num(r.adjustedSalary),
   welfareAllocation: num(r.welfareAllocation),
+  priorOverpaidWelfareWon: numNull(r.priorOverpaidWelfareWon),
   incentiveAmount: numNull(r.incentiveAmount),
   discretionaryAmount: numNull(r.discretionaryAmount),
   optionalWelfareAmount: numNull(r.optionalWelfareAmount),

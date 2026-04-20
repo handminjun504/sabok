@@ -13,6 +13,7 @@ import {
   employeeStatusForYear,
   type CustomPaymentScheduleDef,
 } from "@/lib/domain/schedule";
+import { effectiveWelfareAllocationWon } from "@/lib/domain/salary-inclusion";
 import { formatWon, yn } from "@/lib/spreadsheet-format";
 
 export type EmployeeDirectoryPayrollYearContext = {
@@ -152,6 +153,18 @@ export function EmployeeDirectoryGrid({
               <Row label="기존연봉" value={won(e.baseSalary)} />
               <Row label="조정급여" value={won(e.adjustedSalary)} />
               <Row label="사복지급분" value={won(e.welfareAllocation)} />
+              {e.priorOverpaidWelfareWon != null && e.priorOverpaidWelfareWon > 0 ? (
+                <>
+                  <Row
+                    label="전기 더 받음(차감)"
+                    value={<span className="text-[var(--danger)]">−{won(e.priorOverpaidWelfareWon)}</span>}
+                  />
+                  <Row
+                    label="실효 사복지급분"
+                    value={<span className="font-bold text-[var(--accent)]">{won(effectiveWelfareAllocationWon(e))}</span>}
+                  />
+                </>
+              ) : null}
               <Row label="알아서금액" value={won(e.discretionaryAmount)} />
               {payrollYearContext != null ? (
                 <>

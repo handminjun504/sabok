@@ -12,6 +12,22 @@ function toNum(v: number | null | undefined): number {
   return Number(v) || 0;
 }
 
+/**
+ * 실효 사복지급분(원).
+ *  = max(0, welfareAllocation − priorOverpaidWelfareWon)
+ *
+ * 전기에 사복으로 더 받아간 금액(`priorOverpaidWelfareWon`)이 있으면 이번 기 사복지급분 한도에서
+ * 자동으로 차감해 “이번 기에 더 줄 수 있는 한도”를 만든다. 한도가 음수가 되는 일은 0 으로 클램프.
+ */
+export function effectiveWelfareAllocationWon(
+  employee: Pick<Employee, "welfareAllocation" | "priorOverpaidWelfareWon">,
+): number {
+  const base = Math.max(0, Math.round(toNum(employee.welfareAllocation)));
+  const priorRaw = employee.priorOverpaidWelfareWon != null ? toNum(employee.priorOverpaidWelfareWon) : 0;
+  const prior = Math.max(0, Math.round(priorRaw));
+  return Math.max(0, base - prior);
+}
+
 /** 사복지급분(welfareAllocation) 상한 대비 초과·급여포함신고용 미달 */
 export function computeWelfareCapVsActual(
   welfareAllocation: number,
@@ -35,11 +51,12 @@ export type SalaryInclusionCapSource = "incentive" | "welfare" | "none";
 
 /**
  * 급여포함신고 상한: 대표가 말해 준 **예상 인센**(직원 `incentiveAmount`)이 있으면 그 금액을 연간 상한으로 쓰고,
- * 없으면 **사복지급분**(`welfareAllocation`)을 씁니다.
- * 실제 기금 지급이 상한을 넘으면 **초과분은 급여(과세) 쪽에 포함해 신고**하는 흐름을 전제로 합니다.
+ * 없으면 **사복지급분**(`welfareAllocation`)을 쓴다.
+ * 사복지급분 모드에서는 **전기 더 받은 금액(`priorOverpaidWelfareWon`)을 자동으로 차감해** 이번 기 실효 한도를 만든다.
+ * 실제 기금 지급이 상한을 넘으면 **초과분은 급여(과세) 쪽에 포함해 신고**하는 흐름을 전제로 한다.
  */
 export function resolveSalaryInclusionCap(
-  employee: Pick<Employee, "welfareAllocation" | "incentiveAmount">,
+  employee: Pick<Employee, "welfareAllocation" | "incentiveAmount" | "priorOverpaidWelfareWon">,
 ): {
   cap: number;
   hasCap: boolean;
@@ -49,7 +66,7 @@ export function resolveSalaryInclusionCap(
   if (inc > 0) {
     return { cap: Math.round(inc), hasCap: true, source: "incentive" };
   }
-  const w = Math.round(toNum(employee.welfareAllocation));
+  const w = effectiveWelfareAllocationWon(employee);
   if (w > 0) {
     return { cap: w, hasCap: true, source: "welfare" };
   }
@@ -119,7 +136,7 @@ export function computeIncentiveWelfareSalaryInclusionYtd(
 
 /** resolveSalaryInclusionCap + 실적 금액으로 초과·미달(급여포함신고) */
 export function computeSalaryInclusionVsActual(
-  employee: Pick<Employee, "welfareAllocation" | "incentiveAmount">,
+  employee: Pick<Employee, "welfareAllocation" | "incentiveAmount" | "priorOverpaidWelfareWon">,
   actualWelfare: number,
 ): ReturnType<typeof computeWelfareCapVsActual> & { capSource: SalaryInclusionCapSource } {
   const { cap, hasCap, source } = resolveSalaryInclusionCap(employee);
@@ -178,7 +195,8 @@ export function computeSalaryInclusionCapBlocks(
   operationMode: TenantOperationMode,
   lastPaidMonthInclusive: number = 12,
 ): SalaryInclusionCapBlock[] {
-  const wAlloc = Math.round(toNum(employee.welfareAllocation));
+  /** 사복 상한은 “실효(전기 차감 후)” 사용 — 인센 상한은 별도 정책이라 그대로 둠 */
+  const wAlloc = effectiveWelfareAllocationWon(employee);
   const incCap = employee.incentiveAmount != null ? Math.round(toNum(employee.incentiveAmount)) : 0;
   const incentivePaid = sumIncentiveWelfarePaymentThroughMonth(notes, year, lastPaidMonthInclusive);
 

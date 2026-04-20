@@ -19,6 +19,12 @@ export type Employee = {
   baseSalary: number;
   adjustedSalary: number;
   welfareAllocation: number;
+  /**
+   * 전기(이전 회계 기간) 사복으로 “더 받은” 금액(원).
+   * 이번 기 사복지급분 상한에서 자동 차감되어 급여포함신고·실효 상한 계산에 즉시 반영된다.
+   * PB `priorOverpaidWelfareWon` 없으면 null(차감 없음).
+   */
+  priorOverpaidWelfareWon: number | null;
   incentiveAmount: number | null;
   discretionaryAmount: number | null;
   optionalWelfareAmount: number | null;

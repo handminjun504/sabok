@@ -14,6 +14,9 @@ const ALIASES: Record<string, string> = {
   조정급여: "adjustedSalary",
   사복지급분: "welfareAllocation",
   "사내근로복지기금 지급분": "welfareAllocation",
+  "전기 더 받은 사복": "priorOverpaidWelfareWon",
+  전기더받은사복: "priorOverpaidWelfareWon",
+  "전기 더 받음": "priorOverpaidWelfareWon",
   인센티브: "incentiveAmount",
   알아서금액: "discretionaryAmount",
   대표반환: "flagRepReturn",
@@ -164,6 +167,7 @@ export function parseEmployeeCsv(text: string): CsvRowResult[] {
       baseSalary: String(get("baseSalary") || "0").replace(/,/g, ""),
       adjustedSalary: String(get("adjustedSalary") || "0").replace(/,/g, ""),
       welfareAllocation: String(get("welfareAllocation") || "0").replace(/,/g, ""),
+      priorOverpaidWelfareWon: String(get("priorOverpaidWelfareWon") || "").replace(/,/g, "") || null,
       incentiveAmount: String(get("incentiveAmount") || "").replace(/,/g, "") || null,
       discretionaryAmount: String(get("discretionaryAmount") || "").replace(/,/g, "") || null,
       birthMonth: get("birthMonth") ? parseInt(String(get("birthMonth")), 10) : null,
@@ -197,7 +201,7 @@ export function parseEmployeeCsv(text: string): CsvRowResult[] {
   return out;
 }
 
-/** 참고 시트 「직원정보」 열 순서(조사표 플래그 열 제외) + 앱 확장(레벨, 예상 인센) */
+/** 참고 시트 「직원정보」 열 순서(조사표 플래그 열 제외) + 앱 확장(레벨, 예상 인센, 전기 차감) */
 const SHEET_EMPLOYEE_EXPORT_HEADERS_CORE = [
   "CODE",
   "이름",
@@ -205,6 +209,7 @@ const SHEET_EMPLOYEE_EXPORT_HEADERS_CORE = [
   "기존연봉",
   "조정급여",
   "사복지급분",
+  "전기 더 받은 사복",
   "알아서금액",
 ] as const;
 
@@ -276,6 +281,9 @@ export function employeeToSheetCsvCells(e: Employee, settings: CompanySettings |
     wonCell(e.baseSalary),
     wonCell(e.adjustedSalary),
     wonCell(e.welfareAllocation),
+    e.priorOverpaidWelfareWon != null && Number(e.priorOverpaidWelfareWon) > 0
+      ? wonCell(e.priorOverpaidWelfareWon)
+      : "",
     e.discretionaryAmount != null && Number(e.discretionaryAmount) !== 0 ? wonCell(e.discretionaryAmount) : "",
     ...survey,
     e.hireYear != null ? String(e.hireYear) : "",

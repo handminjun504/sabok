@@ -33,6 +33,7 @@ function minimalEmployee(over: Partial<Employee> = {}): Employee {
     baseSalary: 0,
     adjustedSalary: 0,
     welfareAllocation: 0,
+    priorOverpaidWelfareWon: null,
     incentiveAmount: null,
     discretionaryAmount: null,
     optionalWelfareAmount: null,

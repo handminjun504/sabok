@@ -342,6 +342,17 @@ export function EmployeeForm({
               {employee.adjustedSalary > 0 ? `${formatWon(employee.adjustedSalary)}원` : "—"}
             </dd>
           </div>
+          {employee.priorOverpaidWelfareWon != null && employee.priorOverpaidWelfareWon > 0 ? (
+            <div>
+              <dt className="text-xs font-semibold text-[var(--muted)]">실효 사복지급분</dt>
+              <dd className="mt-1 tabular-nums">
+                {formatWon(Math.max(0, employee.welfareAllocation - employee.priorOverpaidWelfareWon))}원{" "}
+                <span className="text-xs text-[var(--muted)]">
+                  (사복 {formatWon(employee.welfareAllocation)} − 전기 {formatWon(employee.priorOverpaidWelfareWon)})
+                </span>
+              </dd>
+            </div>
+          ) : null}
           <div>
             <dt className="text-xs font-semibold text-[var(--muted)]">입사</dt>
             <dd className="mt-1 tabular-nums">
@@ -476,6 +487,13 @@ export function EmployeeForm({
               label="알아서금액"
               name="discretionaryAmount"
               defaultValue={employee?.discretionaryAmount ?? undefined}
+              optional
+            />
+            <LabeledCommaWon
+              className="sm:col-span-2"
+              label="전기 더 받은 사복(차감)"
+              name="priorOverpaidWelfareWon"
+              defaultValue={employee?.priorOverpaidWelfareWon ?? undefined}
               optional
             />
             <LabeledCommaWon
