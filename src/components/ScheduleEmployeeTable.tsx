@@ -50,8 +50,9 @@ function fmt(n: number): string {
 }
 
 function statusBadge(status: ScheduleTableEmploymentStatus): ReactNode {
+  /** 좁은 셀에서도 “1~6월 / 재직” 처럼 두 줄로 끊기지 않도록 whitespace-nowrap. */
   if (status.kind === "ACTIVE_FULL_YEAR") {
-    return <span className="badge badge-success">재직</span>;
+    return <span className="badge badge-success whitespace-nowrap">재직</span>;
   }
   if (status.kind === "ACTIVE_PARTIAL") {
     const { fromMonth, toMonth } = status;
@@ -61,10 +62,10 @@ function statusBadge(status: ScheduleTableEmploymentStatus): ReactNode {
         : toMonth === 12
           ? `${fromMonth}월~ 재직`
           : `${fromMonth}~${toMonth}월 재직`;
-    return <span className="badge badge-warn">{label}</span>;
+    return <span className="badge badge-warn whitespace-nowrap">{label}</span>;
   }
   return (
-    <span className="badge badge-neutral">
+    <span className="badge badge-neutral whitespace-nowrap">
       {status.resignYear}년{status.resignMonth ? ` ${status.resignMonth}월` : ""} 퇴사
     </span>
   );
@@ -106,7 +107,8 @@ export function ScheduleEmployeeTable({
   const [, startTransition] = useTransition();
 
   const allExpanded = rows.length > 0 && rows.every((r) => expanded.has(r.employeeId));
-  const totalCols = 1 /* 펼침 */ + 1 /* 코드 */ + 1 /* 이름 */ + 1 /* Lv */ + 1 /* 상태 */ + 12 /* 1~12월 */ + 1 /* 연간 */ + 1 /* 편집 */;
+  /** 이름·상태를 한 셀에 가로로 묶어, 좁은 화면에서 위/아래로 쪼개지지 않도록 한다. */
+  const totalCols = 1 /* 펼침 */ + 1 /* 코드 */ + 1 /* 이름+상태 */ + 1 /* Lv */ + 12 /* 1~12월 */ + 1 /* 연간 */ + 1 /* 편집 */;
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -218,9 +220,8 @@ export function ScheduleEmployeeTable({
             <tr className="border-b-2 border-[var(--border)] bg-[var(--surface-hover)]/40">
               <th className="dash-table-th-md w-10 text-center" aria-label="세부 펼침" />
               <th className="dash-table-th-md text-left">코드</th>
-              <th className="dash-table-th-md text-left">이름</th>
+              <th className="dash-table-th-md text-left">이름 · 상태</th>
               <th className="dash-table-th-md text-center">Lv</th>
-              <th className="dash-table-th-md text-left">상태</th>
               {MONTHS.map((m) => {
                 const paid = isMonthPaid(m);
                 return (
@@ -271,18 +272,22 @@ export function ScheduleEmployeeTable({
                       <td className="px-2 py-2.5 font-mono text-xs tabular-nums text-[var(--muted)]">
                         {r.employeeCode}
                       </td>
-                      <td
-                        className={
-                          "px-2 py-2.5 text-sm font-bold " +
-                          (dimmed ? "text-[var(--muted)] line-through" : "text-[var(--text)]")
-                        }
-                      >
-                        {r.name}
+                      <td className="px-2 py-2.5">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span
+                            className={
+                              "text-sm font-bold whitespace-nowrap " +
+                              (dimmed ? "text-[var(--muted)] line-through" : "text-[var(--text)]")
+                            }
+                          >
+                            {r.name}
+                          </span>
+                          {statusBadge(r.status)}
+                        </div>
                       </td>
                       <td className="px-2 py-2.5 text-center text-xs font-semibold tabular-nums text-[var(--muted)]">
                         Lv.{r.level}
                       </td>
-                      <td className="px-2 py-2.5">{statusBadge(r.status)}</td>
                       {MONTHS.map((m) => {
                         const v = r.welfareByMonth[m] ?? 0;
                         const active = monthIsActiveForStatus(r.status, m);
