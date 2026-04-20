@@ -24,7 +24,7 @@ import {
   welfareScheduleLinesByMonth,
 } from "@/lib/domain/schedule";
 import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
-import { summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
+import { additionalReserveStatus, summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
 import {
   saveMonthlyIncentiveAccrualYearFormAction,
   saveMonthlyNoteFormAction,
@@ -66,6 +66,12 @@ export default async function SchedulePage() {
           vendors
         )
       : { kind: "NO_VENDORS" as const };
+  /** 거래처 타입(개인/법인) + 자본금 50% 진행도로 “현재 +20% 적립 활성?” 결정.
+   *  거래처 정보를 못 불러올 때는 보수적으로 활성(NO_VENDORS) 처리. */
+  const reserveStatus = additionalReserveStatus(
+    { clientEntityType: tenantRow?.clientEntityType ?? "INDIVIDUAL" },
+    reserveSummary,
+  );
   const canEditReserveNote = canEditCompanySettings(role) && settings != null;
 
   const [rules, overrides, quarterly, notes] = await Promise.all([
@@ -189,7 +195,12 @@ export default async function SchedulePage() {
   const scheduleTab = <ScheduleEmployeeCards year={year} rows={scheduleCardRows} />;
 
   const announcementTab = (
-    <ScheduleAnnouncementPanel year={year} rows={scheduleCardRows} operationMode={tenantOperationMode} />
+    <ScheduleAnnouncementPanel
+      year={year}
+      rows={scheduleCardRows}
+      operationMode={tenantOperationMode}
+      reserveStatus={reserveStatus}
+    />
   );
 
   const reserveTab =

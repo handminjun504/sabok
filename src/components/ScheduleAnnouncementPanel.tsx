@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TenantOperationMode } from "@/lib/domain/tenant-profile";
 import {
+  applyAdditionalReserve,
   buildSalaryPortionNotice,
   buildTransferAndDetailNotice,
   buildWelfareFundBatchedNotice,
@@ -11,6 +12,10 @@ import {
   showSalaryPortionNoticeMode,
   sumWelfareScheduledMonth,
 } from "@/lib/domain/schedule-announcement";
+import {
+  additionalReserveStatusLabel,
+  type AdditionalReserveStatus,
+} from "@/lib/domain/vendor-reserve";
 import type { ScheduleCardRow } from "@/components/ScheduleEmployeeCards";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
@@ -69,11 +74,22 @@ export function ScheduleAnnouncementPanel({
   year,
   rows,
   operationMode,
+  reserveStatus,
 }: {
   year: number;
   rows: ScheduleCardRow[];
   operationMode: TenantOperationMode;
+  /**
+   * 거래처 타입 + 자본금 50% 진행도로 산출된 “현재 +20% 적립 활성?” 결과.
+   * 이 값을 멘트 빌더와 카드에 그대로 흘려 보낸다.
+   */
+  reserveStatus: AdditionalReserveStatus;
 }) {
+  const reserveActive = reserveStatus.active;
+  const reserveOptions = useMemo(
+    () => ({ additionalReserveActive: reserveActive }),
+    [reserveActive],
+  );
   const [focusMonth, setFocusMonth] = useState<number | null>(() => defaultAnnouncementMonth(year));
   const [batchFrom, setBatchFrom] = useState(1);
   const [batchTo, setBatchTo] = useState(3);
@@ -120,9 +136,10 @@ export function ScheduleAnnouncementPanel({
         employeeCode: r.employeeCode,
         name: r.name,
         welfareByMonth: r.welfareByMonth,
-      }))
+      })),
+      reserveOptions,
     );
-  }, [rows, batchFrom, batchTo]);
+  }, [rows, batchFrom, batchTo, reserveOptions]);
 
   const welfareNotice = useMemo(() => {
     if (focusMonth == null) return "";
@@ -130,8 +147,8 @@ export function ScheduleAnnouncementPanel({
       return `(${year}년 ${focusMonth}월) 직원이 등록되어 있지 않아 지급액·입금 안내를 만들 수 없습니다. 직원을 등록한 뒤 다시 확인해 주세요.`;
     }
     if (!announcementInputs) return "";
-    return buildWelfareFundNotice(focusMonth, announcementInputs);
-  }, [focusMonth, announcementInputs, rows.length, year]);
+    return buildWelfareFundNotice(focusMonth, announcementInputs, reserveOptions);
+  }, [focusMonth, announcementInputs, rows.length, year, reserveOptions]);
 
   const salaryNotice = useMemo(() => {
     if (focusMonth == null || !announcementInputs) return null;
@@ -141,8 +158,8 @@ export function ScheduleAnnouncementPanel({
   const transferNotice = useMemo(() => {
     if (focusMonth == null || !announcementInputs) return "";
     if (!shouldShowTransferDetailBlock(announcementInputs)) return "";
-    return buildTransferAndDetailNotice(focusMonth, announcementInputs);
-  }, [focusMonth, announcementInputs]);
+    return buildTransferAndDetailNotice(focusMonth, announcementInputs, reserveOptions);
+  }, [focusMonth, announcementInputs, reserveOptions]);
 
   const filterBtn = (m: number | null, label: string) => {
     const active = focusMonth === m;
@@ -165,7 +182,9 @@ export function ScheduleAnnouncementPanel({
     );
   };
 
-  const with20 = Math.round(welfareSum * 1.2);
+  const transferAmount = reserveActive ? applyAdditionalReserve(welfareSum) : welfareSum;
+  const reserveAddOn = transferAmount - welfareSum;
+  const reserveLabel = additionalReserveStatusLabel(reserveStatus);
 
   return (
     <div className="space-y-4" id="announcement-copy">
@@ -173,6 +192,18 @@ export function ScheduleAnnouncementPanel({
         <p className="text-sm leading-relaxed text-[var(--muted)]">
           월별 스케줄과 동일한 기준(정기=귀속월, 분기·선택 복지=지급월)으로 합계를 계산합니다. 아래에서 월을 바꾸면
           멘트가 갱신됩니다.
+        </p>
+        <p
+          className={
+            "mt-2 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold " +
+            (reserveActive
+              ? "border-[color:color-mix(in_srgb,var(--accent)_30%,transparent)] bg-[var(--accent-soft)] text-[var(--accent-dim)]"
+              : "border-[var(--border)] bg-[var(--surface-hover)] text-[var(--muted)]")
+          }
+          aria-live="polite"
+        >
+          <span aria-hidden>{reserveActive ? "●" : "○"}</span>
+          {reserveLabel}
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5" role="tablist" aria-label="안내 멘트 기준 월">
           {filterBtn(null, "전체")}
@@ -217,16 +248,32 @@ export function ScheduleAnnouncementPanel({
 
       {focusMonth != null ? (
         <div className="grid gap-3 rounded-xl border-2 border-[var(--accent)]/30 bg-[var(--accent-soft)]/20 p-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-            <p className="dash-eyebrow">당월 사복(기금) 지급 합계</p>
-            <p className="mt-1 text-xl font-extrabold tabular-nums text-[var(--text)]">{fmt(welfareSum)}원</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">통장에서 근로자에게 나갈 총액과 맞추면 됩니다.</p>
-          </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-            <p className="dash-eyebrow">20% 가산 입금 시(참고)</p>
-            <p className="mt-1 text-xl font-extrabold tabular-nums text-[var(--accent)]">{fmt(with20)}원</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">개인사업자·해당 법인만 해당할 수 있습니다.</p>
-          </div>
+          {reserveActive ? (
+            <>
+              <div className="rounded-lg border border-[var(--accent)]/40 bg-[var(--surface)] p-3">
+                <p className="dash-eyebrow">통장 입금액 (적립금 포함)</p>
+                <p className="mt-1 text-xl font-extrabold tabular-nums text-[var(--accent)]">
+                  {fmt(transferAmount)}원
+                </p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  근로자 지급 {fmt(welfareSum)}원 + 적립 {fmt(reserveAddOn)}원
+                </p>
+              </div>
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                <p className="dash-eyebrow">근로자 지급 합계 (참고)</p>
+                <p className="mt-1 text-xl font-extrabold tabular-nums text-[var(--text)]">{fmt(welfareSum)}원</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">근로자에게 실제로 나가는 총액입니다.</p>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-lg border border-[var(--accent)]/40 bg-[var(--surface)] p-3">
+              <p className="dash-eyebrow">통장 입금액 (적립금 가산 없음)</p>
+              <p className="mt-1 text-xl font-extrabold tabular-nums text-[var(--accent)]">{fmt(welfareSum)}원</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                자본금 50% 적립 완료 — 근로자 지급 합계로 입금하시면 됩니다.
+              </p>
+            </div>
+          )}
           {showSalaryPortionNoticeMode(operationMode) && salarySum > 0 ? (
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
               <p className="dash-eyebrow">급여분(월 환산) 합계</p>

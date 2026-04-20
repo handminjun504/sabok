@@ -130,3 +130,67 @@ export function summarizeTenantAdditionalReserve(
     activeVendorCount: active.length,
   };
 }
+
+/** “지금 통장 입금 시 +20% 추가 적립이 필요한가” 판정 결과 */
+export type AdditionalReserveStatus = {
+  /** true 면 안내 멘트의 입금액에 20% 가산을 자동 적용해야 함 */
+  active: boolean;
+  /** 판정 사유 — UI 라벨 분기에 사용 */
+  reason:
+    | "INDIVIDUAL" // 개인사업자: 항상 활성
+    | "CORPORATE_BELOW_CAP" // 법인: 자본금 50% 한도 미달
+    | "CORPORATE_NO_VENDORS" // 법인: 출연처 미등록(보수적으로 활성)
+    | "CORPORATE_NO_CAPITAL" // 법인: 자본금 미입력으로 한도 산정 불가(보수적으로 활성)
+    | "CORPORATE_COMPLETE"; // 법인: 자본금 50% 적립 완료 → 추가 적립 종료
+};
+
+/**
+ * 거래처 타입(개인/법인) + 자본금 50% 적립 진행도를 보고
+ * “현재 통장 입금 시 +20% 추가 적립이 필요한지”를 단일 결과로 알려준다.
+ *
+ * 규칙:
+ *   1) 개인사업자          → 항상 활성 (+20% 적립 무기한)
+ *   2) 법인 + 자본금 50% 미달 → 활성 (개인과 동일하게 +20%)
+ *   3) 법인 + 50% 적립 완료 → 비활성 (일반 입금)
+ *   4) 법인 + 자본금 정보 없음 / 출연처 없음 → 보수적으로 활성
+ *      (안내 멘트가 “필요 없는데 가산”되는 것보다 “모자라게 입금”되는 게 더 큰 사고이므로 안전한 쪽으로)
+ */
+export function additionalReserveStatus(
+  tenant: { clientEntityType: "INDIVIDUAL" | "CORPORATE" },
+  summary: TenantAdditionalReserveSummary,
+): AdditionalReserveStatus {
+  if (tenant.clientEntityType === "INDIVIDUAL") {
+    return { active: true, reason: "INDIVIDUAL" };
+  }
+  // CORPORATE
+  if (summary.kind === "NO_VENDORS") {
+    return { active: true, reason: "CORPORATE_NO_VENDORS" };
+  }
+  if (summary.kind === "INDIVIDUAL") {
+    /** 거래처는 법인인데 요약은 개인으로 잡힌 모순 — 보수적으로 활성 처리 */
+    return { active: true, reason: "CORPORATE_NO_CAPITAL" };
+  }
+  if (summary.cannotAssess) {
+    return { active: true, reason: "CORPORATE_NO_CAPITAL" };
+  }
+  if (summary.isComplete) {
+    return { active: false, reason: "CORPORATE_COMPLETE" };
+  }
+  return { active: true, reason: "CORPORATE_BELOW_CAP" };
+}
+
+/** 안내 멘트·카드 라벨용 한 줄 요약 */
+export function additionalReserveStatusLabel(status: AdditionalReserveStatus): string {
+  switch (status.reason) {
+    case "INDIVIDUAL":
+      return "개인사업자 — 입금액에 적립금 20% 포함";
+    case "CORPORATE_BELOW_CAP":
+      return "법인 — 자본금 50% 적립 진행 중 (입금액에 적립금 20% 포함)";
+    case "CORPORATE_NO_VENDORS":
+      return "법인 — 출연처 미등록, 입금액에 적립금 20% 포함(자본금 50% 도달 시 종료)";
+    case "CORPORATE_NO_CAPITAL":
+      return "법인 — 본사 자본금 미입력, 안전하게 적립금 20% 포함(자본금 입력 시 자동 갱신)";
+    case "CORPORATE_COMPLETE":
+      return "법인 — 자본금 50% 적립 완료, 적립금 가산 없음(일반 입금)";
+  }
+}

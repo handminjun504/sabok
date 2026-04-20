@@ -1,4 +1,5 @@
 import type { TenantOperationMode } from "@/lib/domain/tenant-profile";
+import { VENDOR_CONTRIBUTION_RESERVE_RATE } from "@/lib/domain/vendor-reserve";
 
 export function formatWonLine(n: number): string {
   return `${Math.round(n).toLocaleString("ko-KR")}`;
@@ -13,6 +14,15 @@ export type AnnouncementRowInput = {
   discretionaryAmount: number | null;
 };
 
+/**
+ * 안내 멘트의 통장 입금 줄에 “+20% 적립금 포함” 을 자동 반영할지 결정하는 옵션.
+ * `vendor-reserve.additionalReserveStatus()` 의 `active` 값을 그대로 넘기면 된다.
+ */
+export type ReserveAnnouncementOptions = {
+  /** true 면 입금 합계에 +20% 적립금을 포함해서 안내 */
+  additionalReserveActive: boolean;
+};
+
 function sortByEmployeeCode<T extends { employeeCode: string }>(rows: T[]): T[] {
   return [...rows].sort((a, b) => a.employeeCode.localeCompare(b.employeeCode, "ko", { numeric: true }));
 }
@@ -22,16 +32,32 @@ export function sumWelfareScheduledMonth(rows: readonly AnnouncementRowInput[]):
   return rows.reduce((s, r) => s + Math.max(0, Math.round(r.welfareMonth)), 0);
 }
 
+/** 적립금 20% 포함 시 입금 금액 (개인 / 법인 50% 미달 공통) */
+export function applyAdditionalReserve(amount: number): number {
+  return Math.round(Math.max(0, amount) * (1 + VENDOR_CONTRIBUTION_RESERVE_RATE));
+}
+
 /**
  * 법인·단일월 카톡 양식: 인사 → 통장 이체 금액 → 직원별(지급>0) → 마무리
  * 예) 안녕하세요! 2월 … / 통장에 23,820,000원 이체하신 후 / … / 이체해주시면 됩니다.
+ *
+ * `additionalReserveActive` 가 true 이면 통장 이체 금액에 +20% 적립금을 자동 포함하고,
+ * 그 줄 옆에 “(적립금 20% 포함)” 표기를 덧붙인다(개인사업자 / 자본금 50% 미달 법인).
  */
-export function buildWelfareFundNotice(month: number, rows: AnnouncementRowInput[]): string {
+export function buildWelfareFundNotice(
+  month: number,
+  rows: AnnouncementRowInput[],
+  options: ReserveAnnouncementOptions = { additionalReserveActive: false },
+): string {
   const sorted = sortByEmployeeCode(rows);
   const sum = sorted.reduce((s, r) => s + Math.max(0, Math.round(r.welfareMonth)), 0);
+  const reserveActive = options.additionalReserveActive;
+  const transferAmount = reserveActive ? applyAdditionalReserve(sum) : sum;
+  const transferTail = reserveActive ? " (적립금 20% 포함)" : "";
+
   const lines: string[] = [
     `안녕하세요! ${month}월 사내근로복지기금 안내드립니다.`,
-    `사내근로복지기금 통장에 ${formatWonLine(sum)}원 이체하신 후`,
+    `사내근로복지기금 통장에 ${formatWonLine(transferAmount)}원${transferTail} 이체하신 후`,
     ``,
   ];
   for (const r of sorted) {
@@ -52,8 +78,16 @@ export type WelfareByMonthRow = {
 /**
  * 여러 달을 한 번에 안내할 때(개인 등): 인사~ → 통장 합계 → 직원별 월별 금액 → 마무리 문구
  * `monthFrom`~`monthTo` 포함 구간(순서 자동 정렬).
+ *
+ * `additionalReserveActive` 가 true 이면 통장 합계에 +20% 적립금을 자동 포함하고
+ * 그 줄에 “(적립금 20% 포함)” 표기를 덧붙인다.
  */
-export function buildWelfareFundBatchedNotice(monthFrom: number, monthTo: number, rows: readonly WelfareByMonthRow[]): string {
+export function buildWelfareFundBatchedNotice(
+  monthFrom: number,
+  monthTo: number,
+  rows: readonly WelfareByMonthRow[],
+  options: ReserveAnnouncementOptions = { additionalReserveActive: false },
+): string {
   const from = Math.min(Math.max(1, monthFrom), 12);
   const to = Math.max(Math.min(12, monthTo), 1);
   const lo = Math.min(from, to);
@@ -74,11 +108,15 @@ export function buildWelfareFundBatchedNotice(monthFrom: number, monthTo: number
     personBlocks.push(`${r.name}님`, ...sub, "");
   }
 
+  const reserveActive = options.additionalReserveActive;
+  const transferAmount = reserveActive ? applyAdditionalReserve(total) : total;
+  const transferTail = reserveActive ? " (적립금 20% 포함)" : "";
+
   const monthLabels = Array.from({ length: hi - lo + 1 }, (_, i) => `${lo + i}월`).join(" ");
   const head = [
     `안녕하세요~`,
     `${lo}월 ~ ${hi}월 사내근로복지기금 지급분 안내드립니다.`,
-    `사내근로복지기금 통장으로 ${formatWonLine(total)}원 이체하신 후`,
+    `사내근로복지기금 통장으로 ${formatWonLine(transferAmount)}원${transferTail} 이체하신 후`,
     "",
   ];
   const foot = ["", "각각 이체해주시면됩니다.", `(저번처럼 각 인원 ${monthLabels} 총 ${hi - lo + 1}번씩 이체해주셔야합니다!)`];
@@ -122,18 +160,27 @@ export function shouldShowTransferDetailBlock(
 
 /**
  * 통장 이체·직원별 기금·대표반환(문구만)·알아서금액.
- * 대표님 반환 금액은 시스템에 없어 별도 기재 안내 줄만 넣습니다.
+ *
+ * `additionalReserveActive` 가 true 이면 통장 입금액을 자동으로 +20% 가산 금액으로 표시하고
+ * 보조 줄에 “(적립금 20% 포함)” 안내를 한다. false 이면 일반 입금만 표시.
+ *
+ * 대표님 반환 금액은 시스템에 없어 별도 기재 안내 줄만 넣는다.
  */
-export function buildTransferAndDetailNotice(month: number, rows: AnnouncementRowInput[]): string {
+export function buildTransferAndDetailNotice(
+  month: number,
+  rows: AnnouncementRowInput[],
+  options: ReserveAnnouncementOptions = { additionalReserveActive: false },
+): string {
   const sorted = sortByEmployeeCode(rows);
   const sumWelfare = sorted.reduce((s, r) => s + Math.max(0, Math.round(r.welfareMonth)), 0);
-  const with20 = Math.round(sumWelfare * 1.2);
+  const reserveActive = options.additionalReserveActive;
+  const transferAmount = reserveActive ? applyAdditionalReserve(sumWelfare) : sumWelfare;
 
   const lines: string[] = [
     `${month}월 사내근로복지기금 안내드립니다.`,
-    `사내근로복지기금 통장에 ${formatWonLine(sumWelfare)}원 이체하신 후`,
-    `(※ 개인사업자이시거나 자본금의 50%까지 적립 중인 법인이시면, 해당 월 지급 합계에 20%를 더한 ${formatWonLine(with20)} 원을 입금해 주세요.)`,
-    `(※ 법인이 예컨대 2,500만 원까지 적립해야 하는 경우, 근로자대부(근로자에게 빌려준 금액)는 회사 자산으로 포함되는 경우가 많아 그 잔액만큼은 이미 적립분에 해당하는 것으로 보고, 2,500만 원에서 근로자대부를 뺀 금액만 추가로 적립하면 됩니다. 예: 근로자대부 2,000만 원이면 500만 원만 더 맞추면 됩니다.)`,
+    reserveActive
+      ? `사내근로복지기금 통장에 ${formatWonLine(transferAmount)}원 이체하신 후 (적립금 20% 포함, 근로자 지급 합계 ${formatWonLine(sumWelfare)}원 + 적립 ${formatWonLine(transferAmount - sumWelfare)}원)`
+      : `사내근로복지기금 통장에 ${formatWonLine(transferAmount)}원 이체하신 후`,
     "",
   ];
 
