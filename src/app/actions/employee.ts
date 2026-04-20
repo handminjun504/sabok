@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 import {
@@ -21,32 +20,11 @@ import {
   pocketBaseRecordErrorMessage,
 } from "@/lib/pb/client-error-log";
 import { parseSalaryInclusionVarianceModeOrNull } from "@/lib/domain/salary-inclusion-display";
-
-function d(v: FormDataEntryValue | null): number {
-  const s = v == null || v === "" ? "0" : String(v).replace(/,/g, "");
-  return Number(s.replace(/,/g, "")) || 0;
-}
-
-function optDec(v: FormDataEntryValue | null): number | null {
-  const s = v == null || v === "" ? null : String(v).replace(/,/g, "");
-  if (s === null) return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
+import { toInt0, toIntOrNull, toNum0, toNumOrNull } from "@/lib/util/number";
+import { revalidateEmployeeArtifacts } from "@/lib/util/revalidate";
 
 function chk(formData: FormData, key: string): boolean {
   return formData.get(key) === "on";
-}
-
-function intOpt(v: FormDataEntryValue | null): number | null {
-  if (v == null || v === "") return null;
-  const n = parseInt(String(v), 10);
-  return Number.isFinite(n) ? n : null;
-}
-
-function int0(v: FormDataEntryValue | null): number {
-  const n = parseInt(String(v ?? "0"), 10);
-  return Number.isFinite(n) ? n : 0;
 }
 
 const baseSchema = z.object({
@@ -80,8 +58,8 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
   const { name, position: positionRaw, level } = parsed.data;
   const position = resolvePosition(positionRaw);
 
-  const baseSalary = d(formData.get("baseSalary"));
-  const adjustedSalary = d(formData.get("adjustedSalary"));
+  const baseSalary = toNum0(formData.get("baseSalary"));
+  const adjustedSalary = toNum0(formData.get("adjustedSalary"));
 
   if (baseSalary > 0 && adjustedSalary > 0) {
     const minAdj = Math.floor(baseSalary * 0.8);
@@ -124,25 +102,25 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     level,
     baseSalary,
     adjustedSalary,
-    welfareAllocation: d(formData.get("welfareAllocation")),
-    incentiveAmount: optDec(formData.get("incentiveAmount")),
-    discretionaryAmount: optDec(formData.get("discretionaryAmount")),
-    monthlyPayAmount: optDec(formData.get("monthlyPayAmount")),
-    quarterlyPayAmount: optDec(formData.get("quarterlyPayAmount")),
-    expectedYearlyWelfare: optDec(formData.get("expectedYearlyWelfare")),
-    birthMonth: intOpt(formData.get("birthMonth")),
-    hireMonth: intOpt(formData.get("hireMonth")),
-    resignMonth: intOpt(formData.get("resignMonth")),
-    weddingMonth: intOpt(formData.get("weddingMonth")),
-    childrenInfant: int0(formData.get("childrenInfant")),
-    childrenPreschool: int0(formData.get("childrenPreschool")),
-    childrenTeen: int0(formData.get("childrenTeen")),
-    parentsCount: int0(formData.get("parentsCount")),
-    parentsInLawCount: int0(formData.get("parentsInLawCount")),
-    insurancePremium: d(formData.get("insurancePremium")),
-    loanInterest: d(formData.get("loanInterest")),
-    monthlyRentAmount: optDec(formData.get("monthlyRentAmount")),
-    payDay: intOpt(formData.get("payDay")),
+    welfareAllocation: toNum0(formData.get("welfareAllocation")),
+    incentiveAmount: toNumOrNull(formData.get("incentiveAmount")),
+    discretionaryAmount: toNumOrNull(formData.get("discretionaryAmount")),
+    monthlyPayAmount: toNumOrNull(formData.get("monthlyPayAmount")),
+    quarterlyPayAmount: toNumOrNull(formData.get("quarterlyPayAmount")),
+    expectedYearlyWelfare: toNumOrNull(formData.get("expectedYearlyWelfare")),
+    birthMonth: toIntOrNull(formData.get("birthMonth")),
+    hireMonth: toIntOrNull(formData.get("hireMonth")),
+    resignMonth: toIntOrNull(formData.get("resignMonth")),
+    weddingMonth: toIntOrNull(formData.get("weddingMonth")),
+    childrenInfant: toInt0(formData.get("childrenInfant")),
+    childrenPreschool: toInt0(formData.get("childrenPreschool")),
+    childrenTeen: toInt0(formData.get("childrenTeen")),
+    parentsCount: toInt0(formData.get("parentsCount")),
+    parentsInLawCount: toInt0(formData.get("parentsInLawCount")),
+    insurancePremium: toNum0(formData.get("insurancePremium")),
+    loanInterest: toNum0(formData.get("loanInterest")),
+    monthlyRentAmount: toNumOrNull(formData.get("monthlyRentAmount")),
+    payDay: toIntOrNull(formData.get("payDay")),
     flagAutoAmount: chk(formData, "flagAutoAmount"),
     flagRepReturn,
     flagSpouseReceipt,
@@ -198,7 +176,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
   try {
     if (id && existingEmp) {
       const emp = existingEmp;
-      await employeeUpdate(emp.id, bodyForUpdate(emp.employeeCode));
+      await employeeUpdate(emp.id, ctx.tenantId, bodyForUpdate(emp.employeeCode));
       employeeDetailPath = `/dashboard/employees/${id}`;
       await writeAudit({
         userId: ctx.userId,
@@ -242,12 +220,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     return { 오류: "저장에 실패했습니다. 서버 로그를 확인하세요." };
   }
 
-  revalidatePath("/dashboard/employees", "layout");
-  if (employeeDetailPath) revalidatePath(employeeDetailPath);
-  revalidatePath("/dashboard/employees/new");
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/operating-report");
-  revalidatePath("/dashboard/salary-inclusion-report");
+  revalidateEmployeeArtifacts({ detailPath: employeeDetailPath, includeNew: true });
   return 경고 ? { 성공: true, 경고 } : { 성공: true };
 }
 
@@ -258,7 +231,7 @@ export async function deleteEmployeeAction(employeeId: string): Promise<Employee
   try {
     const emp = await employeeFindFirst(employeeId, ctx.tenantId);
     if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
-    await employeeDelete(emp.id);
+    await employeeDelete(emp.id, ctx.tenantId);
     await writeAudit({
       userId: ctx.userId,
       tenantId: ctx.tenantId,
@@ -270,10 +243,7 @@ export async function deleteEmployeeAction(employeeId: string): Promise<Employee
     console.error(e);
     return { 오류: "삭제에 실패했습니다." };
   }
-  revalidatePath("/dashboard/employees", "layout");
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/operating-report");
-  revalidatePath("/dashboard/salary-inclusion-report");
+  revalidateEmployeeArtifacts();
   return { 성공: true };
 }
 

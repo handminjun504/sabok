@@ -59,6 +59,19 @@ async function firstByFilter(collection: string, filter: string): Promise<Record
   }
 }
 
+/**
+ * Upsert 용 — 조회 실패를 null 로 삼키지 않고 그대로 throw.
+ * (네트워크·권한 오류로 null 이 돌아오면 잘못된 create 가 일어날 수 있다.)
+ */
+async function firstByFilterStrict(
+  collection: string,
+  filter: string,
+): Promise<Record<string, unknown> | null> {
+  const pb = await getAdminPb();
+  const { items } = await pb.collection(collection).getList(1, 1, { filter });
+  return items[0] ? asRecord(items[0]) : null;
+}
+
 /** filter 일치 레코드 배치 삭제 (종속 데이터 정리) */
 async function deleteAllByFilter(collection: string, filter: string): Promise<void> {
   const pb = await getAdminPb();
@@ -635,13 +648,25 @@ export async function employeeCreate(data: Record<string, unknown>): Promise<Emp
   return mapEmployee(created);
 }
 
-export async function employeeUpdate(id: string, data: Record<string, unknown>): Promise<void> {
+/**
+ * Update/Delete 는 항상 `tenantId` 와 함께 호출해 IDOR 을 방지한다.
+ * (admin PB 키로 동작하는 구조라, 호출부에서 tenantId 검증을 빠뜨리면 곧바로 격리가 깨진다.)
+ */
+export async function employeeUpdate(id: string, tenantId: string, data: Record<string, unknown>): Promise<void> {
   const pb = await getAdminPb();
+  const owned = await firstByFilter(C.employees, `id="${esc(id)}" && tenantId="${esc(tenantId)}"`);
+  if (!owned?.id) {
+    throw new Error(`employeeUpdate: 직원(id=${id})이 현재 업체(${tenantId})에 속하지 않습니다.`);
+  }
   await pb.collection(C.employees).update(id, data);
 }
 
-export async function employeeDelete(id: string): Promise<void> {
+export async function employeeDelete(id: string, tenantId: string): Promise<void> {
   const pb = await getAdminPb();
+  const owned = await firstByFilter(C.employees, `id="${esc(id)}" && tenantId="${esc(tenantId)}"`);
+  if (!owned?.id) {
+    throw new Error(`employeeDelete: 직원(id=${id})이 현재 업체(${tenantId})에 속하지 않습니다.`);
+  }
   await deleteAllByFilter(C.level5Overrides, `employeeId="${esc(id)}"`);
   await deleteAllByFilter(C.quarterlyEmployeeConfigs, `employeeId="${esc(id)}"`);
   await deleteAllByFilter(C.monthlyEmployeeNotes, `employeeId="${esc(id)}"`);
@@ -655,7 +680,7 @@ export async function tenantDeleteCascade(tenantId: string): Promise<void> {
     filter: `tenantId="${esc(tenantId)}"`,
   });
   for (const row of empRows) {
-    await employeeDelete(String(asRecord(row).id));
+    await employeeDelete(String(asRecord(row).id), tenantId);
   }
   await deleteAllByFilter(C.vendorContributions, `tenantId="${esc(tenantId)}"`);
   await deleteAllByFilter(C.vendors, `tenantId="${esc(tenantId)}"`);
@@ -728,7 +753,7 @@ export async function levelTargetUpsert(data: {
   targetAmount: number;
 }): Promise<void> {
   const f = `tenantId="${esc(data.tenantId)}" && year=${data.year} && level=${data.level}`;
-  const existing = await firstByFilter(C.levelTargets, f);
+  const existing = await firstByFilterStrict(C.levelTargets, f);
   const pb = await getAdminPb();
   if (existing?.id) {
     await pb.collection(C.levelTargets).update(String(existing.id), { targetAmount: data.targetAmount });
@@ -766,7 +791,7 @@ export async function level5OverrideUpsert(data: {
   amount: number;
 }): Promise<void> {
   const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && eventKey="${esc(data.eventKey)}"`;
-  const existing = await firstByFilter(C.level5Overrides, f);
+  const existing = await firstByFilterStrict(C.level5Overrides, f);
   const pb = await getAdminPb();
   if (existing?.id) {
     await pb.collection(C.level5Overrides).update(String(existing.id), { amount: data.amount });
@@ -798,7 +823,7 @@ export async function quarterlyRateUpsert(
   body: Record<string, unknown> & { tenantId: string; year: number; itemKey: string }
 ): Promise<void> {
   const f = `tenantId="${esc(body.tenantId)}" && year=${body.year} && itemKey="${esc(body.itemKey)}"`;
-  const existing = await firstByFilter(C.quarterlyRates, f);
+  const existing = await firstByFilterStrict(C.quarterlyRates, f);
   const pb = await getAdminPb();
   const { tenantId: _tid, year: _yr, itemKey: _ik, ...rest } = body;
   void _tid;
@@ -840,7 +865,7 @@ export async function quarterlyEmployeeConfigUpsert(data: {
     throw new Error("quarterlyEmployeeConfigUpsert: paymentMonths 비어 있음");
   }
   const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && itemKey="${esc(data.itemKey)}"`;
-  const existing = await firstByFilter(C.quarterlyEmployeeConfigs, f);
+  const existing = await firstByFilterStrict(C.quarterlyEmployeeConfigs, f);
   const pb = await getAdminPb();
   const body = {
     paymentMonth: months[0],
@@ -897,7 +922,7 @@ export async function monthlyNoteUpsert(data: {
   incentiveWelfarePaymentAmount: number | null;
 }): Promise<void> {
   const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && month=${data.month}`;
-  const existing = await firstByFilter(C.monthlyEmployeeNotes, f);
+  const existing = await firstByFilterStrict(C.monthlyEmployeeNotes, f);
   const pb = await getAdminPb();
   if (existing?.id) {
     await pb.collection(C.monthlyEmployeeNotes).update(String(existing.id), {
@@ -1042,9 +1067,14 @@ export async function vendorCreate(body: {
 
 export async function vendorUpdate(
   id: string,
+  tenantId: string,
   body: Partial<Pick<Vendor, "name" | "businessType" | "workplaceCapital" | "active" | "memo">>
 ): Promise<void> {
   const pb = await getAdminPb();
+  const owned = await firstByFilter(C.vendors, `id="${esc(id)}" && tenantId="${esc(tenantId)}"`);
+  if (!owned?.id) {
+    throw new Error(`vendorUpdate: 거래처(id=${id})가 현재 업체(${tenantId})에 속하지 않습니다.`);
+  }
   const patch: Record<string, unknown> = {};
   if (body.name !== undefined) patch.name = body.name;
   if (body.businessType !== undefined) patch.businessType = body.businessType;

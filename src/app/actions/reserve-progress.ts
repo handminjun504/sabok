@@ -1,12 +1,15 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { ClientResponseError } from "pocketbase";
+import { z } from "zod";
 import { companySettingsUpdateReserveProgressNote } from "@/lib/pb/repository";
 import { pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
 import { canEditCompanySettings } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
+import { revalidateScheduleArtifacts } from "@/lib/util/revalidate";
+
+const noteSchema = z.string().max(5000, "메모는 5,000자 이하여야 합니다.").nullable();
 
 export type ReserveNoteState = { 오류?: string; 성공?: boolean } | null;
 
@@ -16,7 +19,12 @@ export async function saveReserveProgressNoteAction(_: ReserveNoteState, formDat
   if (!canEditCompanySettings(ctx.role)) return { 오류: "적립금 메모를 수정할 권한이 없습니다." };
 
   const raw = formData.get("reserveProgressNote");
-  const note = raw == null ? null : String(raw);
+  const noteCandidate = raw == null ? null : String(raw);
+  const parsed = noteSchema.safeParse(noteCandidate);
+  if (!parsed.success) {
+    return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };
+  }
+  const note = parsed.data;
 
   try {
     await companySettingsUpdateReserveProgressNote(ctx.tenantId, note);
@@ -43,6 +51,6 @@ export async function saveReserveProgressNoteAction(_: ReserveNoteState, formDat
     entityId: ctx.tenantId,
     payload: { reserveProgressNote: note?.trim() || null },
   });
-  revalidatePath("/dashboard/schedule");
+  revalidateScheduleArtifacts();
   return { 성공: true };
 }

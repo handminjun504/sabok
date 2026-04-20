@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 type Props = {
   title: string;
@@ -27,12 +27,17 @@ export function CollapsibleEditorPanel({
   children,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
+  const baseId = useId();
+  const titleId = `${baseId}-title`;
+  const panelId = `${baseId}-panel`;
 
   return (
-    <div className="surface overflow-hidden">
+    <section className="surface overflow-hidden" aria-labelledby={titleId}>
       <div className="dash-panel-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface-hover)]/50">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-snug tracking-normal text-[var(--text)]">{title}</p>
+          <p id={titleId} className="text-sm font-semibold leading-snug tracking-normal text-[var(--text)]">
+            {title}
+          </p>
           {description ? <p className="mt-1 text-xs leading-snug tracking-normal text-[var(--muted)]">{description}</p> : null}
         </div>
         <button
@@ -40,6 +45,7 @@ export function CollapsibleEditorPanel({
           onClick={() => setOpen((v) => !v)}
           className="btn btn-outline shrink-0 text-xs"
           aria-expanded={open}
+          aria-controls={panelId}
         >
           {open ? closeLabel : triggerLabel}
         </button>
@@ -47,7 +53,9 @@ export function CollapsibleEditorPanel({
       {!open && summary ? (
         <div className="dash-panel-pad border-b border-[var(--border)]">{summary}</div>
       ) : null}
-      {open ? <div className="dash-panel-pad">{children}</div> : null}
-    </div>
+      <div id={panelId} hidden={!open} className={open ? "dash-panel-pad" : undefined}>
+        {open ? children : null}
+      </div>
+    </section>
   );
 }

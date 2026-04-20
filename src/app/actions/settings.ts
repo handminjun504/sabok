@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 import { companySettingsUpsert } from "@/lib/pb/repository";
@@ -8,6 +7,7 @@ import { pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
 import { canEditCompanySettings } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
+import { revalidateSettingsArtifacts } from "@/lib/util/revalidate";
 
 const schema = z.object({
   foundingMonth: z.coerce.number().min(1).max(12),
@@ -66,9 +66,6 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     entityId: ctx.tenantId,
     payload: parsed.data,
   });
-  revalidatePath("/dashboard/settings");
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/salary-inclusion-report");
-  revalidatePath("/dashboard/employees");
+  revalidateSettingsArtifacts();
   return { 성공: true };
 }

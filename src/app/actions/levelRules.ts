@@ -1,7 +1,6 @@
 "use server";
 
 import { ClientResponseError } from "pocketbase";
-import { revalidatePath } from "next/cache";
 import {
   allPaymentEventKeysForYear,
   splitAnnualTargetToNiceAmounts,
@@ -22,6 +21,7 @@ import { canEditLevelRules } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { resolveActionTenant } from "@/lib/tenant-context";
 import { pocketBaseNonemptyBlankHint, pocketBaseRecordErrorMessage } from "@/lib/pb/client-error-log";
+import { revalidateEmployeeArtifacts, revalidateLevelArtifacts } from "@/lib/util/revalidate";
 
 export type LevelRulesState = { 오류?: string; 성공?: boolean } | null;
 
@@ -70,10 +70,7 @@ export async function saveLevelPaymentRuleCellAction(
     return { ok: false, 오류: "저장에 실패했습니다." };
   }
 
-  revalidatePath("/dashboard/levels");
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/operating-report");
-  revalidatePath("/dashboard/salary-inclusion-report");
+  revalidateLevelArtifacts();
   return { ok: true };
 }
 
@@ -130,10 +127,7 @@ export async function saveLevelRulesAction(
     entityId: String(year),
     payload: { year },
   });
-  revalidatePath("/dashboard/levels");
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/operating-report");
-  revalidatePath("/dashboard/salary-inclusion-report");
+  revalidateLevelArtifacts();
   return { 성공: true };
 }
 
@@ -185,10 +179,7 @@ export async function saveLevelTargetAction(
     entityId: String(year),
     payload: { distributedToRules: true, eventCount: eventKeys.length },
   });
-  revalidatePath("/dashboard/levels");
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/operating-report");
-  revalidatePath("/dashboard/salary-inclusion-report");
+  revalidateLevelArtifacts();
   return { 성공: true };
 }
 
@@ -228,10 +219,7 @@ export async function addCustomPaymentEventAction(
     entityId: String(year),
     payload: { label, accrualMonth },
   });
-  revalidatePath("/dashboard/levels");
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/operating-report");
-  revalidatePath("/dashboard/salary-inclusion-report");
+  revalidateLevelArtifacts();
   return { 성공: true };
 }
 
@@ -268,11 +256,8 @@ export async function deleteCustomPaymentEventAction(
     entity: "PaymentEventDef",
     entityId: `${year}:${eventKey}`,
   });
-  revalidatePath("/dashboard/levels");
-  revalidatePath("/dashboard/employees");
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/operating-report");
-  revalidatePath("/dashboard/salary-inclusion-report");
+  revalidateLevelArtifacts();
+  revalidateEmployeeArtifacts();
   return { 성공: true };
 }
 
@@ -304,10 +289,7 @@ export async function saveLevel5OverrideAction(
     entity: "Level5Override",
     entityId: `${employeeId}:${year}:${eventKey}`,
   });
-  revalidatePath("/dashboard/employees");
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/operating-report");
-  revalidatePath("/dashboard/salary-inclusion-report");
+  revalidateEmployeeArtifacts();
   return { 성공: true };
 }
 
@@ -339,9 +321,6 @@ export async function deleteLevel5OverrideAction(
   } catch {
     return { 오류: "삭제할 항목이 없습니다." };
   }
-  revalidatePath("/dashboard/employees");
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/operating-report");
-  revalidatePath("/dashboard/salary-inclusion-report");
+  revalidateEmployeeArtifacts();
   return { 성공: true };
 }

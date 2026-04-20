@@ -49,6 +49,80 @@ function parseBool(v: string): boolean {
   return x === "y" || x === "1" || x === "true" || x === "예" || x === "o";
 }
 
+/**
+ * RFC4180 호환 파서.
+ * - `"foo,bar"` 같이 따옴표 안에 쉼표 허용
+ * - 따옴표 안 `""` 는 리터럴 `"`
+ * - CR/LF 는 따옴표 밖에서만 행 구분자
+ * - 마지막 빈 줄은 결과에 포함하지 않음
+ *
+ * 단순 split(",") 대비 사용자가 손으로 다듬은 조사표(이름·메모에 쉼표/줄바꿈 포함) 손상을 방지한다.
+ */
+export function parseCsvRfc4180(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+  let i = 0;
+  const len = text.length;
+
+  while (i < len) {
+    const ch = text[i];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < len && text[i + 1] === '"') {
+          cell += '"';
+          i += 2;
+          continue;
+        }
+        inQuotes = false;
+        i++;
+        continue;
+      }
+      cell += ch;
+      i++;
+      continue;
+    }
+
+    if (ch === '"') {
+      inQuotes = true;
+      i++;
+      continue;
+    }
+    if (ch === ",") {
+      row.push(cell);
+      cell = "";
+      i++;
+      continue;
+    }
+    if (ch === "\r") {
+      if (i + 1 < len && text[i + 1] === "\n") i++;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+      i++;
+      continue;
+    }
+    if (ch === "\n") {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+      i++;
+      continue;
+    }
+    cell += ch;
+    i++;
+  }
+  if (cell !== "" || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows.filter((r) => r.length > 1 || (r[0] != null && r[0] !== ""));
+}
+
 export type CsvRowResult = {
   row: number;
   employeeCode: string;
@@ -57,10 +131,10 @@ export type CsvRowResult = {
 };
 
 export function parseEmployeeCsv(text: string): CsvRowResult[] {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lines.length < 2) return [];
+  const rows = parseCsvRfc4180(text);
+  if (rows.length < 2) return [];
 
-  const header = lines[0].split(",").map((c) => norm(c.replace(/^"|"$/g, "")));
+  const header = rows[0].map((c) => norm(c));
   const colIndex: Record<string, number> = {};
   header.forEach((h, i) => {
     const key = ALIASES[h] ?? ALIASES[h.replace(/\s+/g, "")] ?? h;
@@ -68,8 +142,8 @@ export function parseEmployeeCsv(text: string): CsvRowResult[] {
   });
 
   const out: CsvRowResult[] = [];
-  for (let r = 1; r < lines.length; r++) {
-    const cells = lines[r].split(",").map((c) => norm(c.replace(/^"|"$/g, "")));
+  for (let r = 1; r < rows.length; r++) {
+    const cells = rows[r].map((c) => norm(c));
     const get = (logical: string) => {
       const idx = colIndex[logical];
       if (idx === undefined) return "";

@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   employeeFindFirst,
@@ -15,16 +14,8 @@ import { writeAudit } from "@/lib/audit";
 import { QUARTERLY_ITEM, type QuarterlyItemKey } from "@/lib/business-rules";
 import { normalizeQuarterlyPaymentMonths, validateQuarterlyPaymentMonths } from "@/lib/domain/schedule";
 import { resolveActionTenant } from "@/lib/tenant-context";
-
-function dec(s: string) {
-  return Number(s.replace(/,/g, "") || "0");
-}
-
-function optDec(s: string | null): number | null {
-  if (s === null || s === "") return null;
-  const n = Number(s.replace(/,/g, ""));
-  return Number.isFinite(n) ? n : null;
-}
+import { toNum0, toNumOrNull } from "@/lib/util/number";
+import { revalidateQuarterlyArtifacts, revalidateScheduleArtifacts } from "@/lib/util/revalidate";
 
 export type QState = { 오류?: string; 성공?: boolean } | null;
 
@@ -49,13 +40,8 @@ export async function saveMonthlyIncentiveAccrualYearFormAction(formData: FormDa
 }
 
 function parseOptionalWonField(raw: string): number | null {
-  const s = String(raw ?? "")
-    .replace(/,/g, "")
-    .trim();
-  if (s === "") return null;
-  const n = Number(s);
-  if (!Number.isFinite(n)) return null;
-  return Math.round(n);
+  const n = toNumOrNull(raw);
+  return n == null ? null : Math.round(n);
 }
 
 export async function saveMonthlyIncentiveAccrualYearAction(_: QState, formData: FormData): Promise<QState> {
@@ -103,8 +89,7 @@ export async function saveMonthlyIncentiveAccrualYearAction(_: QState, formData:
     return { 오류: "저장 실패" };
   }
 
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/salary-inclusion-report");
+  revalidateScheduleArtifacts();
   return { 성공: true };
 }
 
@@ -123,14 +108,14 @@ export async function saveQuarterlyRatesAction(_: QState, formData: FormData): P
         tenantId: ctx.tenantId,
         year,
         itemKey,
-        amountPerInfant: optDec(String(formData.get(`${itemKey}_infant`) ?? "")),
-        amountPerPreschool: optDec(String(formData.get(`${itemKey}_pre`) ?? "")),
-        amountPerTeen: optDec(String(formData.get(`${itemKey}_teen`) ?? "")),
-        amountPerParent: optDec(String(formData.get(`${itemKey}_par`) ?? "")),
-        amountPerInLaw: optDec(String(formData.get(`${itemKey}_inlaw`) ?? "")),
-        flatAmount: optDec(String(formData.get(`${itemKey}_flat`) ?? "")),
-        percentInsurance: optDec(String(formData.get(`${itemKey}_pins`) ?? "")),
-        percentLoanInterest: optDec(String(formData.get(`${itemKey}_ploan`) ?? "")),
+        amountPerInfant: toNumOrNull(formData.get(`${itemKey}_infant`)),
+        amountPerPreschool: toNumOrNull(formData.get(`${itemKey}_pre`)),
+        amountPerTeen: toNumOrNull(formData.get(`${itemKey}_teen`)),
+        amountPerParent: toNumOrNull(formData.get(`${itemKey}_par`)),
+        amountPerInLaw: toNumOrNull(formData.get(`${itemKey}_inlaw`)),
+        flatAmount: toNumOrNull(formData.get(`${itemKey}_flat`)),
+        percentInsurance: toNumOrNull(formData.get(`${itemKey}_pins`)),
+        percentLoanInterest: toNumOrNull(formData.get(`${itemKey}_ploan`)),
       });
     }
   } catch (e) {
@@ -145,8 +130,7 @@ export async function saveQuarterlyRatesAction(_: QState, formData: FormData): P
     entity: "QuarterlyRate",
     entityId: String(year),
   });
-  revalidatePath("/dashboard/quarterly");
-  revalidatePath("/dashboard/schedule");
+  revalidateQuarterlyArtifacts();
   return { 성공: true };
 }
 
@@ -183,7 +167,7 @@ export async function saveQuarterlyEmployeeConfigAction(_: QState, formData: For
   const emp = await employeeFindFirst(parsed.data.employeeId, ctx.tenantId);
   if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
 
-  const amount = dec(parsed.data.amount);
+  const amount = toNum0(parsed.data.amount);
   await quarterlyEmployeeConfigUpsert({
     employeeId: emp.id,
     year: parsed.data.year,
@@ -198,8 +182,7 @@ export async function saveQuarterlyEmployeeConfigAction(_: QState, formData: For
     entity: "QuarterlyEmployeeConfig",
     entityId: `${emp.id}:${parsed.data.year}:${parsed.data.itemKey}`,
   });
-  revalidatePath("/dashboard/quarterly");
-  revalidatePath("/dashboard/schedule");
+  revalidateQuarterlyArtifacts();
   return { 성공: true };
 }
 
@@ -245,8 +228,7 @@ export async function applyQuarterlyTemplateAction(_: QState, formData: FormData
     entityId: emp.id,
     payload: { year, paymentMonths },
   });
-  revalidatePath("/dashboard/quarterly");
-  revalidatePath("/dashboard/schedule");
+  revalidateQuarterlyArtifacts();
   return { 성공: true };
 }
 
@@ -259,12 +241,9 @@ export async function saveMonthlyNoteAction(_: QState, formData: FormData): Prom
   const year = parseInt(String(formData.get("year") ?? ""), 10);
   const month = parseInt(String(formData.get("month") ?? ""), 10);
   const optionalWelfareText = String(formData.get("optionalWelfareText") ?? "") || null;
-  const extra = String(formData.get("optionalExtraAmount") ?? "").replace(/,/g, "");
-  const optionalExtraAmount = extra === "" ? null : Number(extra);
-  const incAcc = String(formData.get("incentiveAccrualAmount") ?? "").replace(/,/g, "");
-  const incentiveAccrualAmount = incAcc === "" ? null : Number(incAcc);
-  const incWelf = String(formData.get("incentiveWelfarePaymentAmount") ?? "").replace(/,/g, "");
-  const incentiveWelfarePaymentAmount = incWelf === "" ? null : Number(incWelf);
+  const optionalExtraAmount = toNumOrNull(formData.get("optionalExtraAmount"));
+  const incentiveAccrualAmount = toNumOrNull(formData.get("incentiveAccrualAmount"));
+  const incentiveWelfarePaymentAmount = toNumOrNull(formData.get("incentiveWelfarePaymentAmount"));
 
   if (!employeeId || !Number.isFinite(year) || month < 1 || month > 12) {
     return { 오류: "입력 오류" };
@@ -279,14 +258,9 @@ export async function saveMonthlyNoteAction(_: QState, formData: FormData): Prom
     month,
     optionalWelfareText,
     optionalExtraAmount,
-    incentiveAccrualAmount:
-      incentiveAccrualAmount != null && Number.isFinite(incentiveAccrualAmount) ? incentiveAccrualAmount : null,
-    incentiveWelfarePaymentAmount:
-      incentiveWelfarePaymentAmount != null && Number.isFinite(incentiveWelfarePaymentAmount)
-        ? incentiveWelfarePaymentAmount
-        : null,
+    incentiveAccrualAmount,
+    incentiveWelfarePaymentAmount,
   });
-  revalidatePath("/dashboard/schedule");
-  revalidatePath("/dashboard/salary-inclusion-report");
+  revalidateScheduleArtifacts();
   return { 성공: true };
 }

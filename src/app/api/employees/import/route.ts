@@ -1,29 +1,17 @@
 import { NextResponse } from "next/server";
-import { canAccessAnyTenant, getSession } from "@/lib/session";
 import { canEditEmployees } from "@/lib/permissions";
 import { parseEmployeeCsv } from "@/lib/csv-import";
 import { writeAudit } from "@/lib/audit";
-import { employeeUpsertByTenantCode, userTenantFind } from "@/lib/pb/repository";
-
-async function resolveTenantIdForApi(session: NonNullable<Awaited<ReturnType<typeof getSession>>>) {
-  if (!session.activeTenantId) {
-    return { ok: false as const, 응답: NextResponse.json({ 오류: "업체를 먼저 선택하세요." }, { status: 400 }) };
-  }
-  const tenantId = session.activeTenantId;
-  if (canAccessAnyTenant(session)) return { ok: true as const, tenantId };
-  const ut = await userTenantFind(session.sub, tenantId);
-  if (!ut) return { ok: false as const, 응답: NextResponse.json({ 오류: "권한 없음" }, { status: 403 }) };
-  return { ok: true as const, tenantId };
-}
+import { employeeUpsertByTenantCode } from "@/lib/pb/repository";
+import { requireApiCallerTenant } from "@/lib/api-tenant";
 
 export async function POST(req: Request) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ 오류: "로그인 필요" }, { status: 401 });
-  if (!canEditEmployees(session.role)) return NextResponse.json({ 오류: "권한 없음" }, { status: 403 });
-
-  const rTen = await resolveTenantIdForApi(session);
-  if (!rTen.ok) return rTen.응답;
-  const { tenantId } = rTen;
+  const caller = await requireApiCallerTenant();
+  if (!caller.ok) return caller.response;
+  if (!canEditEmployees(caller.role)) {
+    return NextResponse.json({ 오류: "권한 없음" }, { status: 403 });
+  }
+  const { tenantId, userId } = caller;
 
   const text = await req.text();
   const rows = parseEmployeeCsv(text);
@@ -85,7 +73,7 @@ export async function POST(req: Request) {
   }
 
   await writeAudit({
-    userId: session.sub,
+    userId,
     tenantId,
     action: "CSV_IMPORT",
     entity: "Employee",
