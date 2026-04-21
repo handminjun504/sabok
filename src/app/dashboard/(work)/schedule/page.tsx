@@ -28,9 +28,9 @@ import {
 import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 import { additionalReserveStatus, summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
 import {
-  saveMonthlyIncentiveAccrualYearFormAction,
   saveMonthlyNoteFormAction,
   setMonthPaidConfirmedAction,
+  setMonthlyIncentiveAccrualCellAction,
 } from "@/app/actions/quarterly";
 import {
   effectiveSalaryInclusionVarianceMode,
@@ -270,7 +270,7 @@ export default async function SchedulePage() {
         year={year}
         rows={incentiveAccrualRows}
         canEdit={canNote}
-        saveAction={saveMonthlyIncentiveAccrualYearFormAction}
+        setCell={setMonthlyIncentiveAccrualCellAction}
       />
     </div>
   );

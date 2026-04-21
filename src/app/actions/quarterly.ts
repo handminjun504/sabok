@@ -80,62 +80,74 @@ export async function deleteQuarterlyEmployeeConfigAction(_: QState, formData: F
   return { 성공: true };
 }
 
-export async function saveMonthlyIncentiveAccrualYearFormAction(formData: FormData): Promise<void> {
-  await saveMonthlyIncentiveAccrualYearAction(null, formData);
-}
+export type IncentiveAccrualCellResult = { ok: true } | { ok: false; 오류: string };
 
-function parseOptionalWonField(raw: string): number | null {
-  const n = toNumOrNull(raw);
-  return n == null ? null : Math.round(n);
-}
-
-export async function saveMonthlyIncentiveAccrualYearAction(_: QState, formData: FormData): Promise<QState> {
+/**
+ * 월별 발생 인센 그리드 — 한 직원·한 월 셀 한 칸만 자동 저장.
+ *
+ * - 권한: `canEditEmployees`.
+ * - 보안: employeeId → tenantId 검증(IDOR 방지).
+ * - amount === null/0/빈값 이면 그 달 노트의 incentiveAccrualAmount 만 비움. 다른 필드(인센→사복, 선택 복지, 메모)는 보존.
+ * - month 는 1~12 만 허용.
+ */
+export async function setMonthlyIncentiveAccrualCellAction(
+  employeeId: string,
+  year: number,
+  month: number,
+  amount: number | null,
+): Promise<IncentiveAccrualCellResult> {
   const ctx = await resolveActionTenant();
-  if (!ctx.ok) return { 오류: ctx.message };
-  if (!canEditEmployees(ctx.role)) return { 오류: "권한이 없습니다." };
-
-  const employeeId = String(formData.get("employeeId") ?? "");
-  const year = parseInt(String(formData.get("year") ?? ""), 10);
-  if (!employeeId || !Number.isFinite(year)) {
-    return { 오류: "입력 오류" };
+  if (!ctx.ok) return { ok: false, 오류: ctx.message };
+  if (!canEditEmployees(ctx.role)) {
+    return { ok: false, 오류: "수정 권한이 없습니다." };
   }
 
-  const emp = await employeeFindFirst(employeeId, ctx.tenantId);
-  if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
+  const yearN = Math.round(Number(year));
+  if (!Number.isFinite(yearN) || yearN < 2000 || yearN > 2100) {
+    return { ok: false, 오류: "연도가 올바르지 않습니다." };
+  }
+  const monthN = Math.round(Number(month));
+  if (!Number.isFinite(monthN) || monthN < 1 || monthN > 12) {
+    return { ok: false, 오류: "월(1~12)이 올바르지 않습니다." };
+  }
+  const empId = String(employeeId ?? "").trim();
+  if (!empId) return { ok: false, 오류: "직원 ID 가 없습니다." };
 
-  const existingList = await monthlyNoteListByEmployeeYear(emp.id, year);
-  const byMonth = new Map(existingList.map((n) => [n.month, n]));
+  const emp = await employeeFindFirst(empId, ctx.tenantId);
+  if (!emp) return { ok: false, 오류: "직원을 찾을 수 없습니다." };
+
+  /** 0 또는 빈값(null) 이면 해당 셀 제거 의도로 본다. monthlyNoteUpsert 가 이미 다른 필드를 보존해서 안전. */
+  const amtNorm =
+    amount == null || !Number.isFinite(Number(amount)) || Number(amount) <= 0
+      ? null
+      : Math.round(Number(amount));
+
+  /** 같은 월 노트가 이미 있으면 다른 필드를 그대로 보존하고 incentiveAccrualAmount 만 갱신 */
+  const existingList = await monthlyNoteListByEmployeeYear(emp.id, yearN);
+  const prev = existingList.find((n) => n.month === monthN);
+
+  if (!prev && amtNorm == null) {
+    /** 빈값을 빈 노트에 또 빈값으로 저장할 필요 없음 — no-op */
+    return { ok: true };
+  }
 
   try {
-    for (let month = 1; month <= 12; month++) {
-      const raw = String(formData.get(`incentiveAccrual_${month}`) ?? "");
-      const incentiveAccrualAmount = parseOptionalWonField(raw);
-      const prev = byMonth.get(month);
-      const optionalWelfareText = prev?.optionalWelfareText ?? null;
-      const optionalExtraAmount = prev?.optionalExtraAmount ?? null;
-      const incentiveWelfarePaymentAmount = prev?.incentiveWelfarePaymentAmount ?? null;
-
-      if (!prev && incentiveAccrualAmount == null) {
-        continue;
-      }
-
-      await monthlyNoteUpsert({
-        employeeId: emp.id,
-        year,
-        month,
-        optionalWelfareText,
-        optionalExtraAmount,
-        incentiveWelfarePaymentAmount,
-        incentiveAccrualAmount,
-      });
-    }
+    await monthlyNoteUpsert({
+      employeeId: emp.id,
+      year: yearN,
+      month: monthN,
+      optionalWelfareText: prev?.optionalWelfareText ?? null,
+      optionalExtraAmount: prev?.optionalExtraAmount ?? null,
+      incentiveAccrualAmount: amtNorm,
+      incentiveWelfarePaymentAmount: prev?.incentiveWelfarePaymentAmount ?? null,
+    });
   } catch (e) {
     console.error(e);
-    return { 오류: "저장 실패" };
+    return { ok: false, 오류: "저장에 실패했습니다." };
   }
 
   revalidateScheduleArtifacts();
-  return { 성공: true };
+  return { ok: true };
 }
 
 export async function saveQuarterlyRatesAction(_: QState, formData: FormData): Promise<QState> {
