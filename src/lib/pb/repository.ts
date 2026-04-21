@@ -668,12 +668,11 @@ export async function employeeListByTenantCodeAsc(tenantId: string): Promise<Emp
     filter: `tenantId="${esc(tenantId)}"`,
     /**
      * PB 의 `sort: "employeeCode"` 는 문자열 정렬이라 1, 10, 11, 2, 3 식으로 나온다.
-     * 코드가 거의 항상 숫자(대표이사 0 포함) 라서 JS 단계에서 자연 정렬로 다시 묶는다.
-     * - 양쪽 다 숫자 → 숫자 오름차순
-     * - 한쪽만 숫자 → 숫자 우선
-     * - 양쪽 다 비숫자 → 한국어 로케일 자연 정렬(`numeric: true`)
+     * 자연 정렬은 JS 단계에서 한 번 더 묶지만, PB 측 정렬도 안정적인 결과를 내려면 여기에 둔다.
+     * (운영 PB 의 sabok_employees 에는 `created` autodate 필드가 없는 환경이 있어,
+     *  `sort: "created"` 로 두면 400 으로 서버 컴포넌트 렌더가 통째로 깨진다 — 이 컬렉션의 모든 진입점에 영향.)
      */
-    sort: "created",
+    sort: "employeeCode",
   });
   return rows
     .map((x) => mapEmployee(asRecord(x)))
