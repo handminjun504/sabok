@@ -527,6 +527,8 @@ export async function companySettingsUpsert(
     fixedEventMonths?: Record<string, number> | null;
     /** 분기 지원 항목별 지급 월 오버라이드 — null 이면 기본값 [3,6,9,12] 사용. */
     quarterlyPayMonths?: Record<string, number[]> | null;
+    /** 대표반환 월별 금액 일정 — { 직원ID: { "월": 원금액 } }. null 이면 초기화. */
+    repReturnSchedule?: Record<string, Partial<Record<string, number>>> | null;
   }
 ): Promise<void> {
   const existing = await companySettingsByTenant(tenantId);

@@ -153,6 +153,7 @@ if (fs.existsSync(snapPath)) {
     reserveProgressNote: null,
     fixedEventMonths: null,
     quarterlyPayMonths: null,
+    repReturnSchedule: null,
   };
   const lines = fs.readFileSync(snapPath, "utf8").split(/\r?\n/).filter((l) => l.length > 0);
   const headerRow = lines[2]?.split(",").map((c) => c.trim()) ?? [];

@@ -33,6 +33,9 @@ const schema = z.object({
   quarterlyPayMonths: z
     .record(z.string(), z.array(z.number().int().min(1).max(12)))
     .nullable(),
+  repReturnSchedule: z
+    .record(z.string(), z.record(z.string(), z.number().int().min(0)))
+    .nullable(),
 });
 
 const QUARTERLY_ITEM_KEYS = [
@@ -57,6 +60,31 @@ function pickQuarterlyPayMonths(formData: FormData): Record<string, number[]> | 
     const sorted = [...new Set(raw)].sort((a, b) => a - b);
     if (sorted.join(",") === DEFAULT.join(",")) continue;
     if (sorted.length > 0) out[k] = sorted;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/**
+ * 대표반환 월별 금액 폼 파싱.
+ * 입력 name 형식: `repReturn_${employeeId}_${month}` (1~12)
+ * 0 또는 빈값은 저장하지 않는다.
+ */
+function pickRepReturnSchedule(formData: FormData): Record<string, Partial<Record<string, number>>> | null {
+  const out: Record<string, Partial<Record<string, number>>> = {};
+  for (const [name, value] of formData.entries()) {
+    if (!name.startsWith("repReturn_")) continue;
+    const parts = name.split("_");
+    if (parts.length !== 3) continue;
+    const empId = parts[1];
+    const monthStr = parts[2];
+    const mNum = parseInt(monthStr, 10);
+    if (!empId || !Number.isFinite(mNum) || mNum < 1 || mNum > 12) continue;
+    const raw = String(value).replace(/,/g, "").trim();
+    if (!raw) continue;
+    const amt = Math.round(Number(raw));
+    if (!Number.isFinite(amt) || amt <= 0) continue;
+    if (!out[empId]) out[empId] = {};
+    out[empId][monthStr] = amt;
   }
   return Object.keys(out).length ? out : null;
 }
@@ -94,6 +122,7 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
 
   const fixedEventMonths = pickFixedEventMonths(formData);
   const quarterlyPayMonths = pickQuarterlyPayMonths(formData);
+  const repReturnSchedule = pickRepReturnSchedule(formData);
   const parsed = schema.safeParse({
     foundingMonth: formData.get("foundingMonth"),
     defaultPayDay: formData.get("defaultPayDay"),
@@ -105,6 +134,7 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     surveyShowWorkerNet: formData.get("surveyShowWorkerNet") === "on",
     fixedEventMonths,
     quarterlyPayMonths,
+    repReturnSchedule,
   });
   if (!parsed.success) {
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };

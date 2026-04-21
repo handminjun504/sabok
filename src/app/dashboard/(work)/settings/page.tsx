@@ -1,4 +1,4 @@
-import { companySettingsByTenant } from "@/lib/pb/repository";
+import { companySettingsByTenant, employeeListByTenantCodeAsc } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings } from "@/lib/permissions";
 import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
@@ -9,7 +9,10 @@ import { Alert } from "@/components/ui/Alert";
 
 export default async function SettingsPage() {
   const { tenantId, role } = await requireTenantContext();
-  const s = await companySettingsByTenant(tenantId);
+  const [s, allEmployees] = await Promise.all([
+    companySettingsByTenant(tenantId),
+    employeeListByTenantCodeAsc(tenantId),
+  ]);
   const canEdit = canEditCompanySettings(role);
   const varianceMode = s?.salaryInclusionVarianceMode ?? "BOTH";
   const varianceSummary = SALARY_INCLUSION_VARIANCE_MODES.find((x) => x.value === varianceMode)?.label ?? varianceMode;
@@ -26,8 +29,13 @@ export default async function SettingsPage() {
   const quarterlyPayMonths = (s?.quarterlyPayMonths ?? null) as
     | Partial<Record<string, number[]>>
     | null;
+  const repReturnSchedule = s?.repReturnSchedule ?? null;
+  /** 대표반환 대상 직원 (flagRepReturn=true 인 직원만). 폼에서 입력 행 구성에 사용. */
+  const repReturnEmployees = allEmployees
+    .filter((e) => e.flagRepReturn)
+    .map((e) => ({ id: e.id, employeeCode: e.employeeCode, name: e.name }));
   return (
-    <div className="mx-auto max-w-xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <PageHeader
         eyebrow="환경 설정"
         title="전사 설정"
@@ -66,6 +74,8 @@ export default async function SettingsPage() {
             surveyShowWorkerNet={surveyWorker}
             fixedEventMonths={fixedEventMonths ?? undefined}
             quarterlyPayMonths={quarterlyPayMonths ?? undefined}
+            repReturnSchedule={repReturnSchedule}
+            repReturnEmployees={repReturnEmployees}
           />
         </CollapsibleEditorPanel>
       ) : (

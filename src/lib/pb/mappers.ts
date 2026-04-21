@@ -275,6 +275,7 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     reserveProgressNote: textOrNull(r.reserveProgressNote),
     fixedEventMonths: parseFixedEventMonths(r.fixedEventMonths),
     quarterlyPayMonths: parseQuarterlyPayMonths(r.quarterlyPayMonths),
+    repReturnSchedule: parseRepReturnSchedule(r.repReturnSchedule),
   };
 }
 
@@ -283,6 +284,36 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
  * 키는 QUARTERLY_ITEM 값(문자열), 값은 1~12 정수 배열(중복 제거·정렬).
  * 결과가 비면 null.
  */
+/**
+ * 대표반환 월별 금액 일정.
+ * 구조: { "직원ID": { "1": 금액, "3": 금액, ... } }
+ * 허용: 내부 값이 0 이하이거나 유한수가 아니면 키를 제거.
+ */
+function parseRepReturnSchedule(v: unknown): Record<string, Partial<Record<string, number>>> | null {
+  let raw: unknown = v;
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    if (!t) return null;
+    try { raw = JSON.parse(t) as unknown; } catch { return null; }
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out: Record<string, Partial<Record<string, number>>> = {};
+  for (const [empId, monthMap] of Object.entries(raw as Record<string, unknown>)) {
+    if (!empId || typeof monthMap !== "object" || monthMap == null || Array.isArray(monthMap)) continue;
+    const months: Partial<Record<string, number>> = {};
+    for (const [mk, mv] of Object.entries(monthMap as Record<string, unknown>)) {
+      const mNum = parseInt(mk, 10);
+      if (!Number.isFinite(mNum) || mNum < 1 || mNum > 12) continue;
+      const amt = Math.round(Number(mv));
+      if (!Number.isFinite(amt) || amt <= 0) continue;
+      months[mk] = amt;
+    }
+    if (Object.keys(months).length > 0) out[empId] = months;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 function parseQuarterlyPayMonths(v: unknown): Partial<Record<string, number[]>> | null {
   let raw: unknown = v;
   if (raw == null) return null;

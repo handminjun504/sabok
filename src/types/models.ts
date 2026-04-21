@@ -153,6 +153,11 @@ export type CompanySettings = {
   salaryInclusionVarianceMode: SalaryInclusionVarianceMode;
   /** 조사표·직원 목록·CSV·직원 폼에 대표반환 표시. PB 필드 없으면 false */
   surveyShowRepReturn: boolean;
+  /**
+   * 대표반환 월별 금액 일정. 키: 직원 ID → 값: { "월(1~12 문자열 키)": 원 금액 }.
+   * 없는 월은 0원으로 처리. `surveyShowRepReturn`이 true 일 때만 의미가 있음.
+   */
+  repReturnSchedule: Record<string, Partial<Record<string, number>>> | null;
   surveyShowSpouseReceipt: boolean;
   surveyShowWorkerNet: boolean;
   /** PB JSON. 없으면 null */

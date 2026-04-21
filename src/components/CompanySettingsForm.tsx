@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveCompanySettingsAction, type SettingsState } from "@/app/actions/settings";
 import { SALARY_INCLUSION_VARIANCE_MODES } from "@/lib/domain/salary-inclusion-display";
+import { CommaWonInput } from "@/components/CommaWonInput";
 import type { SalaryInclusionVarianceMode } from "@/types/models";
 
 type QuarterlyItemKey = "INFANT_SCHOLARSHIP" | "PRESCHOOL_SCHOLARSHIP" | "TEEN_SCHOLARSHIP" | "PARENT_SUPPORT" | "HEALTH_INSURANCE" | "HOUSING_INTEREST" | "HOUSING_RENT";
@@ -35,6 +36,10 @@ type Props = {
   fixedEventMonths?: Partial<Record<"NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV", number>>;
   /** 분기 항목별 지급 월 — undefined/null 이면 기본값 [3,6,9,12]. */
   quarterlyPayMonths?: Partial<Record<QuarterlyItemKey, number[]>>;
+  /** 대표반환 월별 금액 일정 — { 직원ID: { "월": 원금액 } }. null 이면 미설정. */
+  repReturnSchedule?: Record<string, Partial<Record<string, number>>> | null;
+  /** 대표반환 대상 직원 목록(flagRepReturn=true 인 직원). 비어 있으면 안내 메시지 표시. */
+  repReturnEmployees?: { id: string; employeeCode: string; name: string }[];
 };
 
 const FIXED_EVENT_FIELDS: { key: "NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV"; label: string; defaultMonth: number }[] = [
@@ -59,9 +64,13 @@ export function CompanySettingsForm({
   surveyShowWorkerNet,
   fixedEventMonths,
   quarterlyPayMonths,
+  repReturnSchedule,
+  repReturnEmployees = [],
 }: Props) {
   const router = useRouter();
   const [state, formAction] = useActionState<SettingsState, FormData>(saveCompanySettingsAction, null);
+  /** 대표반환 체크 상태를 즉시 반영해 월별 금액 입력 섹션을 토글 */
+  const [repReturnOn, setRepReturnOn] = useState(surveyShowRepReturn);
 
   useEffect(() => {
     if (state?.성공) {
@@ -88,6 +97,7 @@ export function CompanySettingsForm({
           fixedEventMonths?.CHUSEOK_AUG ?? "",
           fixedEventMonths?.YEAR_END_NOV ?? "",
           JSON.stringify(quarterlyPayMonths ?? {}),
+          JSON.stringify(repReturnSchedule ?? {}),
         ].join("|")}
         action={formAction}
         className="space-y-3"
@@ -165,7 +175,12 @@ export function CompanySettingsForm({
         </p>
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs">
           <label className="flex cursor-pointer items-center gap-2">
-            <input type="checkbox" name="surveyShowRepReturn" defaultChecked={surveyShowRepReturn} />
+            <input
+              type="checkbox"
+              name="surveyShowRepReturn"
+              checked={repReturnOn}
+              onChange={(e) => setRepReturnOn(e.target.checked)}
+            />
             <span className="text-[var(--text)]">대표반환</span>
           </label>
           <label className="flex cursor-pointer items-center gap-2">
@@ -178,6 +193,59 @@ export function CompanySettingsForm({
           </label>
         </div>
       </div>
+
+      {/* 대표반환 체크 ON 시만 표시 */}
+      {repReturnOn && (
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
+          <p className="dash-field-label mb-1">대표반환 월별 금액</p>
+          <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
+            직원별 · 월별 반환 금액을 입력하세요. 빈 칸(0 원)은 저장하지 않습니다.
+            직원 상세에서 <strong className="text-[var(--text)]">대표반환</strong> 플래그를 켜야 여기 표시됩니다.
+          </p>
+          {repReturnEmployees.length === 0 ? (
+            <p className="text-xs text-[var(--warn)]">
+              대표반환 플래그가 켜진 직원이 없습니다. 직원 상세 → 복지·금액 탭에서 대표반환 체크 후 저장하세요.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-max border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-[var(--border)]">
+                    <th className="px-2 py-2 text-left text-[var(--muted)]">직원</th>
+                    {([1,2,3,4,5,6,7,8,9,10,11,12] as const).map((m) => (
+                      <th key={m} className="px-1.5 py-2 text-center tabular-nums text-[var(--muted)]">{m}월</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {repReturnEmployees.map((emp) => (
+                    <tr key={emp.id} className="border-b border-[var(--border)]/50">
+                      <td className="px-2 py-1.5 text-sm font-semibold whitespace-nowrap text-[var(--text)]">
+                        <span className="mr-1 font-mono text-[0.65rem] text-[var(--muted)]">{emp.employeeCode}</span>
+                        {emp.name}
+                      </td>
+                      {([1,2,3,4,5,6,7,8,9,10,11,12] as const).map((m) => {
+                        const saved = repReturnSchedule?.[emp.id]?.[String(m)];
+                        return (
+                          <td key={m} className="px-1 py-1">
+                            <CommaWonInput
+                              name={`repReturn_${emp.id}_${m}`}
+                              defaultValue={saved ?? null}
+                              placeholder="—"
+                              className="input w-[6.5rem] px-2 py-1 text-right text-xs tabular-nums"
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       <div>
         <span className="dash-field-label">급여포함신고·스케줄: 상한 대비 초과 / 미달 표시</span>
         <div className="mt-2 space-y-2">
