@@ -12,6 +12,7 @@ import {
   deleteQuarterlyEmployeeConfigAction,
   saveQuarterlyEmployeeConfigAction,
   saveQuarterlyRatesFormAction,
+  setItemQuarterlyPayMonthsAction,
 } from "@/app/actions/quarterly";
 import { QuarterlyConfigDeleteButton } from "@/components/QuarterlyConfigDeleteButton";
 import { QuarterlyEmployeeConfigForm } from "@/components/QuarterlyEmployeeConfigForm";
@@ -496,6 +497,7 @@ export default async function QuarterlyPage() {
                   canEdit={canCfg}
                   onSave={saveQuarterlyEmployeeConfigAction}
                   onDelete={deleteQuarterlyEmployeeConfigAction}
+                  onSetMonths={setItemQuarterlyPayMonthsAction}
                 />
               </div>
             ),

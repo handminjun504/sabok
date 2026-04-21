@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import {
+  companySettingsUpdateItemPayMonths,
   employeeFindFirst,
   monthlyNoteListByEmployeeYear,
   monthlyNoteUpsert,
@@ -21,6 +22,43 @@ import { toNum0, toNumOrNull } from "@/lib/util/number";
 import { revalidateQuarterlyArtifacts, revalidateScheduleArtifacts } from "@/lib/util/revalidate";
 
 export type QState = { 오류?: string; 경고?: string; 성공?: boolean } | null;
+
+export type ItemPayMonthsResult = { ok: true } | { ok: false; 오류: string };
+
+/**
+ * 분기 지원 항목 한 개의 지급 월을 즉시 갱신.
+ *
+ * - 권한: `canEditLevelRules` (분기 요율/설정 수정 동일).
+ * - 빈 배열 → 기본값 [3,6,9,12] 로 리셋.
+ * - 저장 후 분기 아티팩트 + 스케줄 캐시 모두 무효화.
+ */
+export async function setItemQuarterlyPayMonthsAction(
+  itemKey: string,
+  months: number[],
+): Promise<ItemPayMonthsResult> {
+  const ctx = await resolveActionTenant();
+  if (!ctx.ok) return { ok: false, 오류: ctx.message };
+  if (!canEditLevelRules(ctx.role)) {
+    return { ok: false, 오류: "분기 설정을 수정할 권한이 없습니다." };
+  }
+  const key = String(itemKey).trim();
+  if (!key) return { ok: false, 오류: "항목 키가 없습니다." };
+
+  const validMonths = months
+    .map((m) => Math.round(Number(m)))
+    .filter((m) => Number.isFinite(m) && m >= 1 && m <= 12);
+
+  try {
+    await companySettingsUpdateItemPayMonths(ctx.tenantId, key, validMonths);
+  } catch (e) {
+    console.error(e);
+    return { ok: false, 오류: "지급 월 저장에 실패했습니다." };
+  }
+
+  revalidateQuarterlyArtifacts();
+  revalidateScheduleArtifacts();
+  return { ok: true };
+}
 
 export async function saveQuarterlyRatesFormAction(formData: FormData): Promise<void> {
   await saveQuarterlyRatesAction(null, formData);

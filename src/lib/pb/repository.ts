@@ -449,6 +449,31 @@ export async function companySettingsByTenant(tenantId: string): Promise<Company
   return r ? mapCompanySettings(r) : null;
 }
 
+/**
+ * 분기 지원 한 항목의 지급 월만 갱신.
+ * 다른 항목·다른 설정 필드는 건드리지 않는다.
+ * months 가 비거나 기본값([3,6,9,12])이면 해당 키를 제거해 기본값으로 되돌린다.
+ */
+export async function companySettingsUpdateItemPayMonths(
+  tenantId: string,
+  itemKey: string,
+  months: number[],
+): Promise<void> {
+  const existing = await companySettingsByTenant(tenantId);
+  if (!existing?.id) throw new Error("전사 설정(company settings)이 없습니다.");
+  const DEFAULT = [3, 6, 9, 12];
+  const pb = await getAdminPb();
+  const prev: Partial<Record<string, number[]>> = (existing.quarterlyPayMonths as Partial<Record<string, number[]>>) ?? {};
+  const next: Partial<Record<string, number[]>> = { ...prev };
+  const sorted = [...new Set(months.filter((m) => m >= 1 && m <= 12))].sort((a, b) => a - b);
+  if (sorted.length === 0 || sorted.join(",") === DEFAULT.join(",")) {
+    delete next[itemKey];
+  } else {
+    next[itemKey] = sorted;
+  }
+  await pb.collection(C.companySettings).update(existing.id, { quarterlyPayMonths: next });
+}
+
 /** 적립금 탭 메모만 갱신(PB에 `reserveProgressNote` text 필드 필요). */
 export async function companySettingsUpdateReserveProgressNote(
   tenantId: string,

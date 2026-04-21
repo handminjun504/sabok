@@ -3,8 +3,11 @@
 import { useMemo, useState, useTransition, useCallback } from "react";
 import type { QuarterlyRate } from "@/types/models";
 import { computeQuarterlyAmountFromRates } from "@/lib/domain/schedule";
-import type { saveQuarterlyEmployeeConfigAction } from "@/app/actions/quarterly";
-import type { deleteQuarterlyEmployeeConfigAction } from "@/app/actions/quarterly";
+import type {
+  deleteQuarterlyEmployeeConfigAction,
+  saveQuarterlyEmployeeConfigAction,
+  setItemQuarterlyPayMonthsAction,
+} from "@/app/actions/quarterly";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 const DEFAULT_PAY_MONTHS: readonly number[] = [3, 6, 9, 12];
@@ -36,6 +39,7 @@ export type QuarterlyCheckEmployee = {
 
 type SaveAction = typeof saveQuarterlyEmployeeConfigAction;
 type DeleteAction = typeof deleteQuarterlyEmployeeConfigAction;
+type SetMonthsAction = typeof setItemQuarterlyPayMonthsAction;
 type SaveResult = Awaited<ReturnType<SaveAction>>;
 type DeleteResult = Awaited<ReturnType<DeleteAction>>;
 
@@ -62,6 +66,7 @@ export function QuarterlyBulkCheckGrid({
   canEdit,
   onSave,
   onDelete,
+  onSetMonths,
 }: {
   year: number;
   items: QuarterlyCheckItem[];
@@ -70,15 +75,65 @@ export function QuarterlyBulkCheckGrid({
   canEdit: boolean;
   onSave: SaveAction;
   onDelete: DeleteAction;
+  onSetMonths: SetMonthsAction;
 }) {
   const rateMap = useMemo(() => new Map(rates.map((r) => [r.itemKey, r])), [rates]);
 
   /** 낙관적 체크 상태: `${employeeId}:${itemKey}` → boolean */
   const [optimistic, setOptimistic] = useState<Map<string, boolean>>(() => new Map());
   const [cellState, setCellState] = useState<Map<string, CellState>>(() => new Map());
+
+  /**
+   * 항목별 선택 월 상태. 초기값은 props 에서 읽고, 클릭 즉시 UI에 반영(낙관적).
+   * 키: itemKey → Set<month>
+   */
+  const [monthsState, setMonthsState] = useState<Map<string, Set<number>>>(() => {
+    const m = new Map<string, Set<number>>();
+    for (const item of items) {
+      m.set(item.itemKey, new Set(item.payMonths.length ? item.payMonths : DEFAULT_PAY_MONTHS));
+    }
+    return m;
+  });
+  const [monthsSaving, setMonthsSaving] = useState<Set<string>>(() => new Set());
+  const [monthsError, setMonthsError] = useState<Map<string, string>>(() => new Map());
+
   const [, startTransition] = useTransition();
 
   const cellKey = (empId: string, itemKey: string) => `${empId}:${itemKey}`;
+
+  /** 항목의 현재 선택 월 집합. 상태에 없으면 props 초기값을 반환. */
+  const getMonthSet = useCallback((itemKey: string): Set<number> => {
+    if (monthsState.has(itemKey)) return monthsState.get(itemKey)!;
+    const item = items.find((i) => i.itemKey === itemKey);
+    return new Set(item?.payMonths.length ? item.payMonths : DEFAULT_PAY_MONTHS);
+  }, [monthsState, items]);
+
+  const toggleMonth = useCallback((itemKey: string, month: number) => {
+    if (!canEdit) return;
+    const prev = new Set(getMonthSet(itemKey));
+    if (prev.has(month)) {
+      if (prev.size === 1) return; // 최소 1개 유지
+      prev.delete(month);
+    } else {
+      prev.add(month);
+    }
+    const next = prev;
+    setMonthsState((m) => new Map(m).set(itemKey, next));
+    setMonthsError((m) => { const nm = new Map(m); nm.delete(itemKey); return nm; });
+    setMonthsSaving((s) => new Set(s).add(itemKey));
+    startTransition(async () => {
+      const res = await onSetMonths(itemKey, [...next].sort((a, b) => a - b));
+      setMonthsSaving((s) => { const ns = new Set(s); ns.delete(itemKey); return ns; });
+      if (!res.ok) {
+        setMonthsState((m) => {
+          const item = items.find((i) => i.itemKey === itemKey);
+          const fallback = new Set(item?.payMonths.length ? item.payMonths : DEFAULT_PAY_MONTHS);
+          return new Map(m).set(itemKey, fallback);
+        });
+        setMonthsError((m) => new Map(m).set(itemKey, res.오류));
+      }
+    });
+  }, [canEdit, getMonthSet, onSetMonths, items]);
 
   const isCellChecked = useCallback(
     (empId: string, itemKey: string, fallback: boolean): boolean => {
@@ -183,15 +238,47 @@ export function QuarterlyBulkCheckGrid({
     <div className="space-y-10">
       {items.map((item) => {
         const rate = rateMap.get(item.itemKey) ?? null;
-        const effectiveMonths = item.payMonths.length ? item.payMonths : DEFAULT_PAY_MONTHS;
+        const selectedMonths = getMonthSet(item.itemKey);
+        const effectiveMonths = [...selectedMonths].sort((a, b) => a - b);
+
+        const isSaving = monthsSaving.has(item.itemKey);
+        const errMsg = monthsError.get(item.itemKey);
 
         return (
           <div key={item.itemKey} className="space-y-3">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <h3 className="text-sm font-bold text-[var(--text)]">{item.label}</h3>
-              <span className="text-xs text-[var(--muted)]">
-                지급 월: <span className="font-semibold text-[var(--text)]">{effectiveMonths.join("·")}월</span>
-              </span>
+              {/* 지급 월 토글 배지 */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-[var(--muted)]">지급 월:</span>
+                {MONTHS.map((m) => {
+                  const on = selectedMonths.has(m);
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      disabled={!canEdit || isSaving}
+                      onClick={() => toggleMonth(item.itemKey, m)}
+                      title={on ? `${m}월 지급 해제` : `${m}월 지급 추가`}
+                      className={
+                        "rounded-md border px-2 py-0.5 text-xs font-semibold tabular-nums transition-colors " +
+                        (on
+                          ? "border-[var(--accent)]/50 bg-[var(--accent-soft)] text-[var(--accent-dim)] hover:opacity-80"
+                          : "border-[var(--border)] bg-[var(--surface-hover)]/40 text-[var(--muted)]/60 hover:border-[var(--border-strong)] hover:text-[var(--text)]") +
+                        (!canEdit || isSaving ? " cursor-not-allowed opacity-50" : " cursor-pointer")
+                      }
+                    >
+                      {m}월
+                    </button>
+                  );
+                })}
+                {isSaving ? (
+                  <span className="text-[0.65rem] text-[var(--muted)]">저장 중…</span>
+                ) : null}
+                {errMsg ? (
+                  <span className="text-[0.65rem] text-[var(--danger)]">{errMsg}</span>
+                ) : null}
+              </div>
             </div>
 
             <div className="surface overflow-x-auto">
@@ -295,22 +382,6 @@ export function QuarterlyBulkCheckGrid({
               </table>
             </div>
 
-            {/* 지급 월 요약 */}
-            <div className="flex flex-wrap gap-1.5">
-              {MONTHS.map((m) => (
-                <span
-                  key={m}
-                  className={
-                    "rounded-md border px-2 py-0.5 text-xs font-semibold tabular-nums " +
-                    (effectiveMonths.includes(m)
-                      ? "border-[var(--accent)]/40 bg-[var(--accent-soft)] text-[var(--accent-dim)]"
-                      : "border-[var(--border)] bg-[var(--surface-hover)]/40 text-[var(--muted)]/50")
-                  }
-                >
-                  {m}월
-                </span>
-              ))}
-            </div>
           </div>
         );
       })}
