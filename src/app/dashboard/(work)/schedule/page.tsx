@@ -225,6 +225,8 @@ export default async function SchedulePage() {
       employeeCode: emp.employeeCode,
       name: emp.name,
       incentiveAccrualByMonth,
+      /** 직원 마스터의 ‘예상 인센’ — 행 끝 ‘잔여(예상−누적)’ 비교에 사용 */
+      incentiveAmount: emp.incentiveAmount,
     };
   });
 
