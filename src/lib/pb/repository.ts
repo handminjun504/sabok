@@ -523,6 +523,8 @@ export async function companySettingsUpsert(
     surveyShowRepReturn: boolean;
     surveyShowSpouseReceipt: boolean;
     surveyShowWorkerNet: boolean;
+    /** 내장 정기 4종 귀속월 오버라이드 — null 이면 기본값(2/5/8/11) 사용. */
+    fixedEventMonths?: Record<string, number> | null;
   }
 ): Promise<void> {
   const existing = await companySettingsByTenant(tenantId);

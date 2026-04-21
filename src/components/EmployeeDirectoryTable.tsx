@@ -9,6 +9,7 @@ import type {
   MonthlyEmployeeNote,
   QuarterlyEmployeeConfig,
 } from "@/types/models";
+import type { PaymentEventKey } from "@/lib/business-rules";
 import {
   computeActualYearlyWelfareForEmployee,
   effectiveAnnualSalaryWon,
@@ -28,6 +29,8 @@ export type EmployeeDirectoryPayrollYearContext = {
   quarterly: QuarterlyEmployeeConfig[];
   monthlyNotes: MonthlyEmployeeNote[];
   customSchedule: CustomPaymentScheduleDef[];
+  /** 내장 정기 4종 귀속월 업체 오버라이드. 미전달이면 코드 기본값. */
+  fixedEventMonths?: Partial<Record<PaymentEventKey, number>>;
 };
 
 const EM = "—";
@@ -105,6 +108,7 @@ export function EmployeeDirectoryTable({
               q,
               n,
               payrollYearContext.customSchedule,
+              payrollYearContext.fixedEventMonths ?? {},
             )
           : 0;
       const salaryY = payrollYearContext != null ? effectiveAnnualSalaryWon(e) : 0;

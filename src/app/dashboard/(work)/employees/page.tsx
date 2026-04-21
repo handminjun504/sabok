@@ -12,7 +12,7 @@ import { canEditEmployees } from "@/lib/permissions";
 import { CsvImportClient } from "@/components/CsvImportClient";
 import { EmployeeCsvExportButton } from "@/components/EmployeeCsvExportButton";
 import { EmployeeDirectoryTable } from "@/components/EmployeeDirectoryTable";
-import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
+import { customPaymentScheduleRows, effectiveFixedEventMonthMap } from "@/lib/domain/payment-events";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -33,6 +33,7 @@ export default async function EmployeesPage() {
     monthlyNoteListByTenantYear(tenantId, activeYear, ids),
   ]);
   const customSchedule = customPaymentScheduleRows(settings, activeYear);
+  const fixedEventMonths = effectiveFixedEventMonthMap(settings);
   const yy = String(activeYear).slice(-2);
   const colRepReturn = settings?.surveyShowRepReturn ?? false;
   const colSpouseReceipt = settings?.surveyShowSpouseReceipt ?? false;
@@ -94,6 +95,7 @@ export default async function EmployeesPage() {
               quarterly,
               monthlyNotes: notes,
               customSchedule,
+              fixedEventMonths,
             }}
           />
         )}

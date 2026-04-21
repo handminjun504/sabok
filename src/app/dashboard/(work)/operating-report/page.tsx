@@ -10,7 +10,7 @@ import {
   tenantGetById,
 } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
-import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
+import { customPaymentScheduleRows, effectiveFixedEventMonthMap } from "@/lib/domain/payment-events";
 import {
   aggregateWelfareSpendBySource,
   allocateYearlyWelfareToLegalCategories,
@@ -45,6 +45,7 @@ export default async function OperatingReportPage() {
   ]);
 
   const customSchedule = customPaymentScheduleRows(settings, year);
+  const fixedEventMonths = effectiveFixedEventMonthMap(settings);
   const summary = computeTenantOperatingSummary(
     employees,
     year,
@@ -54,7 +55,8 @@ export default async function OperatingReportPage() {
     overrides,
     quarterly,
     notes,
-    customSchedule
+    customSchedule,
+    fixedEventMonths,
   );
 
   const spendBySource = aggregateWelfareSpendBySource(
@@ -66,7 +68,8 @@ export default async function OperatingReportPage() {
     overrides,
     quarterly,
     notes,
-    customSchedule
+    customSchedule,
+    fixedEventMonths,
   );
   const legalAlloc = allocateYearlyWelfareToLegalCategories(spendBySource, summary.totalYearlyWelfare);
 

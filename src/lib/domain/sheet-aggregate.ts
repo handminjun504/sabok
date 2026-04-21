@@ -3,6 +3,7 @@
  * 세부 월별 계산은 schedule.ts 를 사용한다.
  */
 import type { Employee, Level5Override, LevelPaymentRule, MonthlyEmployeeNote, QuarterlyEmployeeConfig } from "@/types/models";
+import type { PaymentEventKey } from "@/lib/business-rules";
 import {
   type CustomPaymentScheduleDef,
   computeActualYearlyWelfareForEmployee,
@@ -48,7 +49,8 @@ export function computeTenantOperatingSummary(
   overrides: Level5Override[],
   quarterly: QuarterlyEmployeeConfig[],
   notes: MonthlyEmployeeNote[],
-  customPaymentEvents: CustomPaymentScheduleDef[] = []
+  customPaymentEvents: CustomPaymentScheduleDef[] = [],
+  fixedEventMonthsOverride: Partial<Record<PaymentEventKey, number>> = {},
 ): TenantOperatingSummary {
   const byLevelMap = new Map<number, { count: number; sum: number }>();
   for (let lv = 1; lv <= 5; lv++) {
@@ -90,7 +92,8 @@ export function computeTenantOperatingSummary(
       ovr,
       qcfg,
       empNotes,
-      customPaymentEvents
+      customPaymentEvents,
+      fixedEventMonthsOverride,
     );
     totalYearlyWelfare += yearly;
 

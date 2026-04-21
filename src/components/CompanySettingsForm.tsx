@@ -15,7 +15,16 @@ type Props = {
   surveyShowRepReturn: boolean;
   surveyShowSpouseReceipt: boolean;
   surveyShowWorkerNet: boolean;
+  /** 내장 정기 4종 귀속월 — undefined 면 기본값(2/5/8/11). */
+  fixedEventMonths?: Partial<Record<"NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV", number>>;
 };
+
+const FIXED_EVENT_FIELDS: { key: "NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV"; label: string; defaultMonth: number }[] = [
+  { key: "NEW_YEAR_FEB", label: "연초·신년", defaultMonth: 2 },
+  { key: "FAMILY_MAY", label: "가정의 달·근로자의 날", defaultMonth: 5 },
+  { key: "CHUSEOK_AUG", label: "추석", defaultMonth: 8 },
+  { key: "YEAR_END_NOV", label: "연말", defaultMonth: 11 },
+];
 
 /**
  * 저장 후 서버 데이터와 동기화: `defaultValue`는 리마운트 시에만 반영되므로
@@ -30,6 +39,7 @@ export function CompanySettingsForm({
   surveyShowRepReturn,
   surveyShowSpouseReceipt,
   surveyShowWorkerNet,
+  fixedEventMonths,
 }: Props) {
   const router = useRouter();
   const [state, formAction] = useActionState<SettingsState, FormData>(saveCompanySettingsAction, null);
@@ -54,6 +64,10 @@ export function CompanySettingsForm({
           surveyShowRepReturn,
           surveyShowSpouseReceipt,
           surveyShowWorkerNet,
+          fixedEventMonths?.NEW_YEAR_FEB ?? "",
+          fixedEventMonths?.FAMILY_MAY ?? "",
+          fixedEventMonths?.CHUSEOK_AUG ?? "",
+          fixedEventMonths?.YEAR_END_NOV ?? "",
         ].join("|")}
         action={formAction}
         className="space-y-3"
@@ -93,6 +107,37 @@ export function CompanySettingsForm({
         <input type="checkbox" name="accrualCurrentMonthPayNext" defaultChecked={accrualCurrentMonthPayNext} />
         당월 귀속·차월 지급 (정기분 표시)
       </label>
+
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
+        <p className="dash-field-label mb-2">정기 지급 4종 — 귀속(=지급) 월</p>
+        <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
+          업체별로 행사 월을 다르게 잡고 싶을 때 사용합니다. <strong className="text-[var(--text)]">비워 두면 기본값</strong>(2/5/8/11)이 적용됩니다.
+          여기서 바꾼 월은 월별 스케줄·운영 보고·연간 합 모두에 즉시 반영됩니다.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {FIXED_EVENT_FIELDS.map((f) => {
+            const cur = fixedEventMonths?.[f.key];
+            return (
+              <div key={f.key} className="min-w-0">
+                <label className="dash-field-label whitespace-nowrap text-[0.7rem]">{f.label}</label>
+                <div className="flex items-baseline gap-1">
+                  <input
+                    name={`fixedEventMonth_${f.key}`}
+                    type="number"
+                    min={1}
+                    max={12}
+                    placeholder={`${f.defaultMonth}`}
+                    defaultValue={cur ?? ""}
+                    className="input w-[5rem] text-xs"
+                  />
+                  <span className="text-[0.7rem] text-[var(--muted)]">월</span>
+                </div>
+                <p className="mt-1 text-[0.65rem] text-[var(--muted)]">기본 {f.defaultMonth}월</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
         <p className="dash-field-label mb-2">조사표 표시 항목</p>
         <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">

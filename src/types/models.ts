@@ -159,6 +159,12 @@ export type CompanySettings = {
   paymentEventDefs: PaymentEventDefsByYear | null;
   /** 추가 적립(출연) 진행 메모 — PB `reserveProgressNote` 없으면 null */
   reserveProgressNote: string | null;
+  /**
+   * 내장 정기 지급 4종(NEW_YEAR_FEB / FAMILY_MAY / CHUSEOK_AUG / YEAR_END_NOV)의
+   * 귀속(=지급) 월 업체별 오버라이드. 없으면 코드 기본값(2/5/8/11) 사용.
+   * 키는 PaymentEventKey 의 4개 중 하나, 값은 1~12.
+   */
+  fixedEventMonths: Partial<Record<string, number>> | null;
 };
 
 export type Tenant = {

@@ -20,6 +20,9 @@ export default async function SettingsPage() {
   const surveyRep = s?.surveyShowRepReturn ?? false;
   const surveySpouse = s?.surveyShowSpouseReceipt ?? false;
   const surveyWorker = s?.surveyShowWorkerNet ?? false;
+  const fixedEventMonths = (s?.fixedEventMonths ?? null) as
+    | Partial<Record<"NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV", number>>
+    | null;
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <PageHeader
@@ -58,6 +61,7 @@ export default async function SettingsPage() {
             surveyShowRepReturn={surveyRep}
             surveyShowSpouseReceipt={surveySpouse}
             surveyShowWorkerNet={surveyWorker}
+            fixedEventMonths={fixedEventMonths ?? undefined}
           />
         </CollapsibleEditorPanel>
       ) : (

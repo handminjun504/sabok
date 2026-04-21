@@ -224,6 +224,41 @@ function textOrNull(v: unknown): string | null {
   return s === "" ? null : s;
 }
 
+/**
+ * 내장 정기 지급 4종의 귀속 월 오버라이드.
+ * - 입력은 plain object, JSON 문자열, null/undefined 모두 허용.
+ * - 키는 NEW_YEAR_FEB / FAMILY_MAY / CHUSEOK_AUG / YEAR_END_NOV 만 받아들임(타이포·미지원 키는 무시).
+ * - 값은 1~12 정수만 통과. 그 외는 무시.
+ * - 결과가 비면 null.
+ */
+const ALLOWED_FIXED_EVENT_KEYS = new Set([
+  "NEW_YEAR_FEB",
+  "FAMILY_MAY",
+  "CHUSEOK_AUG",
+  "YEAR_END_NOV",
+]);
+function parseFixedEventMonths(v: unknown): Partial<Record<string, number>> | null {
+  let raw: unknown = v;
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    if (!t) return null;
+    try {
+      raw = JSON.parse(t) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out: Partial<Record<string, number>> = {};
+  for (const [k, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (!ALLOWED_FIXED_EVENT_KEYS.has(k)) continue;
+    const n = Math.round(Number(val));
+    if (Number.isFinite(n) && n >= 1 && n <= 12) out[k] = n;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 export function mapCompanySettings(r: Record<string, unknown>): CompanySettings {
   return {
     id: String(r.id),
@@ -238,5 +273,6 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     surveyShowWorkerNet: bool(r.surveyShowWorkerNet),
     paymentEventDefs: parsePaymentEventDefs(r.paymentEventDefs),
     reserveProgressNote: textOrNull(r.reserveProgressNote),
+    fixedEventMonths: parseFixedEventMonths(r.fixedEventMonths),
   };
 }

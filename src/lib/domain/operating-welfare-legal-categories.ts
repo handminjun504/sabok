@@ -44,7 +44,8 @@ export function aggregateWelfareSpendBySource(
   overrides: Level5Override[],
   quarterly: QuarterlyEmployeeConfig[],
   notes: MonthlyEmployeeNote[],
-  customPaymentEvents: CustomPaymentScheduleDef[]
+  customPaymentEvents: CustomPaymentScheduleDef[],
+  fixedEventMonthsOverride: Partial<Record<PaymentEventKey, number>> = {},
 ): WelfareSpendBySource {
   const regularByEventKey: Record<string, number> = {};
   const quarterlyByItemKey: Record<string, number> = {};
@@ -61,7 +62,8 @@ export function aggregateWelfareSpendBySource(
       ovr,
       qcfg,
       accrualCurrentMonthPayNext,
-      customPaymentEvents
+      customPaymentEvents,
+      fixedEventMonthsOverride,
     );
     for (const row of br) {
       for (const e of row.regularEvents) {

@@ -14,7 +14,11 @@ import {
 } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings, canEditEmployees } from "@/lib/permissions";
-import { customPaymentDefsForYear, customPaymentScheduleRows } from "@/lib/domain/payment-events";
+import {
+  customPaymentDefsForYear,
+  customPaymentScheduleRows,
+  effectiveFixedEventMonthMap,
+} from "@/lib/domain/payment-events";
 import {
   buildMonthlyBreakdown,
   computeActualYearlyWelfareForEmployee,
@@ -112,12 +116,14 @@ export default async function SchedulePage() {
 
   const customDefs = customPaymentDefsForYear(settings, year);
   const customSchedule = customPaymentScheduleRows(settings, year);
+  /** 내장 정기 4종(NEW_YEAR_FEB/FAMILY_MAY/CHUSEOK_AUG/YEAR_END_NOV) 의 업체별 귀속월 오버라이드. */
+  const fixedEventMonths = effectiveFixedEventMonthMap(settings);
 
   const rows: Row[] = employees.map((emp) => {
     const ovr = overrides.filter((x) => x.employeeId === emp.id);
     const qcfg = quarterly.filter((x) => x.employeeId === emp.id);
     const empNotes = notes.filter((n) => n.employeeId === emp.id);
-    const br = buildMonthlyBreakdown(emp, year, foundingMonth, rules, ovr, qcfg, accrual, customSchedule);
+    const br = buildMonthlyBreakdown(emp, year, foundingMonth, rules, ovr, qcfg, accrual, customSchedule, fixedEventMonths);
     const noteByMonth = new Map<number, number>();
     for (const n of empNotes) {
       const extra = n.optionalExtraAmount != null ? Number(n.optionalExtraAmount) : 0;
@@ -136,7 +142,8 @@ export default async function SchedulePage() {
       ovr,
       qcfg,
       empNotes,
-      customSchedule
+      customSchedule,
+      fixedEventMonths,
     );
     const capBlocks = computeSalaryInclusionCapBlocks(
       emp,

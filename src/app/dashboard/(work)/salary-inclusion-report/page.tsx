@@ -9,7 +9,7 @@ import {
   tenantGetById,
 } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
-import { customPaymentScheduleRows } from "@/lib/domain/payment-events";
+import { customPaymentScheduleRows, effectiveFixedEventMonthMap } from "@/lib/domain/payment-events";
 import {
   SALARY_INCLUSION_VARIANCE_MODES,
   effectiveSalaryInclusionVarianceMode,
@@ -68,6 +68,7 @@ export default async function SalaryInclusionReportPage({
   ]);
 
   const customSchedule = customPaymentScheduleRows(settings, year);
+  const fixedEventMonths = effectiveFixedEventMonthMap(settings);
 
   const rows = employees.map((emp) => {
     const ovr = overrides.filter((x) => x.employeeId === emp.id);
@@ -83,7 +84,8 @@ export default async function SalaryInclusionReportPage({
       qcfg,
       empNotes,
       throughMonth,
-      customSchedule
+      customSchedule,
+      fixedEventMonths,
     );
     const capBlocks = computeSalaryInclusionCapBlocks(
       emp,

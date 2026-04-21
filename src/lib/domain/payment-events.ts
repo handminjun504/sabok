@@ -1,9 +1,40 @@
 import {
+  FIXED_EVENT_MONTH,
   PAYMENT_EVENT,
   PAYMENT_EVENT_LABELS,
   type PaymentEventKey,
 } from "@/lib/business-rules";
 import type { CompanySettings, CustomPaymentEventDef } from "@/types/models";
+
+/**
+ * 내장 정기 지급 4종(NEW_YEAR_FEB / FAMILY_MAY / CHUSEOK_AUG / YEAR_END_NOV)의
+ * 실효 귀속 월. settings.fixedEventMonths 에 1~12 정수가 있으면 그 값, 없으면 코드 기본값.
+ */
+export function effectiveFixedEventMonth(
+  eventKey: PaymentEventKey,
+  settings: CompanySettings | null,
+): number | undefined {
+  const overridden = settings?.fixedEventMonths?.[eventKey];
+  if (overridden != null && Number.isFinite(overridden) && overridden >= 1 && overridden <= 12) {
+    return Math.round(Number(overridden));
+  }
+  return FIXED_EVENT_MONTH[eventKey];
+}
+
+/**
+ * 모든 내장 4종 이벤트의 (키 → 실효 월) 맵.
+ * 표시·스케줄 빌드 시 동일한 함수가 한 번에 풀어 놓는 형태로 쓰면 N+1 lookup 을 방지한다.
+ */
+export function effectiveFixedEventMonthMap(
+  settings: CompanySettings | null,
+): Partial<Record<PaymentEventKey, number>> {
+  const out: Partial<Record<PaymentEventKey, number>> = {};
+  (Object.keys(FIXED_EVENT_MONTH) as PaymentEventKey[]).forEach((k) => {
+    const m = effectiveFixedEventMonth(k, settings);
+    if (m != null) out[k] = m;
+  });
+  return out;
+}
 
 /** 정기 지급 금액·목표 배분 시 사용하는 단위(원) — 표시가 끊어지도록 만원 단위 */
 export const PAYMENT_AMOUNT_STEP = 10_000;
