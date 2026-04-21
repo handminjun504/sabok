@@ -30,7 +30,36 @@ const schema = z.object({
       YEAR_END_NOV: z.coerce.number().int().min(1).max(12).optional(),
     })
     .nullable(),
+  quarterlyPayMonths: z
+    .record(z.string(), z.array(z.number().int().min(1).max(12)))
+    .nullable(),
 });
+
+const QUARTERLY_ITEM_KEYS = [
+  "INFANT_SCHOLARSHIP",
+  "PRESCHOOL_SCHOLARSHIP",
+  "TEEN_SCHOLARSHIP",
+  "PARENT_SUPPORT",
+  "HEALTH_INSURANCE",
+  "HOUSING_INTEREST",
+  "HOUSING_RENT",
+] as const;
+
+/** 폼에서 항목별 지급 월 체크박스를 읽어 정규화. 기본값([3,6,9,12])과 동일하면 저장 생략. */
+function pickQuarterlyPayMonths(formData: FormData): Record<string, number[]> | null {
+  const DEFAULT = [3, 6, 9, 12];
+  const out: Record<string, number[]> = {};
+  for (const k of QUARTERLY_ITEM_KEYS) {
+    const raw = formData.getAll(`quarterlyPayMonth_${k}`).map((v) => {
+      const n = Math.round(Number(String(v)));
+      return Number.isFinite(n) && n >= 1 && n <= 12 ? n : null;
+    }).filter((n): n is number => n != null);
+    const sorted = [...new Set(raw)].sort((a, b) => a - b);
+    if (sorted.join(",") === DEFAULT.join(",")) continue;
+    if (sorted.length > 0) out[k] = sorted;
+  }
+  return Object.keys(out).length ? out : null;
+}
 
 const FIXED_EVENT_DEFAULTS: Record<"NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV", number> = {
   NEW_YEAR_FEB: 2,
@@ -64,6 +93,7 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
   if (!canEditCompanySettings(ctx.role)) return { 오류: "전사 설정을 수정할 권한이 없습니다." };
 
   const fixedEventMonths = pickFixedEventMonths(formData);
+  const quarterlyPayMonths = pickQuarterlyPayMonths(formData);
   const parsed = schema.safeParse({
     foundingMonth: formData.get("foundingMonth"),
     defaultPayDay: formData.get("defaultPayDay"),
@@ -74,6 +104,7 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     surveyShowSpouseReceipt: formData.get("surveyShowSpouseReceipt") === "on",
     surveyShowWorkerNet: formData.get("surveyShowWorkerNet") === "on",
     fixedEventMonths,
+    quarterlyPayMonths,
   });
   if (!parsed.success) {
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };

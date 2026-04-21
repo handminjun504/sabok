@@ -23,6 +23,9 @@ export default async function SettingsPage() {
   const fixedEventMonths = (s?.fixedEventMonths ?? null) as
     | Partial<Record<"NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV", number>>
     | null;
+  const quarterlyPayMonths = (s?.quarterlyPayMonths ?? null) as
+    | Partial<Record<string, number[]>>
+    | null;
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <PageHeader
@@ -62,6 +65,7 @@ export default async function SettingsPage() {
             surveyShowSpouseReceipt={surveySpouse}
             surveyShowWorkerNet={surveyWorker}
             fixedEventMonths={fixedEventMonths ?? undefined}
+            quarterlyPayMonths={quarterlyPayMonths ?? undefined}
           />
         </CollapsibleEditorPanel>
       ) : (

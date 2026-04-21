@@ -274,5 +274,37 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     paymentEventDefs: parsePaymentEventDefs(r.paymentEventDefs),
     reserveProgressNote: textOrNull(r.reserveProgressNote),
     fixedEventMonths: parseFixedEventMonths(r.fixedEventMonths),
+    quarterlyPayMonths: parseQuarterlyPayMonths(r.quarterlyPayMonths),
   };
+}
+
+/**
+ * 분기 지원 항목별 지급 월 오버라이드.
+ * 키는 QUARTERLY_ITEM 값(문자열), 값은 1~12 정수 배열(중복 제거·정렬).
+ * 결과가 비면 null.
+ */
+function parseQuarterlyPayMonths(v: unknown): Partial<Record<string, number[]>> | null {
+  let raw: unknown = v;
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    if (!t) return null;
+    try {
+      raw = JSON.parse(t) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out: Partial<Record<string, number[]>> = {};
+  for (const [k, arr] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(arr)) continue;
+    const valid = [...new Set(
+      (arr as unknown[])
+        .map((x) => Math.round(Number(x)))
+        .filter((n) => Number.isFinite(n) && n >= 1 && n <= 12),
+    )].sort((a, b) => a - b);
+    if (valid.length) out[k] = valid;
+  }
+  return Object.keys(out).length ? out : null;
 }

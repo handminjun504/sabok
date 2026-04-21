@@ -9,6 +9,8 @@ import { QUARTERLY_ITEM, QUARTERLY_ITEM_LABELS, type QuarterlyItemKey } from "@/
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
 import {
   applyQuarterlyTemplateFormAction,
+  deleteQuarterlyEmployeeConfigAction,
+  saveQuarterlyEmployeeConfigAction,
   saveQuarterlyRatesFormAction,
 } from "@/app/actions/quarterly";
 import { QuarterlyConfigDeleteButton } from "@/components/QuarterlyConfigDeleteButton";
@@ -16,6 +18,10 @@ import { QuarterlyEmployeeConfigForm } from "@/components/QuarterlyEmployeeConfi
 import { CommaWonInput } from "@/components/CommaWonInput";
 import { Tabs } from "@/components/Tabs";
 import { Alert } from "@/components/ui/Alert";
+import {
+  QuarterlyBulkCheckGrid,
+  type QuarterlyCheckItem,
+} from "@/components/QuarterlyBulkCheckGrid";
 
 /** 요율 표 입력 — 모든 셀 동일 폭으로 정렬 */
 const INPUT_QTR_WIDE =
@@ -62,6 +68,51 @@ export default async function QuarterlyPage() {
   const items = Object.values(QUARTERLY_ITEM) as QuarterlyItemKey[];
   const canRates = canEditLevelRules(role);
   const canCfg = canEditEmployees(role);
+
+  /**
+   * 분기 항목별 지급 월 — settings.quarterlyPayMonths 에 있으면 그 값, 없으면 기본값 [3,6,9,12].
+   * `QuarterlyCheckItem` 구성 시 각 항목에 전달.
+   */
+  const DEFAULT_Q_MONTHS: readonly number[] = [3, 6, 9, 12];
+  function effectiveQMonths(itemKey: string): readonly number[] {
+    const saved = settings?.quarterlyPayMonths?.[itemKey];
+    return saved && saved.length > 0 ? saved : DEFAULT_Q_MONTHS;
+  }
+
+  /**
+   * configByEmployeeId: 항목별로 현재 설정된 직원 ID → config ID 맵.
+   * 체크박스가 ON 인지, 삭제 시 어떤 ID를 쓰는지 판단에 사용.
+   */
+  const checkItems: QuarterlyCheckItem[] = items.map((itemKey) => {
+    const configByEmployeeId: Record<string, string> = {};
+    for (const c of configs) {
+      if (c.itemKey === itemKey) {
+        configByEmployeeId[c.employeeId] = c.id;
+      }
+    }
+    return {
+      itemKey,
+      label: QUARTERLY_ITEM_LABELS[itemKey],
+      configByEmployeeId,
+      payMonths: effectiveQMonths(itemKey),
+    };
+  });
+
+  const checkEmployees = employees.map((e) => ({
+    id: e.id,
+    employeeCode: e.employeeCode,
+    name: e.name,
+    childrenInfant: e.childrenInfant ?? 0,
+    childrenPreschool: e.childrenPreschool ?? 0,
+    childrenTeen: e.childrenTeen ?? 0,
+    parentsCount: e.parentsCount ?? 0,
+    parentsInLawCount: e.parentsInLawCount ?? 0,
+    insurancePremium: e.insurancePremium ?? 0,
+    loanInterest: e.loanInterest ?? 0,
+    monthlyRentAmount: e.monthlyRentAmount ?? null,
+    resignYear: e.resignYear ?? null,
+    resignMonth: e.resignMonth ?? null,
+  }));
 
   /**
    * “지급월 선택이 반영 안 됨” 사고를 빠르게 진단:
@@ -427,6 +478,28 @@ export default async function QuarterlyPage() {
       ) : null}
       <Tabs
         tabs={[
+          {
+            label: "대상자 체크",
+            content: (
+              <div className="surface dash-panel-pad">
+                <p className="mb-4 text-xs leading-relaxed text-[var(--muted)]">
+                  항목별로 직원을 체크하면 <strong className="text-[var(--text)]">요율 × 인원수</strong>로 자동 계산된
+                  금액이 설정됩니다. 지급 월은{" "}
+                  <strong className="text-[var(--text)]">전사 설정 → 분기 지원 항목별 지급 월</strong>에서 변경할 수
+                  있습니다. 체크 해제 시 해당 직원의 분기 설정이 삭제됩니다.
+                </p>
+                <QuarterlyBulkCheckGrid
+                  year={year}
+                  items={checkItems}
+                  employees={checkEmployees}
+                  rates={rates}
+                  canEdit={canCfg}
+                  onSave={saveQuarterlyEmployeeConfigAction}
+                  onDelete={deleteQuarterlyEmployeeConfigAction}
+                />
+              </div>
+            ),
+          },
           { label: "요율 템플릿", content: ratesTab },
           { label: "직원별 분기 항목", content: configTab },
         ]}

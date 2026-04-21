@@ -6,6 +6,22 @@ import { saveCompanySettingsAction, type SettingsState } from "@/app/actions/set
 import { SALARY_INCLUSION_VARIANCE_MODES } from "@/lib/domain/salary-inclusion-display";
 import type { SalaryInclusionVarianceMode } from "@/types/models";
 
+type QuarterlyItemKey = "INFANT_SCHOLARSHIP" | "PRESCHOOL_SCHOLARSHIP" | "TEEN_SCHOLARSHIP" | "PARENT_SUPPORT" | "HEALTH_INSURANCE" | "HOUSING_INTEREST" | "HOUSING_RENT";
+
+const QUARTERLY_ITEM_LABELS_SHORT: Record<QuarterlyItemKey, string> = {
+  INFANT_SCHOLARSHIP: "영유아 장학금",
+  PRESCHOOL_SCHOLARSHIP: "미취학 장학금",
+  TEEN_SCHOLARSHIP: "청소년 장학금",
+  PARENT_SUPPORT: "부모 봉양",
+  HEALTH_INSURANCE: "건강보험",
+  HOUSING_INTEREST: "주택이자",
+  HOUSING_RENT: "월세",
+};
+
+const ALL_QUARTERLY_KEYS: QuarterlyItemKey[] = ["INFANT_SCHOLARSHIP", "PRESCHOOL_SCHOLARSHIP", "TEEN_SCHOLARSHIP", "PARENT_SUPPORT", "HEALTH_INSURANCE", "HOUSING_INTEREST", "HOUSING_RENT"];
+const MONTHS_1_12 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+const DEFAULT_QUARTERLY_PAY_MONTHS: readonly number[] = [3, 6, 9, 12];
+
 type Props = {
   foundingMonth: number;
   defaultPayDay: number;
@@ -17,6 +33,8 @@ type Props = {
   surveyShowWorkerNet: boolean;
   /** 내장 정기 4종 귀속월 — undefined 면 기본값(2/5/8/11). */
   fixedEventMonths?: Partial<Record<"NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV", number>>;
+  /** 분기 항목별 지급 월 — undefined/null 이면 기본값 [3,6,9,12]. */
+  quarterlyPayMonths?: Partial<Record<QuarterlyItemKey, number[]>>;
 };
 
 const FIXED_EVENT_FIELDS: { key: "NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV"; label: string; defaultMonth: number }[] = [
@@ -40,6 +58,7 @@ export function CompanySettingsForm({
   surveyShowSpouseReceipt,
   surveyShowWorkerNet,
   fixedEventMonths,
+  quarterlyPayMonths,
 }: Props) {
   const router = useRouter();
   const [state, formAction] = useActionState<SettingsState, FormData>(saveCompanySettingsAction, null);
@@ -68,6 +87,7 @@ export function CompanySettingsForm({
           fixedEventMonths?.FAMILY_MAY ?? "",
           fixedEventMonths?.CHUSEOK_AUG ?? "",
           fixedEventMonths?.YEAR_END_NOV ?? "",
+          JSON.stringify(quarterlyPayMonths ?? {}),
         ].join("|")}
         action={formAction}
         className="space-y-3"
@@ -181,6 +201,45 @@ export function CompanySettingsForm({
           ))}
         </div>
       </div>
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
+        <p className="dash-field-label mb-2">분기 지원 항목별 지급 월</p>
+        <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
+          항목별로 어느 달에 지급할지 선택합니다. 빈 칸(미선택)이면 기본값{" "}
+          <strong className="text-[var(--text)]">3·6·9·12월</strong>이 적용됩니다.
+          여기서 설정한 달이 분기 지원금 대상자 체크 화면의 기본 지급 월로 사용됩니다.
+        </p>
+        <div className="space-y-3">
+          {ALL_QUARTERLY_KEYS.map((key) => {
+            const saved = quarterlyPayMonths?.[key];
+            const selected = new Set(saved ?? DEFAULT_QUARTERLY_PAY_MONTHS);
+            return (
+              <div key={key} className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="w-28 shrink-0 text-xs font-semibold text-[var(--text)]">
+                  {QUARTERLY_ITEM_LABELS_SHORT[key]}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {MONTHS_1_12.map((m) => (
+                    <label
+                      key={m}
+                      className="flex cursor-pointer items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-medium text-[var(--text)]"
+                    >
+                      <input
+                        type="checkbox"
+                        name={`quarterlyPayMonth_${key}`}
+                        value={String(m)}
+                        defaultChecked={selected.has(m)}
+                        className="size-3.5 rounded"
+                      />
+                      {m}월
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
         <button type="submit" className="btn btn-primary">
           저장
         </button>

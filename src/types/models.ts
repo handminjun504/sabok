@@ -165,6 +165,11 @@ export type CompanySettings = {
    * 키는 PaymentEventKey 의 4개 중 하나, 값은 1~12.
    */
   fixedEventMonths: Partial<Record<string, number>> | null;
+  /**
+   * 분기 지원 항목별 지급 월 설정. 키는 QuarterlyItemKey, 값은 1~12 의 정수 배열.
+   * 없으면 코드 기본값 [3,6,9,12] 사용.
+   */
+  quarterlyPayMonths: Partial<Record<string, number[]>> | null;
 };
 
 export type Tenant = {
