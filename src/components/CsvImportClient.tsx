@@ -79,28 +79,23 @@ export function CsvImportClient() {
       </p>
 
       {/* 파일 선택 */}
-      <div
-        className="neu-field mt-4 flex cursor-pointer items-center gap-3 rounded-xl px-4 py-3 hover:opacity-80"
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <label className="mt-4 flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-alt,transparent)] px-4 py-6 text-center transition hover:border-[var(--primary)] hover:bg-[var(--primary-subtle,transparent)]">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
         </svg>
-        <span className="text-sm">
-          {fileName ? (
-            <span className="font-medium text-[var(--text)]">{fileName}</span>
-          ) : (
-            <span className="text-[var(--muted)]">파일 선택 (*.csv)</span>
-          )}
-        </span>
-        {fileName && (
-          <button
-            type="button"
-            className="ml-auto text-xs text-[var(--muted)] hover:text-[var(--text)]"
-            onClick={(e) => { e.stopPropagation(); reset(); }}
-          >
-            ✕
-          </button>
+        {fileName ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-[var(--text)]">{fileName}</span>
+            <button
+              type="button"
+              className="text-xs text-[var(--muted)] hover:text-[var(--text)]"
+              onClick={(e) => { e.preventDefault(); reset(); }}
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <span className="text-sm text-[var(--muted)]">클릭해서 CSV 파일 선택</span>
         )}
         <input
           ref={fileInputRef}
@@ -109,7 +104,7 @@ export function CsvImportClient() {
           className="hidden"
           onChange={handleFileChange}
         />
-      </div>
+      </label>
 
       {/* 또는 텍스트 직접 입력 */}
       <p className="mt-3 text-xs text-[var(--muted)]">또는 직접 붙여넣기</p>
