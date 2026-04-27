@@ -46,6 +46,11 @@ export type ScheduleCardRow = {
   linesByMonth: Record<number, ScheduleWelfareLine[]>;
   yearlyWelfare: number;
   salaryMonth: number;
+  /**
+   * 월별 조정급여(원) — 중도 재분배로 월별 오버라이드가 있으면 월별로 다를 수 있다.
+   * 없으면 생략 가능(없는 경우 기존 `salaryMonth` 로 fallback).
+   */
+  salaryByMonth?: Record<number, number>;
   /** 조사표·안내 멘트용 */
   flagRepReturn: boolean;
   discretionaryAmount: number | null;

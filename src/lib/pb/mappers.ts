@@ -1,8 +1,14 @@
 import { parseSalaryInclusionVarianceMode, parseSalaryInclusionVarianceModeOrNull } from "@/lib/domain/salary-inclusion-display";
 import type {
+  BaseAssetAnnual,
+  BizResultAnnual,
+  BizResultItem,
   CompanySettings,
+  ContribUsageAnnual,
   CustomPaymentEventDef,
   Employee,
+  FundOperationAnnual,
+  FundSourceAnnual,
   Level5Override,
   LevelPaymentRule,
   LevelTarget,
@@ -11,6 +17,7 @@ import type {
   PaymentEventDefsByYear,
   QuarterlyEmployeeConfig,
   QuarterlyRate,
+  RealEstateHolding,
 } from "@/types/models";
 
 function num(v: unknown, fallback = 0): number {
@@ -113,6 +120,7 @@ export function mapQuarterlyRate(r: Record<string, unknown>): QuarterlyRate {
     id: String(r.id),
     tenantId: String(r.tenantId),
     year: num(r.year),
+    level: num(r.level, 0),
     itemKey: String(r.itemKey),
     amountPerInfant: numNull(r.amountPerInfant),
     amountPerPreschool: numNull(r.amountPerPreschool),
@@ -184,6 +192,14 @@ export function mapMonthlyNote(r: Record<string, unknown>): MonthlyEmployeeNote 
     optionalExtraAmount: numNull(r.optionalExtraAmount),
     incentiveAccrualAmount: numNull(r.incentiveAccrualAmount),
     incentiveWelfarePaymentAmount: numNull(r.incentiveWelfarePaymentAmount),
+    welfareOverrideAmount: numNull(r.welfareOverrideAmount),
+    adjustedSalaryOverrideAmount: numNull(r.adjustedSalaryOverrideAmount),
+    levelOverride: (() => {
+      const v = numNull(r.levelOverride);
+      if (v === null) return null;
+      const lv = Math.round(v);
+      return lv >= 1 && lv <= 5 ? lv : null;
+    })(),
   };
 }
 
@@ -312,6 +328,135 @@ function parseRepReturnSchedule(v: unknown): Record<string, Partial<Record<strin
     if (Object.keys(months).length > 0) out[empId] = months;
   }
   return Object.keys(out).length ? out : null;
+}
+
+export function mapBaseAssetAnnual(r: Record<string, unknown>): BaseAssetAnnual {
+  return {
+    id: String(r.id),
+    tenantId: String(r.tenantId),
+    year: num(r.year),
+    prevYearEndTotal: numNull(r.prevYearEndTotal),
+    employerContributionOverride: numNull(r.employerContributionOverride),
+    investReturnAndCarryover: numNull(r.investReturnAndCarryover),
+    nonEmployerContributionOverride: numNull(r.nonEmployerContributionOverride),
+    mergerIn: numNull(r.mergerIn),
+    splitOut: numNull(r.splitOut),
+    currentYearEndTotalOverride: numNull(r.currentYearEndTotalOverride),
+  };
+}
+
+export function mapFundOperationAnnual(r: Record<string, unknown>): FundOperationAnnual {
+  return {
+    id: String(r.id),
+    tenantId: String(r.tenantId),
+    year: num(r.year),
+    deposit: numNull(r.deposit),
+    trust: numNull(r.trust),
+    security: numNull(r.security),
+    ownStock: numNull(r.ownStock),
+    reit: numNull(r.reit),
+    etc: numNull(r.etc),
+    loan: numNull(r.loan),
+  };
+}
+
+function parseContribUsageRatio(v: unknown): 50 | 80 | 90 | null {
+  if (v == null || v === "") return null;
+  const n = Math.round(Number(v));
+  return n === 50 || n === 80 || n === 90 ? (n as 50 | 80 | 90) : null;
+}
+
+function parsePrevBaseAssetUsageRatio(v: unknown): 20 | 25 | 30 | null {
+  if (v == null || v === "") return null;
+  const n = Math.round(Number(v));
+  return n === 20 || n === 25 || n === 30 ? (n as 20 | 25 | 30) : null;
+}
+
+export function mapFundSourceAnnual(r: Record<string, unknown>): FundSourceAnnual {
+  return {
+    id: String(r.id),
+    tenantId: String(r.tenantId),
+    year: num(r.year),
+    operationIncome: numNull(r.operationIncome),
+    contribUsageRatio: parseContribUsageRatio(r.contribUsageRatio),
+    contribUsageAmount: numNull(r.contribUsageAmount),
+    excessCapitalUsage: numNull(r.excessCapitalUsage),
+    prevBaseAssetUsageRatio: parsePrevBaseAssetUsageRatio(r.prevBaseAssetUsageRatio),
+    prevBaseAssetUsageAmount: numNull(r.prevBaseAssetUsageAmount),
+    jointFundSupport: numNull(r.jointFundSupport),
+    carryover: numNull(r.carryover),
+  };
+}
+
+export function mapContribUsageAnnual(r: Record<string, unknown>): ContribUsageAnnual {
+  return {
+    id: String(r.id),
+    tenantId: String(r.tenantId),
+    year: num(r.year),
+    u80RecipientCount: numNull(r.u80RecipientCount),
+    u80VendorWelfareAmount: numNull(r.u80VendorWelfareAmount),
+    u90RecipientCount: numNull(r.u90RecipientCount),
+    u90VendorWelfareAmount: numNull(r.u90VendorWelfareAmount),
+    u20BaseAssetUsed: numNull(r.u20BaseAssetUsed),
+    u20VendorWelfareAmount: numNull(r.u20VendorWelfareAmount),
+    u20RecipientCount: numNull(r.u20RecipientCount),
+    u25BaseAssetUsed: numNull(r.u25BaseAssetUsed),
+    u25VendorWelfareAmount: numNull(r.u25VendorWelfareAmount),
+    u25RecipientCount: numNull(r.u25RecipientCount),
+    u30BaseAssetUsed: numNull(r.u30BaseAssetUsed),
+    u30VendorWelfareAmount: numNull(r.u30VendorWelfareAmount),
+    u30RecipientCount: numNull(r.u30RecipientCount),
+  };
+}
+
+/** 사업실적 구분별 저장 객체: key 는 법정 코드 문자열("57"~"66"). */
+function parseBizItems(v: unknown): Record<string, BizResultItem> {
+  let raw: unknown = v;
+  if (raw == null || raw === "") return {};
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw) as unknown;
+    } catch {
+      return {};
+    }
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, BizResultItem> = {};
+  for (const [k, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (val == null || typeof val !== "object" || Array.isArray(val)) continue;
+    const rec = val as Record<string, unknown>;
+    out[String(k)] = {
+      purposeAmountOverride: numNull(rec.purposeAmountOverride),
+      purposeCount: numNull(rec.purposeCount),
+      loanAmount: numNull(rec.loanAmount),
+      loanCount: numNull(rec.loanCount),
+    };
+  }
+  return out;
+}
+
+export function mapBizResultAnnual(r: Record<string, unknown>): BizResultAnnual {
+  return {
+    id: String(r.id),
+    tenantId: String(r.tenantId),
+    year: num(r.year),
+    bizItems: parseBizItems(r.bizItems),
+    operationCost: numNull(r.operationCost),
+    optionalAmountOverride: numNull(r.optionalAmountOverride),
+    optionalRecipientsOverride: numNull(r.optionalRecipientsOverride),
+  };
+}
+
+export function mapRealEstateHolding(r: Record<string, unknown>): RealEstateHolding {
+  return {
+    id: String(r.id),
+    tenantId: String(r.tenantId),
+    year: num(r.year),
+    seq: num(r.seq),
+    name: r.name == null || r.name === "" ? null : String(r.name),
+    amount: numNull(r.amount),
+    acquiredAt: r.acquiredAt == null || r.acquiredAt === "" ? null : String(r.acquiredAt).slice(0, 10),
+  };
 }
 
 function parseQuarterlyPayMonths(v: unknown): Partial<Record<string, number[]>> | null {

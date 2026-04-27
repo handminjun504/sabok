@@ -29,9 +29,24 @@ export function LevelRulesMatrixForm({
   const [isPending, startTransition] = useTransition();
   const customSet = useMemo(() => new Set(customEventKeys), [customEventKeys]);
 
+  const [liveValues, setLiveValues] = useState<Record<string, number>>(() => ({ ...amountsByLevelEvent }));
+
+  const levelTotal = useCallback(
+    (lv: number) => eventKeys.reduce((sum, ev) => sum + (liveValues[`${lv}_${ev}`] ?? 0), 0),
+    [eventKeys, liveValues]
+  );
+
+  const handleUserChange = useCallback(
+    (level: number, eventKey: string) => (value: number) => {
+      setLiveValues((prev) => ({ ...prev, [`${level}_${eventKey}`]: Number.isFinite(value) ? value : 0 }));
+    },
+    []
+  );
+
   const commitCell = useCallback(
     (level: number, eventKey: string) => (amount: number) => {
       setCellError(null);
+      setLiveValues((prev) => ({ ...prev, [`${level}_${eventKey}`]: amount }));
       startTransition(async () => {
         const r = await saveLevelPaymentRuleCellAction(year, level, eventKey, amount);
         if (!r.ok) setCellError(r.오류);
@@ -91,6 +106,9 @@ export function LevelRulesMatrixForm({
                     </div>
                   </th>
                 ))}
+                <th className="dash-table-vline-strong px-2 py-2 text-center text-sm font-bold text-[var(--text)]">
+                  합계
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -112,9 +130,15 @@ export function LevelRulesMatrixForm({
                         className={INPUT_CLS}
                         commitDebounceMs={1200}
                         onCommitValue={commitCell(lv, ev)}
+                        onUserChange={handleUserChange(lv, ev)}
                       />
                     </td>
                   ))}
+                  <td className="dash-table-vline-strong px-2 py-1.5 text-center">
+                    <span className="inline-block min-w-[6rem] font-mono text-sm font-bold tabular-nums text-[var(--primary)]">
+                      {levelTotal(lv).toLocaleString("ko-KR")}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

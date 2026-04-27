@@ -25,6 +25,7 @@ export type QuarterlyCheckEmployee = {
   id: string;
   employeeCode: string;
   name: string;
+  level: number;
   childrenInfant: number;
   childrenPreschool: number;
   childrenTeen: number;
@@ -77,7 +78,15 @@ export function QuarterlyBulkCheckGrid({
   onDelete: DeleteAction;
   onSetMonths: SetMonthsAction;
 }) {
-  const rateMap = useMemo(() => new Map(rates.map((r) => [r.itemKey, r])), [rates]);
+  const ratesByItem = useMemo(() => {
+    const m = new Map<string, QuarterlyRate[]>();
+    for (const r of rates) {
+      const arr = m.get(r.itemKey) ?? [];
+      arr.push(r);
+      m.set(r.itemKey, arr);
+    }
+    return m;
+  }, [rates]);
 
   /** 낙관적 체크 상태: `${employeeId}:${itemKey}` → boolean */
   const [optimistic, setOptimistic] = useState<Map<string, boolean>>(() => new Map());
@@ -166,8 +175,8 @@ export function QuarterlyBulkCheckGrid({
         return m;
       });
 
-      const rate = rateMap.get(item.itemKey) ?? null;
-      const amount = computeQuarterlyAmountFromRates(emp, item.itemKey, rate);
+      const itemRates = ratesByItem.get(item.itemKey) ?? [];
+      const amount = computeQuarterlyAmountFromRates(emp, item.itemKey, itemRates, emp.level);
       const payMonths = [...(item.payMonths.length ? item.payMonths : DEFAULT_PAY_MONTHS)];
 
       startTransition(async () => {
@@ -227,7 +236,7 @@ export function QuarterlyBulkCheckGrid({
         }
       });
     },
-    [canEdit, onSave, onDelete, year, rateMap],
+    [canEdit, onSave, onDelete, year, ratesByItem],
   );
 
   if (employees.length === 0) {
@@ -237,7 +246,7 @@ export function QuarterlyBulkCheckGrid({
   return (
     <div className="space-y-10">
       {items.map((item) => {
-        const rate = rateMap.get(item.itemKey) ?? null;
+        const itemRatesForDisplay = ratesByItem.get(item.itemKey) ?? [];
         const selectedMonths = getMonthSet(item.itemKey);
         const effectiveMonths = [...selectedMonths].sort((a, b) => a - b);
 
@@ -299,7 +308,7 @@ export function QuarterlyBulkCheckGrid({
                     const checked = isCellChecked(emp.id, item.itemKey, !!existingConfigId);
                     const k = cellKey(emp.id, item.itemKey);
                     const cs = cellState.get(k) ?? "idle";
-                    const amount = computeQuarterlyAmountFromRates(emp, item.itemKey, rate);
+                    const amount = computeQuarterlyAmountFromRates(emp, item.itemKey, itemRatesForDisplay, emp.level);
                     const resigned =
                       emp.resignYear != null &&
                       emp.resignMonth != null;

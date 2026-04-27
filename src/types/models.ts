@@ -86,6 +86,8 @@ export type QuarterlyRate = {
   id: string;
   tenantId: string;
   year: number;
+  /** 0 = 전체 공통(fallback), 1~5 = 레벨별 요율 */
+  level: number;
   itemKey: string;
   amountPerInfant: number | null;
   amountPerPreschool: number | null;
@@ -118,6 +120,23 @@ export type MonthlyEmployeeNote = {
   incentiveAccrualAmount: number | null;
   /** 그 달 사복으로 지급하기로 한 인센 금액(인센→사복 환류) */
   incentiveWelfarePaymentAmount: number | null;
+  /**
+   * 연중 재분배(중도 변경) 시 해당 월 **사복 지급 총액**을 이 값으로 강제.
+   * null 이면 정기·분기 규칙으로 계산된 합계를 그대로 사용.
+   * 이미 지급된 월은 기존 규칙 스냅샷을, 변경 이후 월은 새 규칙 결과를 보관한다.
+   */
+  welfareOverrideAmount: number | null;
+  /**
+   * 연중 재분배 시 해당 월 **조정급여 월액** 오버라이드.
+   * null 이면 `Employee.adjustedSalary / 12` 를 사용.
+   * 사복 감소분을 잔여 월 조정급여에 분배해 baseSalary 불변을 유지하는 데 사용.
+   */
+  adjustedSalaryOverrideAmount: number | null;
+  /**
+   * 그 달 한해 이 직원의 레벨을 다른 값으로 간주.
+   * null 이면 `Employee.level` 사용. 레벨 낮추기 중도 변경 시 이전 월을 스냅샷한다.
+   */
+  levelOverride: number | null;
 };
 
 /**
@@ -199,6 +218,155 @@ export type Tenant = {
   announcementBatchFromMonth: number | null;
   /** 묶음 안내 기본 끝 월(1~12) — 없으면 null (UI 기본 3) */
   announcementBatchToMonth: number | null;
+  /** 운영상황 보고 ⑦ 대표자(수동 지정). 비어있으면 position==="대표이사" 직원으로 자동 유추 */
+  ceoName: string | null;
+  /** 운영상황 보고 ⑧ 업종 — 통계청 한국표준산업분류 대분류 코드 (A~U) */
+  industry: string | null;
+  /** 운영상황 보고 ④ 전화번호 */
+  phone: string | null;
+  /** 운영상황 보고 ⑤ 소재지 */
+  addressLine: string | null;
+  /** 운영상황 보고 ③ 설립등기일 — "YYYY-MM-DD" */
+  incorporationDate: string | null;
+  /** 운영상황 보고 ⑥ 회계연도 시작 월(1~12). 비어있으면 1로 간주 */
+  accountingYearStartMonth: number | null;
+};
+
+/**
+ * 운영상황 보고서 양식 ⑫~⑳. 저장 단위는 `(tenantId, year)` 단 한 건.
+ * 각 override 필드는 null일 때 자동 유추값을 사용하도록 컴포넌트·도메인이 구성된다.
+ */
+export type BaseAssetAnnual = {
+  id: string;
+  tenantId: string;
+  year: number;
+  /** ⑫ 직전 회계연도 말 기본재산 총액 — null 이면 전년도 레코드에서 자동 링크 */
+  prevYearEndTotal: number | null;
+  /** ⑬ 사업주 출연 — null 이면 vendor_contributions에서 자동 집계 */
+  employerContributionOverride: number | null;
+  /** ⑭ 수익금·이월금 전입 — 수동 */
+  investReturnAndCarryover: number | null;
+  /** ⑮ 사업주 외의 자 출연 — null 이면 vendor_contributions 나머지 자동 */
+  nonEmployerContributionOverride: number | null;
+  /** ⑯ 기금법인 합병 */
+  mergerIn: number | null;
+  /** ⑱ 기금법인 분할 등 */
+  splitOut: number | null;
+  /** ⑳ 해당 회계연도 말 기본재산 총액 — null 이면 ⑫ + ⑲ 자동 */
+  currentYearEndTotalOverride: number | null;
+};
+
+/** 운영상황 보고서 양식 ㉑~㉗ (운용방법) */
+export type FundOperationAnnual = {
+  id: string;
+  tenantId: string;
+  year: number;
+  /** ㉑ 금융회사 예입·예탁 */
+  deposit: number | null;
+  /** ㉒ 투자신탁 수익증권 매입 */
+  trust: number | null;
+  /** ㉓ 유가증권 매입 */
+  security: number | null;
+  /** ㉔ 보유 자사주 유상증자 참여 */
+  ownStock: number | null;
+  /** ㉕ (부동산)투자회사 주식 매입 */
+  reit: number | null;
+  /** ㉖ 기타 */
+  etc: number | null;
+  /** ㉗ 근로자 대부(누계) */
+  loan: number | null;
+};
+
+/** 운영상황 보고서 양식 ㉙~㉟ (기금사업 재원) */
+export type FundSourceAnnual = {
+  id: string;
+  tenantId: string;
+  year: number;
+  /** ㉙ 해당 회계연도 기금운용 수익금 */
+  operationIncome: number | null;
+  /** ㉚ 비율: 50 | 80 | 90 */
+  contribUsageRatio: 50 | 80 | 90 | null;
+  /** ㉚ 실제 결의금액 — null 이면 (⑬+⑮) × ratio 자동 */
+  contribUsageAmount: number | null;
+  /** ㉛ 기본재산 × 자본금 100분의 50 초과액 — null 이면 자동 */
+  excessCapitalUsage: number | null;
+  /** ㉜ 비율: 20 | 25 | 30 */
+  prevBaseAssetUsageRatio: 20 | 25 | 30 | null;
+  /** ㉜ 결의금액 — null 이면 ⑫ × ratio 자동 */
+  prevBaseAssetUsageAmount: number | null;
+  /** ㉝ 공동근로복지기금 지원액 및 그 50% */
+  jointFundSupport: number | null;
+  /** ㉞ 이월금 — null 이면 전년도 ◯69 자동 */
+  carryover: number | null;
+};
+
+/** 운영상황 보고서 양식 ㊱~◯56 (사용현황 매트릭스) */
+export type ContribUsageAnnual = {
+  id: string;
+  tenantId: string;
+  year: number;
+  /** ㊲ 100분의 80 범위 복지혜택을 받은 협력업체근로자 수 */
+  u80RecipientCount: number | null;
+  /** ㊳ 100분의 80 범위 협력업체근로자 복리후생 증진 사용액 */
+  u80VendorWelfareAmount: number | null;
+  /** ㊵ 100분의 90 범위 수혜자 수 */
+  u90RecipientCount: number | null;
+  /** ㊶ 100분의 90 범위 협력업체근로자 복리후생 증진 사용액 */
+  u90VendorWelfareAmount: number | null;
+  /** ㊷ 20% 범위 사용한 기본재산 총액 */
+  u20BaseAssetUsed: number | null;
+  /** ㊸ 20% 범위 협력업체근로자 복리후생 증진 사용액 */
+  u20VendorWelfareAmount: number | null;
+  /** ㊹ 20% 범위 복지혜택을 받은 협력업체근로자 수 */
+  u20RecipientCount: number | null;
+  /** ㊼ 25% */
+  u25BaseAssetUsed: number | null;
+  u25VendorWelfareAmount: number | null;
+  u25RecipientCount: number | null;
+  /** ◯52~◯54 30% */
+  u30BaseAssetUsed: number | null;
+  u30VendorWelfareAmount: number | null;
+  u30RecipientCount: number | null;
+};
+
+/**
+ * 사업실적(◯57~◯72) 중 저장이 필요한 override·수혜자 수·운영비만 모은 구조.
+ * 금액의 기본값은 `allocateYearlyWelfareToLegalCategories` 로 자동 채움.
+ */
+export type BizResultItem = {
+  /** 목적사업 금액 override — null 이면 자동 배분값 사용 */
+  purposeAmountOverride: number | null;
+  /** 목적사업 수혜자 수 */
+  purposeCount: number | null;
+  /** 대부사업 금액 */
+  loanAmount: number | null;
+  /** 대부사업 수혜자 수 */
+  loanCount: number | null;
+};
+
+export type BizResultAnnual = {
+  id: string;
+  tenantId: string;
+  year: number;
+  /** 복지사업비 57~66 구분별 저장 맵 */
+  bizItems: Record<string, BizResultItem>;
+  /** ◯68 기금 운영비 */
+  operationCost: number | null;
+  /** ◯71 선택적 복지비 금액 override — null 이면 자동(법정코드 71) */
+  optionalAmountOverride: number | null;
+  /** ◯72 선택적 복지비 수혜자 수 override — null 이면 월별 노트 자동 추정 */
+  optionalRecipientsOverride: number | null;
+};
+
+export type RealEstateHolding = {
+  id: string;
+  tenantId: string;
+  year: number;
+  seq: number;
+  name: string | null;
+  amount: number | null;
+  /** YYYY-MM-DD */
+  acquiredAt: string | null;
 };
 
 export type UserRow = {

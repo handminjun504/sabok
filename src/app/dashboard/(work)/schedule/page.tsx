@@ -24,11 +24,13 @@ import {
   computeActualYearlyWelfareForEmployee,
   computeSalaryInclusionCapBlocks,
   employeeStatusForYear,
+  monthlyOverrideMapFromNotes,
   monthlySalaryPortion,
   regularAnnualTotalsByLevel,
   welfareByScheduleDisplayMonth,
   welfareScheduleLinesByMonth,
 } from "@/lib/domain/schedule";
+import { resolveEffectiveAdjustedSalaryForMonth } from "@/lib/domain/salary-inclusion";
 import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 import { additionalReserveStatus, summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
 import {
@@ -111,6 +113,9 @@ export default async function SchedulePage() {
     welfareLinesByMonth: Map<number, { label: string; amount: number; kind: "regular" | "quarterly" | "note" }[]>;
     yearlyWelfare: number;
     salaryMonth: number;
+    /** 월별 조정급여 — 중도 재분배로 월별 오버라이드가 있으면 월별로 다를 수 있음 */
+    salaryByMonth: Record<number, number>;
+    hasSalaryOverride: boolean;
     capBlocks: ReturnType<typeof computeSalaryInclusionCapBlocks>;
   };
 
@@ -123,15 +128,42 @@ export default async function SchedulePage() {
     const ovr = overrides.filter((x) => x.employeeId === emp.id);
     const qcfg = quarterly.filter((x) => x.employeeId === emp.id);
     const empNotes = notes.filter((n) => n.employeeId === emp.id);
-    const br = buildMonthlyBreakdown(emp, year, foundingMonth, rules, ovr, qcfg, accrual, customSchedule, fixedEventMonths);
+    const overrideMap = monthlyOverrideMapFromNotes(empNotes, year);
+    const br = buildMonthlyBreakdown(
+      emp,
+      year,
+      foundingMonth,
+      rules,
+      ovr,
+      qcfg,
+      accrual,
+      customSchedule,
+      fixedEventMonths,
+      overrideMap,
+    );
     const noteByMonth = new Map<number, number>();
     for (const n of empNotes) {
       const extra = n.optionalExtraAmount != null ? Number(n.optionalExtraAmount) : 0;
       if (extra === 0) continue;
       noteByMonth.set(n.month, (noteByMonth.get(n.month) ?? 0) + extra);
     }
-    const welfareByMonth = welfareByScheduleDisplayMonth(br, noteByMonth);
-    const welfareLinesByMonth = welfareScheduleLinesByMonth(br, noteByMonth, customDefs);
+    const welfareOverrideByAccrualMonth = new Map<number, number>();
+    for (const [m, entry] of overrideMap) {
+      if (entry.welfareOverrideAmount != null) {
+        welfareOverrideByAccrualMonth.set(m, entry.welfareOverrideAmount);
+      }
+    }
+    const welfareByMonth = welfareByScheduleDisplayMonth(
+      br,
+      noteByMonth,
+      welfareOverrideByAccrualMonth,
+    );
+    const welfareLinesByMonth = welfareScheduleLinesByMonth(
+      br,
+      noteByMonth,
+      customDefs,
+      welfareOverrideByAccrualMonth,
+    );
 
     const yearlyWelfare = computeActualYearlyWelfareForEmployee(
       emp,
@@ -154,12 +186,22 @@ export default async function SchedulePage() {
       12
     );
 
+    const salaryByMonth: Record<number, number> = {};
+    let hasSalaryOverride = false;
+    for (let m = 1; m <= 12; m++) {
+      const v = resolveEffectiveAdjustedSalaryForMonth(emp, year, m, empNotes);
+      salaryByMonth[m] = v;
+      const note = empNotes.find((n) => n.year === year && n.month === m);
+      if (note?.adjustedSalaryOverrideAmount != null) hasSalaryOverride = true;
+    }
     return {
       emp,
       welfareByMonth,
       welfareLinesByMonth,
       yearlyWelfare,
       salaryMonth: monthlySalaryPortion(emp),
+      salaryByMonth,
+      hasSalaryOverride,
       capBlocks,
     };
   });
@@ -187,6 +229,7 @@ export default async function SchedulePage() {
       linesByMonth,
       yearlyWelfare: r.yearlyWelfare,
       salaryMonth: r.salaryMonth,
+      salaryByMonth: r.salaryByMonth,
       flagRepReturn: r.emp.flagRepReturn,
       discretionaryAmount: r.emp.discretionaryAmount,
       showCapOver: salaryInclusionShowOverage(eff),

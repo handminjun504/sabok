@@ -16,4 +16,10 @@ export const C = {
   glSyncJobs: "sabok_gl_sync_jobs",
   vendors: "sabok_vendors",
   vendorContributions: "sabok_vendor_contributions",
+  baseAssetAnnual: "sabok_base_asset_annual",
+  fundOperationAnnual: "sabok_fund_operation_annual",
+  fundSourceAnnual: "sabok_fund_source_annual",
+  contribUsageAnnual: "sabok_contrib_usage_annual",
+  bizResultAnnual: "sabok_biz_result_annual",
+  realEstateHoldings: "sabok_real_estate_holdings",
 } as const;

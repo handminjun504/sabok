@@ -230,6 +230,34 @@ export function eventsOccurringInMonth(
   return keys;
 }
 
+/**
+ * 중도 재분배(Mid-year Rebalance) 전용 월별 노트 오버라이드.
+ * 귀속월(accrualMonth) 기준으로 키를 구성한다.
+ *
+ * - `levelOverride`: 해당 월 이벤트 금액을 다른 레벨로 해석 (Level 5 override 매칭도 포함).
+ * - `welfareOverrideAmount`: 해당 행의 `totalWelfareMonth`(정기+분기 합)를 강제로 이 값으로 치환.
+ *   `regularEvents`/`quarterly` 배열은 디버깅·legal-category 분류를 위해 원본(규칙 기반) 값을 유지하되 합계만 교체.
+ */
+export type MonthlyOverrideEntry = {
+  levelOverride?: number | null;
+  welfareOverrideAmount?: number | null;
+};
+
+function pickLevelOverride(v: number | null | undefined): number | null {
+  if (v === null || v === undefined) return null;
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n)) return null;
+  if (n < 1 || n > 5) return null;
+  return n;
+}
+
+function pickWelfareOverride(v: number | null | undefined): number | null {
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.round(n));
+}
+
 export function buildMonthlyBreakdown(
   employee: Employee,
   year: number,
@@ -241,6 +269,11 @@ export function buildMonthlyBreakdown(
   customPaymentEvents: CustomPaymentScheduleDef[] = [],
   /** 내장 정기 4종 귀속월 업체 오버라이드. 미전달이면 코드 기본값(2/5/8/11). */
   fixedEventMonthsOverride: Partial<Record<PaymentEventKey, number>> = {},
+  /**
+   * 월별 노트 오버라이드(귀속월 기준). 중도 재분배 시 저장된 스냅샷·새 규칙 값을 주입한다.
+   * 미전달이면 종전 동작(규칙 기반 계산)과 100% 동일.
+   */
+  notesByAccrualMonth?: ReadonlyMap<number, MonthlyOverrideEntry>,
 ): MonthBreakdown[] {
   const status = employeeStatusForYear(employee, year);
 
@@ -280,22 +313,54 @@ export function buildMonthlyBreakdown(
     const eventKeys = accrualActive && paidActive
       ? eventsOccurringInMonth(accrualMonth, employee, foundingMonth, customPaymentEvents, fixedEventMonthsOverride)
       : [];
+    const noteOverride = notesByAccrualMonth?.get(accrualMonth);
+    const levelOverride = pickLevelOverride(noteOverride?.levelOverride ?? null);
+    const levelResolveTarget: Pick<Employee, "level"> = levelOverride != null
+      ? { level: levelOverride }
+      : employee;
     const regularEvents = eventKeys.map((eventKey) => ({
       eventKey,
-      amount: resolveEventAmount(employee, eventKey, year, rules, overrides),
+      amount: resolveEventAmount(levelResolveTarget, eventKey, year, rules, overrides),
     }));
     const quarterlyAtPaidMonth = qByPaidMonth.get(paidMonth) ?? [];
     const totalRegular = regularEvents.reduce((s, e) => s + e.amount, 0);
     const totalQ = quarterlyAtPaidMonth.reduce((s, e) => s + e.amount, 0);
+    const naturalTotal = totalRegular + totalQ;
+    const overrideAmt = pickWelfareOverride(noteOverride?.welfareOverrideAmount ?? null);
+    const effectiveTotal = overrideAmt != null ? overrideAmt : naturalTotal;
     months.push({
       accrualMonth,
       paidMonth,
       regularEvents,
       quarterly: quarterlyAtPaidMonth,
-      totalWelfareMonth: totalRegular + totalQ,
+      totalWelfareMonth: effectiveTotal,
     });
   }
   return months;
+}
+
+/** 월별 노트 배열을 귀속월 키 Map 으로 변환 (buildMonthlyBreakdown/display 함수 입력용). */
+export function monthlyOverrideMapFromNotes(
+  notes: ReadonlyArray<{
+    year: number;
+    month: number;
+    levelOverride?: number | null;
+    welfareOverrideAmount?: number | null;
+  }>,
+  year: number,
+): Map<number, MonthlyOverrideEntry> {
+  const map = new Map<number, MonthlyOverrideEntry>();
+  for (const n of notes) {
+    if (n.year !== year) continue;
+    const m = Math.round(Number(n.month));
+    if (!Number.isFinite(m) || m < 1 || m > 12) continue;
+    const prev = map.get(m) ?? {};
+    map.set(m, {
+      levelOverride: n.levelOverride ?? prev.levelOverride ?? null,
+      welfareOverrideAmount: n.welfareOverrideAmount ?? prev.welfareOverrideAmount ?? null,
+    });
+  }
+  return map;
 }
 
 export function normalizeQuarterlyPaymentMonths(months: readonly number[]): number[] {
@@ -322,6 +387,36 @@ export function suggestQuarterlyMonths(startMonth: number): number[] {
 }
 
 /** 분기 금액 산출(템플릿). 보험·이자·월세는 발생액 대비 지급 한도(원) = min(발생, 한도). */
+type QuarterlyRateShape = {
+  level: number;
+  amountPerInfant: number | null;
+  amountPerPreschool: number | null;
+  amountPerTeen: number | null;
+  amountPerParent: number | null;
+  amountPerInLaw: number | null;
+  flatAmount: number | null;
+  /** PB 필드명 레거시 — 의미는 건강보험 지급 한도(원) */
+  percentInsurance: number | null;
+  /** PB 필드명 레거시 — 의미는 주택이자 지급 한도(원) */
+  percentLoanInterest: number | null;
+};
+
+/**
+ * 레벨별 요율 배열에서 적용할 요율을 선택한다.
+ * - `employeeLevel`에 맞는 레벨별 요율(level > 0)이 있으면 우선 사용
+ * - 없으면 공통 요율(level === 0)으로 fallback
+ */
+export function resolveQuarterlyRate(
+  rates: QuarterlyRateShape[],
+  employeeLevel: number
+): QuarterlyRateShape | null {
+  return (
+    rates.find((r) => r.level === employeeLevel) ??
+    rates.find((r) => r.level === 0) ??
+    null
+  );
+}
+
 export function computeQuarterlyAmountFromRates(
   employee: Pick<
     Employee,
@@ -335,19 +430,12 @@ export function computeQuarterlyAmountFromRates(
     | "monthlyRentAmount"
   >,
   itemKey: string,
-  rate: {
-    amountPerInfant: number | null;
-    amountPerPreschool: number | null;
-    amountPerTeen: number | null;
-    amountPerParent: number | null;
-    amountPerInLaw: number | null;
-    flatAmount: number | null;
-    /** PB 필드명 레거시 — 의미는 건강보험 지급 한도(원) */
-    percentInsurance: number | null;
-    /** PB 필드명 레거시 — 의미는 주택이자 지급 한도(원) */
-    percentLoanInterest: number | null;
-  } | null
+  ratesOrRate: QuarterlyRateShape[] | QuarterlyRateShape | null,
+  employeeLevel = 0
 ): number {
+  const rate = Array.isArray(ratesOrRate)
+    ? resolveQuarterlyRate(ratesOrRate, employeeLevel)
+    : ratesOrRate;
   if (!rate) return 0;
   switch (itemKey) {
     case "INFANT_SCHOLARSHIP":
@@ -375,12 +463,21 @@ export function computeQuarterlyAmountFromRates(
   }
 }
 
+/**
+ * 단일 "월 조정급여" (모든 월 동일 가정). 월별 노트에 중도 재분배 오버라이드가 있는 경우에는
+ * `resolveEffectiveAdjustedSalaryForMonth` 를 월별로 호출해야 정확하다 — 이 함수는 요약 표시용.
+ */
 export function monthlySalaryPortion(employee: Pick<Employee, "adjustedSalary" | "baseSalary">): number {
   const base = toNum(employee.adjustedSalary) > 0 ? toNum(employee.adjustedSalary) : toNum(employee.baseSalary);
   return Math.round(base / 12);
 }
 
-/** 적용 연봉(원/년): 조정급여가 있으면 조정, 없으면 기존연봉 */
+/**
+ * 적용 연봉(원/년): 조정급여가 있으면 조정, 없으면 기존연봉.
+ *
+ * 월별 노트에 `adjustedSalaryOverrideAmount` 가 단 하나라도 있으면 월별 합으로 재계산되어야
+ * 하므로 호출자는 `computeYearlyAdjustedSalaryFromNotes` 를 직접 사용해야 한다.
+ */
 export function effectiveAnnualSalaryWon(employee: Pick<Employee, "baseSalary" | "adjustedSalary">): number {
   const adj = toNum(employee.adjustedSalary);
   const base = toNum(employee.baseSalary);
@@ -401,13 +498,25 @@ export function sumByPaidMonth(all: MonthBreakdown[]): Map<number, number> {
  * 분기 지원은 설정한 **지급월**에 나눠 담습니다. (당월 귀속·익월 지급이어도 정기는 귀속 달 열에 표시)
  * 선택 복지 노트는 `month`를 지급월로 보고 같은 열에 합산합니다.
  * 열 합계는 `yearlyWelfareTotal(br) + 노트 추가액`과 일치합니다.
+ *
+ * `welfareOverrideByAccrualMonth`(중도 재분배 스냅샷/오버라이드)가 주어지면 해당 귀속월 행은
+ * 정기·분기를 합산하지 않고 오버라이드 값을 귀속월 열에 한 번에 기재한다. 이 경우 그 행의
+ * `totalWelfareMonth` 와 컬럼 합이 일치한다.
  */
 export function welfareByScheduleDisplayMonth(
   br: MonthBreakdown[],
-  noteExtrasByPaidMonth?: ReadonlyMap<number, number>
+  noteExtrasByPaidMonth?: ReadonlyMap<number, number>,
+  welfareOverrideByAccrualMonth?: ReadonlyMap<number, number>,
 ): Map<number, number> {
   const map = new Map<number, number>();
   for (const row of br) {
+    const ovr = welfareOverrideByAccrualMonth?.get(row.accrualMonth);
+    if (ovr != null && Number.isFinite(ovr)) {
+      if (ovr !== 0) {
+        map.set(row.accrualMonth, (map.get(row.accrualMonth) ?? 0) + ovr);
+      }
+      continue;
+    }
     const reg = row.regularEvents.reduce((s, e) => s + e.amount, 0);
     if (reg !== 0) {
       map.set(row.accrualMonth, (map.get(row.accrualMonth) ?? 0) + reg);
@@ -444,13 +553,26 @@ function eventLabelForScheduleRow(eventKey: string, customDefs: CustomPaymentEve
 export function welfareScheduleLinesByMonth(
   br: MonthBreakdown[],
   noteExtrasByPaidMonth: ReadonlyMap<number, number> | undefined,
-  customDefs: CustomPaymentEventDef[]
+  customDefs: CustomPaymentEventDef[],
+  welfareOverrideByAccrualMonth?: ReadonlyMap<number, number>,
 ): Map<number, WelfareScheduleDisplayLine[]> {
   const byMonth = new Map<number, WelfareScheduleDisplayLine[]>();
+  const overrideMonths = new Set<number>();
   for (let m = 1; m <= 12; m++) {
     const lines: WelfareScheduleDisplayLine[] = [];
     const accrualRow = br.find((r) => r.accrualMonth === m);
-    if (accrualRow) {
+    const ovr = welfareOverrideByAccrualMonth?.get(m);
+    const hasOverride = ovr != null && Number.isFinite(ovr);
+    if (hasOverride) {
+      overrideMonths.add(m);
+      if (ovr !== 0) {
+        lines.push({
+          label: "중도 재분배 반영",
+          amount: Number(ovr),
+          kind: "regular",
+        });
+      }
+    } else if (accrualRow) {
       for (const ev of accrualRow.regularEvents) {
         if (ev.amount === 0) continue;
         lines.push({
@@ -460,14 +582,17 @@ export function welfareScheduleLinesByMonth(
         });
       }
     }
-    for (const row of br) {
-      if (row.paidMonth !== m) continue;
-      for (const q of row.quarterly) {
-        if (q.amount === 0) continue;
-        const lab = Object.prototype.hasOwnProperty.call(QUARTERLY_ITEM_LABELS, q.itemKey)
-          ? QUARTERLY_ITEM_LABELS[q.itemKey as QuarterlyItemKey]
-          : q.itemKey;
-        lines.push({ label: lab, amount: q.amount, kind: "quarterly" });
+    if (!hasOverride) {
+      for (const row of br) {
+        if (row.paidMonth !== m) continue;
+        if (overrideMonths.has(row.accrualMonth)) continue;
+        for (const q of row.quarterly) {
+          if (q.amount === 0) continue;
+          const lab = Object.prototype.hasOwnProperty.call(QUARTERLY_ITEM_LABELS, q.itemKey)
+            ? QUARTERLY_ITEM_LABELS[q.itemKey as QuarterlyItemKey]
+            : q.itemKey;
+          lines.push({ label: lab, amount: q.amount, kind: "quarterly" });
+        }
       }
     }
     const noteExtra = noteExtrasByPaidMonth?.get(m) ?? 0;
@@ -485,7 +610,11 @@ export function yearlyWelfareTotal(rows: MonthBreakdown[]): number {
 
 /** 월별 노트에서 연간 추가액 (지급월 합산용과 동일하게 연도 필터) */
 export function sumMonthlyNoteExtrasForYear(
-  notes: Pick<{ year: number; month?: number; optionalExtraAmount: number | null }, "year" | "month" | "optionalExtraAmount">[],
+  notes: ReadonlyArray<{
+    year: number;
+    month?: number;
+    optionalExtraAmount: number | null;
+  }>,
   year: number,
   /** 직원 활성 범위 — 주어지면 범위 밖 월 노트는 합산에서 제외 */
   status?: EmployeeStatusForYear,
@@ -504,6 +633,9 @@ export function sumMonthlyNoteExtrasForYear(
 /**
  * 정기·분기 스케줄 + 해당 연도 월별 노트 추가액을 합산한 연간 사복 실적.
  * 스케줄 페이지·급여포함신고에서 동일 로직 사용.
+ *
+ * 월별 노트에 중도 재분배 오버라이드(`welfareOverrideAmount`·`levelOverride`)가 있으면
+ * `buildMonthlyBreakdown` 단계에서 자동으로 반영된다. 호출자는 풀 `MonthlyEmployeeNote[]` 를 넘기면 된다.
  */
 export function computeActualYearlyWelfareForEmployee(
   employee: Employee,
@@ -513,13 +645,21 @@ export function computeActualYearlyWelfareForEmployee(
   rules: LevelPaymentRule[],
   overridesForEmployee: Level5Override[],
   quarterlyForEmployee: QuarterlyEmployeeConfig[],
-  monthlyNotesForEmployee: Pick<
-    { year: number; optionalExtraAmount: number | null },
-    "year" | "optionalExtraAmount"
-  >[],
+  monthlyNotesForEmployee: ReadonlyArray<{
+    year: number;
+    month?: number;
+    optionalExtraAmount: number | null;
+    levelOverride?: number | null;
+    welfareOverrideAmount?: number | null;
+  }>,
   customPaymentEvents: CustomPaymentScheduleDef[] = [],
   fixedEventMonthsOverride: Partial<Record<PaymentEventKey, number>> = {},
 ): number {
+  const overrideMap = monthlyOverrideMapFromNotes(
+    monthlyNotesForEmployee
+      .filter((n): n is typeof n & { month: number } => typeof n.month === "number"),
+    year,
+  );
   const br = buildMonthlyBreakdown(
     employee,
     year,
@@ -530,6 +670,7 @@ export function computeActualYearlyWelfareForEmployee(
     accrualCurrentMonthPayNext,
     customPaymentEvents,
     fixedEventMonthsOverride,
+    overrideMap,
   );
   const status = employeeStatusForYear(employee, year);
   return yearlyWelfareTotal(br) + sumMonthlyNoteExtrasForYear(monthlyNotesForEmployee, year, status);
@@ -546,7 +687,11 @@ export function yearlyWelfareTotalThroughPaidMonth(
 
 /** 월별 노트 추가액 — 해당 연도·지급월이 lastPaidMonthInclusive 이하만, 활성 범위 안에서만 */
 export function sumMonthlyNoteExtrasThroughPaidMonth(
-  notes: Pick<{ year: number; month: number; optionalExtraAmount: number | null }, "year" | "month" | "optionalExtraAmount">[],
+  notes: ReadonlyArray<{
+    year: number;
+    month: number;
+    optionalExtraAmount: number | null;
+  }>,
   year: number,
   lastPaidMonthInclusive: number,
   status?: EmployeeStatusForYear,
@@ -570,14 +715,18 @@ export function computeActualWelfareThroughPaidMonth(
   rules: LevelPaymentRule[],
   overridesForEmployee: Level5Override[],
   quarterlyForEmployee: QuarterlyEmployeeConfig[],
-  monthlyNotesForEmployee: Pick<
-    { year: number; month: number; optionalExtraAmount: number | null },
-    "year" | "month" | "optionalExtraAmount"
-  >[],
+  monthlyNotesForEmployee: ReadonlyArray<{
+    year: number;
+    month: number;
+    optionalExtraAmount: number | null;
+    levelOverride?: number | null;
+    welfareOverrideAmount?: number | null;
+  }>,
   lastPaidMonthInclusive: number,
   customPaymentEvents: CustomPaymentScheduleDef[] = [],
   fixedEventMonthsOverride: Partial<Record<PaymentEventKey, number>> = {},
 ): number {
+  const overrideMap = monthlyOverrideMapFromNotes(monthlyNotesForEmployee, year);
   const br = buildMonthlyBreakdown(
     employee,
     year,
@@ -588,6 +737,7 @@ export function computeActualWelfareThroughPaidMonth(
     accrualCurrentMonthPayNext,
     customPaymentEvents,
     fixedEventMonthsOverride,
+    overrideMap,
   );
   const through = Math.min(12, Math.max(1, lastPaidMonthInclusive));
   const status = employeeStatusForYear(employee, year);

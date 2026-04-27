@@ -60,8 +60,8 @@ export async function setItemQuarterlyPayMonthsAction(
   return { ok: true };
 }
 
-export async function saveQuarterlyRatesFormAction(formData: FormData): Promise<void> {
-  await saveQuarterlyRatesAction(null, formData);
+export async function saveQuarterlyRatesFormAction(formData: FormData): Promise<QState> {
+  return saveQuarterlyRatesAction(null, formData);
 }
 
 export async function saveQuarterlyEmployeeConfigFormAction(formData: FormData): Promise<void> {
@@ -197,21 +197,28 @@ export async function saveQuarterlyRatesAction(_: QState, formData: FormData): P
   if (!Number.isFinite(year)) return { 오류: "연도 오류" };
 
   const items = Object.values(QUARTERLY_ITEM) as QuarterlyItemKey[];
+  /** level 0 = 공통(기본), 1~5 = 레벨별 */
+  const LEVELS = [0, 1, 2, 3, 4, 5] as const;
+
   try {
     for (const itemKey of items) {
-      await quarterlyRateUpsert({
-        tenantId: ctx.tenantId,
-        year,
-        itemKey,
-        amountPerInfant: toNumOrNull(formData.get(`${itemKey}_infant`)),
-        amountPerPreschool: toNumOrNull(formData.get(`${itemKey}_pre`)),
-        amountPerTeen: toNumOrNull(formData.get(`${itemKey}_teen`)),
-        amountPerParent: toNumOrNull(formData.get(`${itemKey}_par`)),
-        amountPerInLaw: toNumOrNull(formData.get(`${itemKey}_inlaw`)),
-        flatAmount: toNumOrNull(formData.get(`${itemKey}_flat`)),
-        percentInsurance: toNumOrNull(formData.get(`${itemKey}_pins`)),
-        percentLoanInterest: toNumOrNull(formData.get(`${itemKey}_ploan`)),
-      });
+      for (const level of LEVELS) {
+        const suffix = level === 0 ? "" : `_lv${level}`;
+        await quarterlyRateUpsert({
+          tenantId: ctx.tenantId,
+          year,
+          level,
+          itemKey,
+          amountPerInfant: toNumOrNull(formData.get(`${itemKey}_infant${suffix}`)),
+          amountPerPreschool: toNumOrNull(formData.get(`${itemKey}_pre${suffix}`)),
+          amountPerTeen: toNumOrNull(formData.get(`${itemKey}_teen${suffix}`)),
+          amountPerParent: toNumOrNull(formData.get(`${itemKey}_par${suffix}`)),
+          amountPerInLaw: toNumOrNull(formData.get(`${itemKey}_inlaw${suffix}`)),
+          flatAmount: toNumOrNull(formData.get(`${itemKey}_flat${suffix}`)),
+          percentInsurance: toNumOrNull(formData.get(`${itemKey}_pins${suffix}`)),
+          percentLoanInterest: toNumOrNull(formData.get(`${itemKey}_ploan${suffix}`)),
+        });
+      }
     }
   } catch (e) {
     console.error(e);
@@ -310,15 +317,20 @@ export async function applyQuarterlyTemplateAction(_: QState, formData: FormData
   if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
 
   const rates = await quarterlyRateList(ctx.tenantId, year);
-  const rateMap = new Map(rates.map((r) => [r.itemKey, r]));
+  const ratesByItem = new Map<string, typeof rates>();
+  for (const r of rates) {
+    const arr = ratesByItem.get(r.itemKey) ?? [];
+    arr.push(r);
+    ratesByItem.set(r.itemKey, arr);
+  }
 
   const { computeQuarterlyAmountFromRates } = await import("@/lib/domain/schedule");
   const items = Object.values(QUARTERLY_ITEM) as QuarterlyItemKey[];
 
   let 경고: string | undefined;
   for (const itemKey of items) {
-    const r = rateMap.get(itemKey) ?? null;
-    const amountN = computeQuarterlyAmountFromRates(emp, itemKey, r);
+    const itemRates = ratesByItem.get(itemKey) ?? [];
+    const amountN = computeQuarterlyAmountFromRates(emp, itemKey, itemRates, emp.level);
     if (amountN <= 0) continue;
     try {
       await quarterlyEmployeeConfigUpsert({

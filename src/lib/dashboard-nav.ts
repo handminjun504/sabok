@@ -43,7 +43,7 @@ export function getDashboardNav(opts: {
 
   const work: NavItem[] = [{ href: "/dashboard/employees", label: "직원" }];
   if (canEditLevelRules(role)) {
-    work.push({ href: "/dashboard/levels", label: "레벨·정기지급" });
+    work.push({ href: "/dashboard/rules", label: "지급 규칙" });
   }
   work.push(
     { href: "/dashboard/quarterly", label: "분기 지원" },

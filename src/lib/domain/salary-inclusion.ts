@@ -89,6 +89,72 @@ export type MonthlyNoteIncentiveFields = Pick<
   "year" | "month" | "incentiveAccrualAmount" | "incentiveWelfarePaymentAmount"
 >;
 
+/**
+ * 월 조정급여 오버라이드 필드만 뽑은 최소 타입.
+ * 중도 재분배 시 `adjustedSalaryOverrideAmount` 를 저장한 노트에서 바로 참조한다.
+ */
+export type MonthlyNoteAdjustedSalaryFields = Pick<
+  MonthlyEmployeeNote,
+  "year" | "month" | "adjustedSalaryOverrideAmount"
+>;
+
+/**
+ * 한 직원의 "월 조정급여" 를 결정한다.
+ *
+ * 우선순위:
+ *  1) 월별 노트의 `adjustedSalaryOverrideAmount` (중도 재분배로 분배된 값)
+ *  2) `Employee.adjustedSalary / 12` (조정급여가 있으면)
+ *  3) `Employee.baseSalary / 12` (조정급여가 0 또는 음수이면)
+ *
+ * 반환은 **원 단위 정수**. 연간 합계가 정확히 유지되도록 12월은 상위 호출자(재분배 로직)가
+ * 소수점 잔차를 얹어 저장한다.
+ */
+export function resolveEffectiveAdjustedSalaryForMonth(
+  employee: Pick<Employee, "adjustedSalary" | "baseSalary">,
+  year: number,
+  month: number,
+  notes: ReadonlyArray<MonthlyNoteAdjustedSalaryFields>,
+): number {
+  const note = notes.find(
+    (n) => n.year === year && n.month === month && n.adjustedSalaryOverrideAmount != null,
+  );
+  if (note && note.adjustedSalaryOverrideAmount != null) {
+    return Math.max(0, Math.round(Number(note.adjustedSalaryOverrideAmount)));
+  }
+  const adj = toNum(employee.adjustedSalary);
+  const base = toNum(employee.baseSalary);
+  const annual = adj > 0 ? adj : base;
+  return Math.round(annual / 12);
+}
+
+/**
+ * 한 직원의 연간 조정급여 합. 중도 재분배로 월별 오버라이드가 있으면 월별 합을, 없으면
+ * `adjustedSalary`(없으면 `baseSalary`)를 그대로 반환.
+ *
+ * 재분배가 적용된 월이 1개라도 있으면 "월별 합 방식"으로 모든 12개월을 더해 반환한다 —
+ * 오버라이드가 없는 월은 `adjustedSalary/12` 를 사용. 합계가 원래 연간 값과 다르면 호출자가
+ * 12월 잔차를 조정해 이 함수를 통과한 값이 연간 불변이 되도록 한다.
+ */
+export function computeYearlyAdjustedSalaryFromNotes(
+  employee: Pick<Employee, "adjustedSalary" | "baseSalary">,
+  year: number,
+  notes: ReadonlyArray<MonthlyNoteAdjustedSalaryFields>,
+): number {
+  const hasOverride = notes.some(
+    (n) => n.year === year && n.adjustedSalaryOverrideAmount != null,
+  );
+  if (!hasOverride) {
+    const adj = toNum(employee.adjustedSalary);
+    const base = toNum(employee.baseSalary);
+    return Math.round(adj > 0 ? adj : base);
+  }
+  let sum = 0;
+  for (let m = 1; m <= 12; m++) {
+    sum += resolveEffectiveAdjustedSalaryForMonth(employee, year, m, notes);
+  }
+  return sum;
+}
+
 /** 지급월 1~N월: 월별 노트의 발생 인센 누적 */
 export function sumIncentiveAccrualYtd(
   notes: MonthlyNoteIncentiveFields[],

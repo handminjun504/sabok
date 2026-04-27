@@ -9,7 +9,7 @@
  */
 import type { Employee, Level5Override, LevelPaymentRule, MonthlyEmployeeNote, QuarterlyEmployeeConfig } from "@/types/models";
 import { PAYMENT_EVENT, QUARTERLY_ITEM, type PaymentEventKey, type QuarterlyItemKey } from "@/lib/business-rules";
-import { type CustomPaymentScheduleDef, buildMonthlyBreakdown } from "./schedule";
+import { type CustomPaymentScheduleDef, buildMonthlyBreakdown, monthlyOverrideMapFromNotes } from "./schedule";
 
 export const LEGAL_WELFARE_CATEGORY_ROWS: { code: number; label: string }[] = [
   { code: 57, label: "주택구입 임차자금" },
@@ -54,6 +54,8 @@ export function aggregateWelfareSpendBySource(
   for (const emp of employees) {
     const ovr = overrides.filter((x) => x.employeeId === emp.id);
     const qcfg = quarterly.filter((x) => x.employeeId === emp.id);
+    const empNotes = notes.filter((n) => n.employeeId === emp.id);
+    const overrideMap = monthlyOverrideMapFromNotes(empNotes, year);
     const br = buildMonthlyBreakdown(
       emp,
       year,
@@ -64,8 +66,20 @@ export function aggregateWelfareSpendBySource(
       accrualCurrentMonthPayNext,
       customPaymentEvents,
       fixedEventMonthsOverride,
+      overrideMap,
     );
     for (const row of br) {
+      const ovrAmt = overrideMap.get(row.accrualMonth)?.welfareOverrideAmount ?? null;
+      if (ovrAmt != null) {
+        /**
+         * 중도 재분배 스냅샷·오버라이드가 있는 월은 규칙 기반 개별 이벤트 분포가 아닌
+         * totalWelfareMonth 값이 실제 지급액이다. 법정 분류는 근사치로 "그 밖의 복지비(66)"
+         * 로 가중 없이 귀속시킨다. (후속: 스냅샷 시점의 개별 이벤트 배분 저장)
+         */
+        regularByEventKey["MIDYEAR_OVERRIDE"] =
+          (regularByEventKey["MIDYEAR_OVERRIDE"] ?? 0) + ovrAmt;
+        continue;
+      }
       for (const e of row.regularEvents) {
         regularByEventKey[e.eventKey] = (regularByEventKey[e.eventKey] ?? 0) + e.amount;
       }
@@ -73,8 +87,8 @@ export function aggregateWelfareSpendBySource(
         quarterlyByItemKey[q.itemKey] = (quarterlyByItemKey[q.itemKey] ?? 0) + q.amount;
       }
     }
-    for (const n of notes) {
-      if (n.employeeId !== emp.id || n.year !== year) continue;
+    for (const n of empNotes) {
+      if (n.year !== year) continue;
       const ex = n.optionalExtraAmount != null ? Number(n.optionalExtraAmount) : 0;
       if (ex !== 0) optionalExtraTotal += ex;
     }

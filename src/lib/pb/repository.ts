@@ -1,8 +1,14 @@
 import type {
   AuditLogRow,
+  BaseAssetAnnual,
+  BizResultAnnual,
+  BizResultItem,
   CompanySettings,
+  ContribUsageAnnual,
   CustomPaymentEventDef,
   Employee,
+  FundOperationAnnual,
+  FundSourceAnnual,
   GlSyncJobRow,
   Level5Override,
   LevelPaymentRule,
@@ -12,6 +18,7 @@ import type {
   PaymentEventDefsByYear,
   QuarterlyEmployeeConfig,
   QuarterlyRate,
+  RealEstateHolding,
   SalaryInclusionVarianceMode,
   Tenant,
   UserRow,
@@ -37,8 +44,13 @@ import { logPbClientError, pocketBaseRecordErrorMessage } from "./client-error-l
 import { C } from "./collections";
 import { esc } from "./filter-esc";
 import {
+  mapBaseAssetAnnual,
+  mapBizResultAnnual,
   mapCompanySettings,
+  mapContribUsageAnnual,
   mapEmployee,
+  mapFundOperationAnnual,
+  mapFundSourceAnnual,
   mapLevel5Override,
   mapLevelRule,
   mapLevelTarget,
@@ -46,6 +58,7 @@ import {
   mapMonthlyPaymentStatus,
   mapQuarterlyCfg,
   mapQuarterlyRate,
+  mapRealEstateHolding,
 } from "./mappers";
 
 function asRecord(r: unknown): Record<string, unknown> {
@@ -155,6 +168,12 @@ function tenantMonthOrNull(r: Record<string, unknown>, key: string): number | nu
 
 function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
   const cap = Number(r.headOfficeCapital);
+  const accStart = r.accountingYearStartMonth == null || r.accountingYearStartMonth === ""
+    ? null
+    : (() => {
+        const n = Math.round(Number(r.accountingYearStartMonth));
+        return Number.isFinite(n) && n >= 1 && n <= 12 ? n : null;
+      })();
   return {
     id: String(r.id),
     code: String(r.code),
@@ -175,6 +194,15 @@ function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
     announcementMode: parseAnnouncementMode(r.announcementMode),
     announcementBatchFromMonth: tenantMonthOrNull(r, "announcementBatchFromMonth"),
     announcementBatchToMonth: tenantMonthOrNull(r, "announcementBatchToMonth"),
+    ceoName: tenantTextField(r, "ceoName", "ceo_name", "대표자"),
+    industry: tenantTextField(r, "industry", "업종"),
+    phone: tenantTextField(r, "phone", "전화번호"),
+    addressLine: tenantTextField(r, "addressLine", "address_line", "소재지"),
+    incorporationDate: (() => {
+      const s = tenantTextField(r, "incorporationDate", "incorporation_date", "설립등기일");
+      return s ? s.slice(0, 10) : null;
+    })(),
+    accountingYearStartMonth: accStart,
   };
 }
 
@@ -927,9 +955,10 @@ export async function quarterlyRateList(tenantId: string, year: number): Promise
 }
 
 export async function quarterlyRateUpsert(
-  body: Record<string, unknown> & { tenantId: string; year: number; itemKey: string }
+  body: Record<string, unknown> & { tenantId: string; year: number; itemKey: string; level: number }
 ): Promise<void> {
-  const f = `tenantId="${esc(body.tenantId)}" && year=${body.year} && itemKey="${esc(body.itemKey)}"`;
+  const levelN = Number.isFinite(Number(body.level)) ? Number(body.level) : 0;
+  const f = `tenantId="${esc(body.tenantId)}" && year=${body.year} && itemKey="${esc(body.itemKey)}" && level=${levelN}`;
   const existing = await firstByFilterStrict(C.quarterlyRates, f);
   const pb = await getAdminPb();
   const { tenantId: _tid, year: _yr, itemKey: _ik, ...rest } = body;
@@ -1134,6 +1163,62 @@ export async function monthlyNoteUpsert(data: {
   }
 }
 
+/**
+ * 중도 재분배(Mid-year rebalance) 전용 부분 업데이트.
+ * - 기존 노트에 `welfareOverrideAmount`·`adjustedSalaryOverrideAmount`·`levelOverride` 세 칸만 덮어쓰고
+ *   선택 복지·인센 등 다른 필드는 **절대 건드리지 않는다**.
+ * - 노트가 없으면 새로 만들되 나머지 필드는 null 로 저장.
+ * - 각 필드에 `undefined` 를 넘기면 기존 값을 그대로 둔다 (update 시 omit). `null` 은 "오버라이드 해제"로 명시 지정.
+ */
+export async function monthlyNoteUpsertOverrides(data: {
+  employeeId: string;
+  year: number;
+  month: number;
+  welfareOverrideAmount?: number | null;
+  adjustedSalaryOverrideAmount?: number | null;
+  levelOverride?: number | null;
+}): Promise<void> {
+  const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && month=${data.month}`;
+  const existing = await firstByFilterStrict(C.monthlyEmployeeNotes, f);
+  const pb = await getAdminPb();
+  const patch: Record<string, unknown> = {};
+  if (data.welfareOverrideAmount !== undefined) {
+    patch.welfareOverrideAmount = data.welfareOverrideAmount;
+  }
+  if (data.adjustedSalaryOverrideAmount !== undefined) {
+    patch.adjustedSalaryOverrideAmount = data.adjustedSalaryOverrideAmount;
+  }
+  if (data.levelOverride !== undefined) {
+    patch.levelOverride = data.levelOverride;
+  }
+  if (existing?.id) {
+    if (Object.keys(patch).length === 0) return;
+    await pb.collection(C.monthlyEmployeeNotes).update(String(existing.id), patch);
+  } else {
+    await pb.collection(C.monthlyEmployeeNotes).create({
+      employeeId: data.employeeId,
+      year: data.year,
+      month: data.month,
+      optionalWelfareText: null,
+      optionalExtraAmount: null,
+      incentiveAccrualAmount: null,
+      incentiveWelfarePaymentAmount: null,
+      welfareOverrideAmount: data.welfareOverrideAmount ?? null,
+      adjustedSalaryOverrideAmount: data.adjustedSalaryOverrideAmount ?? null,
+      levelOverride: data.levelOverride ?? null,
+    });
+  }
+}
+
+/** 테넌트의 특정 연도 직원 목록 — 현재는 코드순 전체 목록 반환(연도별 필터 미구현) */
+export async function employeeListByTenantYear(
+  tenantId: string,
+  _year: number,
+): Promise<Employee[]> {
+  void _year;
+  return employeeListByTenantCodeAsc(tenantId);
+}
+
 /** --- Monthly payment status (테넌트·연·월 단위 ‘지급완료 확인’) --- */
 export async function monthlyPaymentStatusListByTenantYear(
   tenantId: string,
@@ -1327,6 +1412,25 @@ export async function vendorContributionListByVendor(vendorId: string, limit: nu
   return rows.items.map((x) => mapVendorContributionRow(asRecord(x)));
 }
 
+export async function vendorContributionListByTenantYear(
+  tenantId: string,
+  year: number,
+): Promise<VendorContribution[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.vendorContributions).getFullList({
+    filter: `tenantId="${esc(tenantId)}"`,
+    sort: "created",
+  });
+  return rows
+    .map((x) => mapVendorContributionRow(asRecord(x)))
+    .filter((c) => {
+      const src = c.occurredAt ?? (c.created ? c.created.toISOString() : null);
+      if (!src) return false;
+      const y = parseInt(String(src).slice(0, 4), 10);
+      return Number.isFinite(y) && y === year;
+    });
+}
+
 export async function vendorAppendContribution(input: {
   tenantId: string;
   vendorId: string;
@@ -1377,4 +1481,360 @@ export async function vendorAppendContribution(input: {
     contribution: mapVendorContributionRow(created),
     vendor: { ...vendor, accumulatedReserve: reserveAfter },
   };
+}
+
+/** --- Tenant: 운영상황 보고 기본정보 (①②③~⑧, ⑥) 갱신 --- */
+export async function tenantUpdateOperatingReportBasic(
+  id: string,
+  data: {
+    approvalNumber: string | null;
+    businessRegNo: string | null;
+    ceoName: string | null;
+    industry: string | null;
+    phone: string | null;
+    addressLine: string | null;
+    incorporationDate: string | null;
+    accountingYearStartMonth: number | null;
+    headOfficeCapital: number | null;
+  },
+): Promise<Tenant> {
+  const pb = await getAdminPb();
+  const payload: Record<string, unknown> = {
+    approvalNumber: data.approvalNumber ?? null,
+    businessRegNo: data.businessRegNo ?? null,
+    ceoName: data.ceoName ?? null,
+    industry: data.industry ?? null,
+    phone: data.phone ?? null,
+    addressLine: data.addressLine ?? null,
+    incorporationDate: data.incorporationDate ?? null,
+    accountingYearStartMonth: data.accountingYearStartMonth ?? null,
+    headOfficeCapital: data.headOfficeCapital ?? null,
+  };
+  const r = asRecord(await pb.collection(C.tenants).update(id, payload));
+  return tenantFromPbRecord(r);
+}
+
+/** --- Base asset annual (운영상황 ⑫~⑳) --- */
+export async function baseAssetAnnualGet(
+  tenantId: string,
+  year: number,
+): Promise<BaseAssetAnnual | null> {
+  const r = await firstByFilter(
+    C.baseAssetAnnual,
+    `tenantId="${esc(tenantId)}" && year=${year}`,
+  );
+  return r ? mapBaseAssetAnnual(r) : null;
+}
+
+export async function baseAssetAnnualUpsert(data: {
+  tenantId: string;
+  year: number;
+  prevYearEndTotal: number | null;
+  employerContributionOverride: number | null;
+  investReturnAndCarryover: number | null;
+  nonEmployerContributionOverride: number | null;
+  mergerIn: number | null;
+  splitOut: number | null;
+  currentYearEndTotalOverride: number | null;
+}): Promise<BaseAssetAnnual> {
+  const existing = await firstByFilterStrict(
+    C.baseAssetAnnual,
+    `tenantId="${esc(data.tenantId)}" && year=${data.year}`,
+  );
+  const pb = await getAdminPb();
+  const body = {
+    prevYearEndTotal: data.prevYearEndTotal,
+    employerContributionOverride: data.employerContributionOverride,
+    investReturnAndCarryover: data.investReturnAndCarryover,
+    nonEmployerContributionOverride: data.nonEmployerContributionOverride,
+    mergerIn: data.mergerIn,
+    splitOut: data.splitOut,
+    currentYearEndTotalOverride: data.currentYearEndTotalOverride,
+  };
+  if (existing?.id) {
+    const r = asRecord(await pb.collection(C.baseAssetAnnual).update(String(existing.id), body));
+    return mapBaseAssetAnnual(r);
+  }
+  const r = asRecord(
+    await pb.collection(C.baseAssetAnnual).create({
+      tenantId: data.tenantId,
+      year: data.year,
+      ...body,
+    }),
+  );
+  return mapBaseAssetAnnual(r);
+}
+
+/** --- Fund operation annual (㉑~㉗) --- */
+export async function fundOperationAnnualGet(
+  tenantId: string,
+  year: number,
+): Promise<FundOperationAnnual | null> {
+  const r = await firstByFilter(
+    C.fundOperationAnnual,
+    `tenantId="${esc(tenantId)}" && year=${year}`,
+  );
+  return r ? mapFundOperationAnnual(r) : null;
+}
+
+export async function fundOperationAnnualUpsert(data: {
+  tenantId: string;
+  year: number;
+  deposit: number | null;
+  trust: number | null;
+  security: number | null;
+  ownStock: number | null;
+  reit: number | null;
+  etc: number | null;
+  loan: number | null;
+}): Promise<FundOperationAnnual> {
+  const existing = await firstByFilterStrict(
+    C.fundOperationAnnual,
+    `tenantId="${esc(data.tenantId)}" && year=${data.year}`,
+  );
+  const pb = await getAdminPb();
+  const body = {
+    deposit: data.deposit,
+    trust: data.trust,
+    security: data.security,
+    ownStock: data.ownStock,
+    reit: data.reit,
+    etc: data.etc,
+    loan: data.loan,
+  };
+  if (existing?.id) {
+    const r = asRecord(await pb.collection(C.fundOperationAnnual).update(String(existing.id), body));
+    return mapFundOperationAnnual(r);
+  }
+  const r = asRecord(
+    await pb.collection(C.fundOperationAnnual).create({
+      tenantId: data.tenantId,
+      year: data.year,
+      ...body,
+    }),
+  );
+  return mapFundOperationAnnual(r);
+}
+
+/** --- Fund source annual (㉙~㉟) --- */
+export async function fundSourceAnnualGet(
+  tenantId: string,
+  year: number,
+): Promise<FundSourceAnnual | null> {
+  const r = await firstByFilter(
+    C.fundSourceAnnual,
+    `tenantId="${esc(tenantId)}" && year=${year}`,
+  );
+  return r ? mapFundSourceAnnual(r) : null;
+}
+
+export async function fundSourceAnnualUpsert(data: {
+  tenantId: string;
+  year: number;
+  operationIncome: number | null;
+  contribUsageRatio: number | null;
+  contribUsageAmount: number | null;
+  excessCapitalUsage: number | null;
+  prevBaseAssetUsageRatio: number | null;
+  prevBaseAssetUsageAmount: number | null;
+  jointFundSupport: number | null;
+  carryover: number | null;
+}): Promise<FundSourceAnnual> {
+  const existing = await firstByFilterStrict(
+    C.fundSourceAnnual,
+    `tenantId="${esc(data.tenantId)}" && year=${data.year}`,
+  );
+  const pb = await getAdminPb();
+  const body = {
+    operationIncome: data.operationIncome,
+    contribUsageRatio: data.contribUsageRatio,
+    contribUsageAmount: data.contribUsageAmount,
+    excessCapitalUsage: data.excessCapitalUsage,
+    prevBaseAssetUsageRatio: data.prevBaseAssetUsageRatio,
+    prevBaseAssetUsageAmount: data.prevBaseAssetUsageAmount,
+    jointFundSupport: data.jointFundSupport,
+    carryover: data.carryover,
+  };
+  if (existing?.id) {
+    const r = asRecord(await pb.collection(C.fundSourceAnnual).update(String(existing.id), body));
+    return mapFundSourceAnnual(r);
+  }
+  const r = asRecord(
+    await pb.collection(C.fundSourceAnnual).create({
+      tenantId: data.tenantId,
+      year: data.year,
+      ...body,
+    }),
+  );
+  return mapFundSourceAnnual(r);
+}
+
+/** --- Contrib usage annual (사용현황 매트릭스) --- */
+export async function contribUsageAnnualGet(
+  tenantId: string,
+  year: number,
+): Promise<ContribUsageAnnual | null> {
+  const r = await firstByFilter(
+    C.contribUsageAnnual,
+    `tenantId="${esc(tenantId)}" && year=${year}`,
+  );
+  return r ? mapContribUsageAnnual(r) : null;
+}
+
+export async function contribUsageAnnualUpsert(data: {
+  tenantId: string;
+  year: number;
+  u80RecipientCount: number | null;
+  u80VendorWelfareAmount: number | null;
+  u90RecipientCount: number | null;
+  u90VendorWelfareAmount: number | null;
+  u20BaseAssetUsed: number | null;
+  u20VendorWelfareAmount: number | null;
+  u20RecipientCount: number | null;
+  u25BaseAssetUsed: number | null;
+  u25VendorWelfareAmount: number | null;
+  u25RecipientCount: number | null;
+  u30BaseAssetUsed: number | null;
+  u30VendorWelfareAmount: number | null;
+  u30RecipientCount: number | null;
+}): Promise<ContribUsageAnnual> {
+  const existing = await firstByFilterStrict(
+    C.contribUsageAnnual,
+    `tenantId="${esc(data.tenantId)}" && year=${data.year}`,
+  );
+  const pb = await getAdminPb();
+  const body = {
+    u80RecipientCount: data.u80RecipientCount,
+    u80VendorWelfareAmount: data.u80VendorWelfareAmount,
+    u90RecipientCount: data.u90RecipientCount,
+    u90VendorWelfareAmount: data.u90VendorWelfareAmount,
+    u20BaseAssetUsed: data.u20BaseAssetUsed,
+    u20VendorWelfareAmount: data.u20VendorWelfareAmount,
+    u20RecipientCount: data.u20RecipientCount,
+    u25BaseAssetUsed: data.u25BaseAssetUsed,
+    u25VendorWelfareAmount: data.u25VendorWelfareAmount,
+    u25RecipientCount: data.u25RecipientCount,
+    u30BaseAssetUsed: data.u30BaseAssetUsed,
+    u30VendorWelfareAmount: data.u30VendorWelfareAmount,
+    u30RecipientCount: data.u30RecipientCount,
+  };
+  if (existing?.id) {
+    const r = asRecord(await pb.collection(C.contribUsageAnnual).update(String(existing.id), body));
+    return mapContribUsageAnnual(r);
+  }
+  const r = asRecord(
+    await pb.collection(C.contribUsageAnnual).create({
+      tenantId: data.tenantId,
+      year: data.year,
+      ...body,
+    }),
+  );
+  return mapContribUsageAnnual(r);
+}
+
+/** --- Biz result annual (사업실적) --- */
+export async function bizResultAnnualGet(
+  tenantId: string,
+  year: number,
+): Promise<BizResultAnnual | null> {
+  const r = await firstByFilter(
+    C.bizResultAnnual,
+    `tenantId="${esc(tenantId)}" && year=${year}`,
+  );
+  return r ? mapBizResultAnnual(r) : null;
+}
+
+export async function bizResultAnnualUpsert(data: {
+  tenantId: string;
+  year: number;
+  bizItems: Record<string, BizResultItem>;
+  operationCost: number | null;
+  optionalAmountOverride: number | null;
+  optionalRecipientsOverride: number | null;
+}): Promise<BizResultAnnual> {
+  const existing = await firstByFilterStrict(
+    C.bizResultAnnual,
+    `tenantId="${esc(data.tenantId)}" && year=${data.year}`,
+  );
+  const pb = await getAdminPb();
+  const body = {
+    bizItems: data.bizItems,
+    operationCost: data.operationCost,
+    optionalAmountOverride: data.optionalAmountOverride,
+    optionalRecipientsOverride: data.optionalRecipientsOverride,
+  };
+  if (existing?.id) {
+    const r = asRecord(await pb.collection(C.bizResultAnnual).update(String(existing.id), body));
+    return mapBizResultAnnual(r);
+  }
+  const r = asRecord(
+    await pb.collection(C.bizResultAnnual).create({
+      tenantId: data.tenantId,
+      year: data.year,
+      ...body,
+    }),
+  );
+  return mapBizResultAnnual(r);
+}
+
+/** --- Real estate holdings (부동산) --- */
+export async function realEstateHoldingListByTenantYear(
+  tenantId: string,
+  year: number,
+): Promise<RealEstateHolding[]> {
+  const pb = await getAdminPb();
+  const rows = await pb.collection(C.realEstateHoldings).getFullList({
+    filter: `tenantId="${esc(tenantId)}" && year=${year}`,
+    sort: "seq",
+  });
+  return rows.map((x) => mapRealEstateHolding(asRecord(x)));
+}
+
+export async function realEstateHoldingUpsert(data: {
+  id?: string | null;
+  tenantId: string;
+  year: number;
+  seq: number;
+  name: string | null;
+  amount: number | null;
+  acquiredAt: string | null;
+}): Promise<RealEstateHolding> {
+  const pb = await getAdminPb();
+  const body = {
+    name: data.name ?? null,
+    amount: data.amount,
+    acquiredAt: data.acquiredAt ?? null,
+    seq: data.seq,
+  };
+  if (data.id) {
+    const owned = await firstByFilter(
+      C.realEstateHoldings,
+      `id="${esc(data.id)}" && tenantId="${esc(data.tenantId)}"`,
+    );
+    if (!owned?.id) {
+      throw new Error("해당 부동산 행이 현재 업체에 속하지 않습니다.");
+    }
+    const r = asRecord(await pb.collection(C.realEstateHoldings).update(data.id, body));
+    return mapRealEstateHolding(r);
+  }
+  const r = asRecord(
+    await pb.collection(C.realEstateHoldings).create({
+      tenantId: data.tenantId,
+      year: data.year,
+      ...body,
+    }),
+  );
+  return mapRealEstateHolding(r);
+}
+
+export async function realEstateHoldingDelete(id: string, tenantId: string): Promise<void> {
+  const owned = await firstByFilter(
+    C.realEstateHoldings,
+    `id="${esc(id)}" && tenantId="${esc(tenantId)}"`,
+  );
+  if (!owned?.id) {
+    throw new Error("해당 부동산 행이 현재 업체에 속하지 않습니다.");
+  }
+  const pb = await getAdminPb();
+  await pb.collection(C.realEstateHoldings).delete(id);
 }
