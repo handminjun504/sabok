@@ -30,6 +30,10 @@ import {
   welfareByScheduleDisplayMonth,
   welfareScheduleLinesByMonth,
 } from "@/lib/domain/schedule";
+import { PAYMENT_EVENT_LABELS, QUARTERLY_ITEM_LABELS } from "@/lib/business-rules";
+import type { PaymentEventKey, QuarterlyItemKey } from "@/lib/business-rules";
+import { paymentEventLabel } from "@/lib/domain/payment-events";
+import type { ScheduleEditMonthEvent } from "@/components/ScheduleEmployeeEditModal";
 import { resolveEffectiveAdjustedSalaryForMonth } from "@/lib/domain/salary-inclusion";
 import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 import { additionalReserveStatus, summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
@@ -117,6 +121,10 @@ export default async function SchedulePage() {
     salaryByMonth: Record<number, number>;
     hasSalaryOverride: boolean;
     capBlocks: ReturnType<typeof computeSalaryInclusionCapBlocks>;
+    /** 이 직원의 월별 편집 가능한 이벤트 목록 (모달 prefill 용) */
+    editableEventsByMonth: Record<number, ScheduleEditMonthEvent[]>;
+    /** per-event/per-month 수정이 있는 월 (UI 배경색 강조 용) */
+    modifiedMonths: Set<number>;
   };
 
   const customDefs = customPaymentDefsForYear(settings, year);
@@ -194,6 +202,68 @@ export default async function SchedulePage() {
       const note = empNotes.find((n) => n.year === year && n.month === m);
       if (note?.adjustedSalaryOverrideAmount != null) hasSalaryOverride = true;
     }
+
+    /**
+     * 월별 개별 수정 모달 prefill — 각 월에 실제 발생하는 이벤트/분기 목록과 기본 금액·기존 override.
+     *
+     * `br` (buildMonthlyBreakdown 결과) 은 이미 eventAmountOverrides 가 반영돼 있으므로
+     * `currentAmount` 는 "지금 보이는 값". `currentOverride` 는 원본 note 에서 직접 읽는다.
+     */
+    const editableEventsByMonth: Record<number, ScheduleEditMonthEvent[]> = {};
+    const modifiedMonths = new Set<number>();
+    const overridesByAccrualMonth = new Map<number, Record<string, number>>();
+    for (const n of empNotes) {
+      if (n.year !== year) continue;
+      if (n.eventAmountOverrides && Object.keys(n.eventAmountOverrides).length > 0) {
+        overridesByAccrualMonth.set(n.month, n.eventAmountOverrides as Record<string, number>);
+        modifiedMonths.add(n.month);
+      }
+    }
+    for (const row of br) {
+      const evs: ScheduleEditMonthEvent[] = [];
+      for (const reg of row.regularEvents) {
+        if (reg.amount === 0 && reg.eventKey in PAYMENT_EVENT_LABELS === false) continue;
+        /** 정기·커스텀 이벤트는 귀속월 기준 note 의 override 와 매칭 */
+        const accrualOvr = overridesByAccrualMonth.get(row.accrualMonth)?.[reg.eventKey];
+        const label =
+          Object.prototype.hasOwnProperty.call(PAYMENT_EVENT_LABELS, reg.eventKey)
+            ? PAYMENT_EVENT_LABELS[reg.eventKey as PaymentEventKey]
+            : paymentEventLabel(reg.eventKey, customDefs);
+        evs.push({
+          eventKey: reg.eventKey,
+          label: label.replace(/\s*\n\s*/g, " ").trim(),
+          kind: "regular",
+          currentAmount: reg.amount,
+          currentOverride: accrualOvr != null ? accrualOvr : null,
+        });
+      }
+      for (const q of row.quarterly) {
+        /** 분기는 지급월 기준 — 그 지급월에 걸린 row 에 나타남. override 도 paidMonth note 에서 찾는다. */
+        const paidOvr = overridesByAccrualMonth.get(row.paidMonth)?.[q.itemKey];
+        const label = Object.prototype.hasOwnProperty.call(QUARTERLY_ITEM_LABELS, q.itemKey)
+          ? QUARTERLY_ITEM_LABELS[q.itemKey as QuarterlyItemKey]
+          : q.itemKey;
+        evs.push({
+          eventKey: q.itemKey,
+          label,
+          kind: "quarterly",
+          currentAmount: q.amount,
+          currentOverride: paidOvr != null ? paidOvr : null,
+        });
+      }
+      if (evs.length > 0) {
+        /** 이벤트의 귀속 기준은 row.accrualMonth, 분기는 paidMonth — 사용자는 "그 달에 보이는" 것으로 인식하므로 paidMonth 키로 합쳐 관리. */
+        editableEventsByMonth[row.paidMonth] = [
+          ...(editableEventsByMonth[row.paidMonth] ?? []),
+          ...evs.filter((x) => x.kind === "quarterly"),
+        ];
+        editableEventsByMonth[row.accrualMonth] = [
+          ...(editableEventsByMonth[row.accrualMonth] ?? []),
+          ...evs.filter((x) => x.kind === "regular"),
+        ];
+      }
+    }
+
     return {
       emp,
       welfareByMonth,
@@ -203,6 +273,8 @@ export default async function SchedulePage() {
       salaryByMonth,
       hasSalaryOverride,
       capBlocks,
+      editableEventsByMonth,
+      modifiedMonths,
     };
   });
 
@@ -244,6 +316,8 @@ export default async function SchedulePage() {
         overage: b.overage,
         underForSalaryReport: b.underForSalaryReport,
       })),
+      editableEventsByMonth: r.editableEventsByMonth,
+      modifiedMonths: Array.from(r.modifiedMonths),
     };
   });
 

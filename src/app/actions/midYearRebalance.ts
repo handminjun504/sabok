@@ -39,11 +39,16 @@ import { revalidateEmployeeArtifacts, revalidateLevelArtifacts } from "@/lib/uti
  */
 export type MidYearChangeInput = {
   effectiveMonth: number;
-  kind: "LEVEL_RULE" | "EMPLOYEE_LEVEL" | "EMPLOYEE_AMOUNT";
+  kind: "LEVEL_RULE" | "EMPLOYEE_LEVEL" | "EMPLOYEE_AMOUNT" | "EMPLOYEE_MONTHLY_EDIT";
   level?: number;
   employeeId?: string;
   newLevel?: number;
   newAmountsByEventKey?: Record<string, number>;
+  /**
+   * L4 월별 개별 수정 전용 — month(1~12) → eventKey → 새 금액.
+   * 빈 객체({})로 보내면 "모든 override 해제" 의미.
+   */
+  editsByMonth?: Record<number, Record<string, number>>;
 };
 
 export type MidYearRebalanceActionResult =
@@ -150,6 +155,40 @@ async function loadContextAndPlan(
       effectiveMonth,
       employeeId: empId,
       newAmountsByEventKey: filteredAmounts,
+    };
+  } else if (input.kind === "EMPLOYEE_MONTHLY_EDIT") {
+    const empId = String(input.employeeId ?? "").trim();
+    if (!empId) return { ok: false, 오류: "직원 ID 가 없습니다." };
+    const emp = await employeeFindFirst(empId, tenantId);
+    if (!emp) return { ok: false, 오류: "직원을 찾을 수 없습니다." };
+    /**
+     * editsByMonth 정규화 — eventKey 는 allowedEventKeys 로 필터(정기/커스텀) 하거나 분기 itemKey 허용.
+     * 분기 itemKey 는 해당 직원의 quarterly config 에서만 허용한다.
+     */
+    const allIds = (await employeeListByTenantCodeAsc(tenantId)).map((e) => e.id);
+    const qcfgAll = await quarterlyEmployeeConfigListByTenantYear(tenantId, year, allIds);
+    const allowedQItemKeys = new Set(
+      qcfgAll.filter((q) => q.employeeId === empId).map((q) => q.itemKey),
+    );
+    const rawEdits = (input.editsByMonth ?? {}) as Record<string, unknown>;
+    const cleanEdits: Record<number, Record<string, number>> = {};
+    for (const [mk, evObj] of Object.entries(rawEdits)) {
+      const m = Math.round(Number(mk));
+      if (!Number.isFinite(m) || m < 1 || m > 12) continue;
+      const inner = sanitizeAmountsMap(evObj);
+      const filtered: Record<string, number> = {};
+      for (const [k, v] of Object.entries(inner)) {
+        if (allowedEventKeys.has(k) || allowedQItemKeys.has(k)) {
+          filtered[k] = v;
+        }
+      }
+      if (Object.keys(filtered).length > 0) cleanEdits[m] = filtered;
+    }
+    request = {
+      kind: "EMPLOYEE_MONTHLY_EDIT",
+      effectiveMonth,
+      employeeId: empId,
+      editsByMonth: cleanEdits,
     };
   } else {
     return { ok: false, 오류: "알 수 없는 변경 유형입니다." };
@@ -276,6 +315,7 @@ export async function applyMidYearRebalanceAction(
           welfareOverrideAmount: nw.welfareOverrideAmount,
           adjustedSalaryOverrideAmount: nw.adjustedSalaryOverrideAmount,
           levelOverride: nw.levelOverride,
+          eventAmountOverrides: nw.eventAmountOverrides,
         });
         completedWrites++;
       }

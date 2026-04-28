@@ -137,6 +137,16 @@ export type MonthlyEmployeeNote = {
    * null 이면 `Employee.level` 사용. 레벨 낮추기 중도 변경 시 이전 월을 스냅샷한다.
    */
   levelOverride: number | null;
+  /**
+   * 해당 월 이 직원에 한해 **이벤트별** 금액을 개별 override.
+   *
+   * - Key: `eventKey` (NEW_YEAR_FEB, FAMILY_MAY, quarterly itemKey, custom eventKey 등)
+   * - Value: 원 단위 정수. 0 도 "0원으로 확정" 이므로 유효.
+   * - 우선순위: `eventAmountOverrides[eventKey]` > Level5Override > LevelPaymentRule.
+   * - 월 총액 `welfareOverrideAmount` 와 병행 가능 — 그 경우 `welfareOverrideAmount` 가 최종 총액을 덮어쓴다.
+   * - null / 빈 객체 이면 override 없음 → 기존 규칙 그대로 해석.
+   */
+  eventAmountOverrides: Readonly<Record<string, number>> | null;
 };
 
 /**

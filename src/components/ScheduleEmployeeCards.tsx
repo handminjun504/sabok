@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 
+import {
+  ScheduleEmployeeEditModal,
+  type ScheduleEditMonthEvent,
+} from "@/components/ScheduleEmployeeEditModal";
+
 export type ScheduleWelfareLine = {
   label: string;
   amount: number;
@@ -57,6 +62,10 @@ export type ScheduleCardRow = {
   capBlocks: ScheduleCapBlock[];
   showCapOver: boolean;
   showCapUnder: boolean;
+  /** 월별 개별 수정 모달 prefill 데이터 (없으면 편집 버튼 비활성) */
+  editableEventsByMonth?: Record<number, ScheduleEditMonthEvent[]>;
+  /** 이벤트별 수정이 있는 월 — 셀 배경색 강조 */
+  modifiedMonths?: number[];
 };
 
 function fmt(n: number) {
@@ -70,11 +79,26 @@ const MONTH_ROWS = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]] as const;
 export function ScheduleEmployeeCards({
   year,
   rows,
+  canEdit = false,
+  defaultEffectiveMonth,
 }: {
   year: number;
   rows: ScheduleCardRow[];
+  /** 월별 개별 수정 권한. false 면 편집 버튼은 "미리보기만 가능" 으로 표시. */
+  canEdit?: boolean;
+  /** 모달 기본 적용 월 (현재 연도면 오늘 월, 과거 연도면 1월 등) */
+  defaultEffectiveMonth?: number;
 }) {
   const [focusMonth, setFocusMonth] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editingRow = editingId ? rows.find((r) => r.employeeId === editingId) : null;
+  const today = new Date();
+  const inferredDefaultEffective =
+    defaultEffectiveMonth != null
+      ? defaultEffectiveMonth
+      : today.getFullYear() === year
+        ? today.getMonth() + 1
+        : 1;
 
   const filterBtn = (m: number | null, label: string) => {
     const active = focusMonth === m;
@@ -115,6 +139,9 @@ export function ScheduleEmployeeCards({
         {rows.map((r) => {
           const focusAmt = focusMonth != null ? (r.welfareByMonth[focusMonth] ?? 0) : null;
           const focusLines = focusMonth != null ? (r.linesByMonth[focusMonth] ?? []) : [];
+          const modifiedSet = new Set<number>(r.modifiedMonths ?? []);
+          const hasEditableData =
+            r.editableEventsByMonth != null && Object.keys(r.editableEventsByMonth).length > 0;
 
           return (
             <article
@@ -128,10 +155,30 @@ export function ScheduleEmployeeCards({
                     {r.employeeCode}
                   </span>
                   <span className="text-base font-bold text-[var(--text)]">{r.name}</span>
+                  {modifiedSet.size > 0 ? (
+                    <span
+                      className="shrink-0 rounded-sm border border-[color:color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[var(--warn-soft)] px-1.5 py-px text-[0.6rem] font-bold leading-none text-[var(--warn)]"
+                      title={`개별 수정된 월: ${Array.from(modifiedSet).sort((a, b) => a - b).join(", ")}월`}
+                    >
+                      수정 {modifiedSet.size}건
+                    </span>
+                  ) : null}
                 </div>
-                <span className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-0.5 text-xs font-bold tabular-nums text-[var(--muted)]">
-                  Lv.{r.level}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-0.5 text-xs font-bold tabular-nums text-[var(--muted)]">
+                    Lv.{r.level}
+                  </span>
+                  {hasEditableData ? (
+                    <button
+                      type="button"
+                      onClick={() => setEditingId(r.employeeId)}
+                      className="shrink-0 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[0.6875rem] font-semibold text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                      title={canEdit ? "이 직원의 월별 이벤트 금액 개별 수정" : "미리보기만 가능 (권한 없음)"}
+                    >
+                      개별 수정
+                    </button>
+                  ) : null}
+                </div>
               </header>
 
               {/* 본문: 전체 or 특정 월 */}
@@ -146,17 +193,30 @@ export function ScheduleEmployeeCards({
                             const v = r.welfareByMonth[m] ?? 0;
                             const lines = r.linesByMonth[m] ?? [];
                             const empty = v === 0;
+                            const modified = modifiedSet.has(m);
                             return (
                               <td
                                 key={m}
                                 className={
                                   "align-top border border-[var(--border)] p-0 " +
-                                  (empty ? "bg-[var(--surface-hover)]/40" : "bg-[var(--surface)]")
+                                  (modified
+                                    ? "bg-[color:color-mix(in_srgb,var(--warn)_12%,var(--surface))]"
+                                    : empty
+                                      ? "bg-[var(--surface-hover)]/40"
+                                      : "bg-[var(--surface)]")
                                 }
+                                title={modified ? `${m}월 — 개별 수정됨` : undefined}
                               >
                                 {/* 월 레이블 */}
-                                <div className="border-b border-[var(--border)] bg-[var(--surface-hover)]/70 px-2 py-1 text-center text-[0.6875rem] font-bold text-[var(--muted)]">
-                                  {m}월
+                                <div
+                                  className={
+                                    "border-b border-[var(--border)] px-2 py-1 text-center text-[0.6875rem] font-bold " +
+                                    (modified
+                                      ? "bg-[color:color-mix(in_srgb,var(--warn)_18%,var(--surface))] text-[var(--warn)]"
+                                      : "bg-[var(--surface-hover)]/70 text-[var(--muted)]")
+                                  }
+                                >
+                                  {m}월{modified ? " ✎" : ""}
                                 </div>
                                 {/* 금액 + 내역 */}
                                 <div className="px-2 pb-2 pt-1.5">
@@ -318,6 +378,22 @@ export function ScheduleEmployeeCards({
         })}
       </div>
       )}
+      {editingRow && editingRow.editableEventsByMonth ? (
+        <ScheduleEmployeeEditModal
+          open={true}
+          onClose={() => setEditingId(null)}
+          year={year}
+          employee={{
+            id: editingRow.employeeId,
+            code: editingRow.employeeCode,
+            name: editingRow.name,
+            level: editingRow.level,
+          }}
+          eventsByMonth={editingRow.editableEventsByMonth}
+          defaultEffectiveMonth={inferredDefaultEffective}
+          canEdit={canEdit}
+        />
+      ) : null}
     </div>
   );
 }

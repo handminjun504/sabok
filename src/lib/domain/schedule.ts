@@ -231,16 +231,21 @@ export function eventsOccurringInMonth(
 }
 
 /**
- * 중도 재분배(Mid-year Rebalance) 전용 월별 노트 오버라이드.
+ * 월별 노트 오버라이드 — 중도 재분배(Mid-year Rebalance) 및 월별 개별 수정 공용.
  * 귀속월(accrualMonth) 기준으로 키를 구성한다.
  *
  * - `levelOverride`: 해당 월 이벤트 금액을 다른 레벨로 해석 (Level 5 override 매칭도 포함).
  * - `welfareOverrideAmount`: 해당 행의 `totalWelfareMonth`(정기+분기 합)를 강제로 이 값으로 치환.
  *   `regularEvents`/`quarterly` 배열은 디버깅·legal-category 분류를 위해 원본(규칙 기반) 값을 유지하되 합계만 교체.
+ * - `eventAmountOverrides`: 개별 이벤트/분기 항목의 금액을 eventKey·itemKey 단위로 override.
+ *   적용 우선순위: 정기/커스텀 이벤트 → `eventAmountOverrides[eventKey]` 가 있으면 사용.
+ *                 분기 → `eventAmountOverrides[itemKey]` 가 있으면 사용.
+ *   `welfareOverrideAmount` 가 같이 있으면 총액은 그 값이 최종 (개별 override 는 표시·감사용).
  */
 export type MonthlyOverrideEntry = {
   levelOverride?: number | null;
   welfareOverrideAmount?: number | null;
+  eventAmountOverrides?: Readonly<Record<string, number>> | null;
 };
 
 function pickLevelOverride(v: number | null | undefined): number | null {
@@ -253,6 +258,19 @@ function pickLevelOverride(v: number | null | undefined): number | null {
 
 function pickWelfareOverride(v: number | null | undefined): number | null {
   if (v === null || v === undefined) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.round(n));
+}
+
+function pickEventOverride(
+  map: Readonly<Record<string, number>> | null | undefined,
+  key: string,
+): number | null {
+  if (!map) return null;
+  if (!Object.prototype.hasOwnProperty.call(map, key)) return null;
+  const v = map[key];
+  if (v == null) return null;
   const n = Number(v);
   if (!Number.isFinite(n)) return null;
   return Math.max(0, Math.round(n));
@@ -318,11 +336,23 @@ export function buildMonthlyBreakdown(
     const levelResolveTarget: Pick<Employee, "level"> = levelOverride != null
       ? { level: levelOverride }
       : employee;
-    const regularEvents = eventKeys.map((eventKey) => ({
-      eventKey,
-      amount: resolveEventAmount(levelResolveTarget, eventKey, year, rules, overrides),
-    }));
-    const quarterlyAtPaidMonth = qByPaidMonth.get(paidMonth) ?? [];
+    /**
+     * 정기·커스텀 이벤트는 귀속월 기준 note 의 `eventAmountOverrides[eventKey]` 를 우선 적용.
+     * 분기 항목은 지급월 기준 note 의 `eventAmountOverrides[itemKey]` 를 우선 적용.
+     */
+    const eventOverridesAccrual = noteOverride?.eventAmountOverrides ?? null;
+    const eventOverridesPaid = notesByAccrualMonth?.get(paidMonth)?.eventAmountOverrides ?? null;
+    const regularEvents = eventKeys.map((eventKey) => {
+      const ov = pickEventOverride(eventOverridesAccrual, eventKey);
+      const amount =
+        ov != null ? ov : resolveEventAmount(levelResolveTarget, eventKey, year, rules, overrides);
+      return { eventKey, amount };
+    });
+    const quarterlyRaw = qByPaidMonth.get(paidMonth) ?? [];
+    const quarterlyAtPaidMonth = quarterlyRaw.map((q) => {
+      const ov = pickEventOverride(eventOverridesPaid, q.itemKey);
+      return { itemKey: q.itemKey, amount: ov != null ? ov : q.amount };
+    });
     const totalRegular = regularEvents.reduce((s, e) => s + e.amount, 0);
     const totalQ = quarterlyAtPaidMonth.reduce((s, e) => s + e.amount, 0);
     const naturalTotal = totalRegular + totalQ;
@@ -346,6 +376,7 @@ export function monthlyOverrideMapFromNotes(
     month: number;
     levelOverride?: number | null;
     welfareOverrideAmount?: number | null;
+    eventAmountOverrides?: Readonly<Record<string, number>> | null;
   }>,
   year: number,
 ): Map<number, MonthlyOverrideEntry> {
@@ -355,9 +386,18 @@ export function monthlyOverrideMapFromNotes(
     const m = Math.round(Number(n.month));
     if (!Number.isFinite(m) || m < 1 || m > 12) continue;
     const prev = map.get(m) ?? {};
+    /**
+     * 같은 월의 여러 노트가 있을 수는 없지만(upsert), 혹시 중복 행이 있으면
+     * 먼저 만난 non-null 값을 우선하도록 merge 한다.
+     */
+    const mergedEvents: Record<string, number> | null =
+      n.eventAmountOverrides && Object.keys(n.eventAmountOverrides).length > 0
+        ? { ...(prev.eventAmountOverrides ?? {}), ...n.eventAmountOverrides }
+        : (prev.eventAmountOverrides ?? null);
     map.set(m, {
       levelOverride: n.levelOverride ?? prev.levelOverride ?? null,
       welfareOverrideAmount: n.welfareOverrideAmount ?? prev.welfareOverrideAmount ?? null,
+      eventAmountOverrides: mergedEvents,
     });
   }
   return map;

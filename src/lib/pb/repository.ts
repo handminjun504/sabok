@@ -1164,11 +1164,12 @@ export async function monthlyNoteUpsert(data: {
 }
 
 /**
- * 중도 재분배(Mid-year rebalance) 전용 부분 업데이트.
- * - 기존 노트에 `welfareOverrideAmount`·`adjustedSalaryOverrideAmount`·`levelOverride` 세 칸만 덮어쓰고
- *   선택 복지·인센 등 다른 필드는 **절대 건드리지 않는다**.
+ * 중도 재분배·월별 개별 수정 전용 부분 업데이트.
+ * - 지정한 오버라이드 필드만 덮어쓰고 선택 복지·인센 등 다른 필드는 **절대 건드리지 않는다**.
  * - 노트가 없으면 새로 만들되 나머지 필드는 null 로 저장.
  * - 각 필드에 `undefined` 를 넘기면 기존 값을 그대로 둔다 (update 시 omit). `null` 은 "오버라이드 해제"로 명시 지정.
+ * - `eventAmountOverrides` 는 DB 상 JSON 필드 `eventAmountOverridesJson` 으로 저장.
+ *   빈 객체/null 은 JSON null 로 기록해 "override 없음" 상태로 되돌린다.
  */
 export async function monthlyNoteUpsertOverrides(data: {
   employeeId: string;
@@ -1177,6 +1178,7 @@ export async function monthlyNoteUpsertOverrides(data: {
   welfareOverrideAmount?: number | null;
   adjustedSalaryOverrideAmount?: number | null;
   levelOverride?: number | null;
+  eventAmountOverrides?: Readonly<Record<string, number>> | null;
 }): Promise<void> {
   const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && month=${data.month}`;
   const existing = await firstByFilterStrict(C.monthlyEmployeeNotes, f);
@@ -1190,6 +1192,17 @@ export async function monthlyNoteUpsertOverrides(data: {
   }
   if (data.levelOverride !== undefined) {
     patch.levelOverride = data.levelOverride;
+  }
+  if (data.eventAmountOverrides !== undefined) {
+    const cleaned: Record<string, number> = {};
+    if (data.eventAmountOverrides) {
+      for (const [k, v] of Object.entries(data.eventAmountOverrides)) {
+        const n = Number(v);
+        if (!Number.isFinite(n)) continue;
+        cleaned[k] = Math.max(0, Math.round(n));
+      }
+    }
+    patch.eventAmountOverridesJson = Object.keys(cleaned).length > 0 ? cleaned : null;
   }
   if (existing?.id) {
     if (Object.keys(patch).length === 0) return;
@@ -1206,6 +1219,10 @@ export async function monthlyNoteUpsertOverrides(data: {
       welfareOverrideAmount: data.welfareOverrideAmount ?? null,
       adjustedSalaryOverrideAmount: data.adjustedSalaryOverrideAmount ?? null,
       levelOverride: data.levelOverride ?? null,
+      eventAmountOverridesJson:
+        data.eventAmountOverrides && Object.keys(data.eventAmountOverrides).length > 0
+          ? data.eventAmountOverrides
+          : null,
     });
   }
 }

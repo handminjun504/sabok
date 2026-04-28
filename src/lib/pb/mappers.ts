@@ -200,6 +200,30 @@ export function mapMonthlyNote(r: Record<string, unknown>): MonthlyEmployeeNote 
       const lv = Math.round(v);
       return lv >= 1 && lv <= 5 ? lv : null;
     })(),
+    eventAmountOverrides: (() => {
+      const raw = r.eventAmountOverridesJson;
+      if (raw == null || raw === "") return null;
+      /**
+       * PB JSON 필드는 객체로도, 문자열로도 올 수 있어 양쪽을 방어한다.
+       * 파싱 실패·비객체·빈 객체는 모두 null 로 정규화해 호출부 분기를 단순화.
+       */
+      let parsed: unknown = raw;
+      if (typeof raw === "string") {
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      }
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+        const n = Number(v);
+        if (!Number.isFinite(n)) continue;
+        out[k] = Math.max(0, Math.round(n));
+      }
+      return Object.keys(out).length > 0 ? out : null;
+    })(),
   };
 }
 

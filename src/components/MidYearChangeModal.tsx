@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 
 import {
   applyMidYearRebalanceAction,
@@ -523,8 +523,10 @@ function EventAmountGrid(props: {
 function PreviewTable({ plan }: { plan: PlanShape }) {
   const emp = plan.affectedEmployees;
   const totalDelta = emp.reduce((s, r) => s + r.deltaAnnualWelfare, 0);
+  const effectiveMonth = plan.request.effectiveMonth;
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {plan.warnings.length > 0 ? (
         <Alert tone="warn" title="경고">
           <ul className="list-disc pl-5">
@@ -539,13 +541,26 @@ function PreviewTable({ plan }: { plan: PlanShape }) {
         <strong className="text-[var(--text)] tabular-nums">{formatWon(totalDelta)}원</strong>
         {totalDelta < 0 ? " (사복 증가 → 조정급여 감액)" : totalDelta > 0 ? " (사복 감소 → 조정급여 가산)" : ""}
       </p>
+      <p className="text-[11px] text-[var(--muted)]">
+        <span className="inline-block h-2 w-3 rounded-sm bg-[var(--border)] align-middle" /> 1~
+        {effectiveMonth - 1}월은 이미 지급된 금액으로 <strong className="text-[var(--text)]">before 값 고정</strong> ·{" "}
+        <span className="inline-block h-2 w-3 rounded-sm bg-[var(--warn-bg,#fef3c7)] align-middle" />{" "}
+        {effectiveMonth}월 이후 after 값이 변동된 셀
+      </p>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[56rem] text-xs">
+        <table className="w-full min-w-[64rem] text-[11px]">
           <thead className="text-[var(--muted)]">
             <tr className="border-b border-[var(--border)]">
-              <th className="px-2 py-1 text-left">직원</th>
-              <th className="px-2 py-1 text-right">변경 前 연사복</th>
-              <th className="px-2 py-1 text-right">변경 後 연사복</th>
+              <th className="sticky left-0 z-10 bg-[var(--panel)] px-2 py-1 text-left">직원 / 구분</th>
+              {months.map((m) => (
+                <th
+                  key={m}
+                  className={`px-1.5 py-1 text-right ${m < effectiveMonth ? "text-[var(--muted)]" : "font-semibold text-[var(--text)]"}`}
+                >
+                  {m}월
+                </th>
+              ))}
+              <th className="px-2 py-1 text-right">합계</th>
               <th className="px-2 py-1 text-right">Δ</th>
               <th className="px-2 py-1 text-right">잔여월</th>
               <th className="px-2 py-1 text-right">월 가산</th>
@@ -555,30 +570,93 @@ function PreviewTable({ plan }: { plan: PlanShape }) {
           </thead>
           <tbody>
             {emp.map((r) => {
-              const before = Object.values(r.welfareBeforeByMonth).reduce((s, v) => s + v, 0);
-              const after = Object.values(r.welfareAfterByMonth).reduce((s, v) => s + v, 0);
+              const beforeSum = Object.values(r.welfareBeforeByMonth).reduce((s, v) => s + v, 0);
+              const afterSum = Object.values(r.welfareAfterByMonth).reduce((s, v) => s + v, 0);
               const overage =
                 r.baseSalaryAnnual > 0 &&
-                r.adjustedMonthlyAddedSalary * Math.max(0, r.remainingMonths - 1) +
-                  r.adjustedDecemberSalary >
+                r.adjustedMonthlyAddedSalary * Math.max(0, r.remainingMonths - 1) + r.adjustedDecemberSalary >
                   r.baseSalaryAnnual;
               return (
-                <tr key={r.employeeId} className="border-b border-[var(--border)] last:border-0 tabular-nums">
-                  <td className="px-2 py-1 text-left">
-                    [{r.employeeCode}] {r.name} · L{r.currentLevel}
-                    {r.newLevel != null && r.newLevel !== r.currentLevel ? ` → L${r.newLevel}` : ""}
-                  </td>
-                  <td className="px-2 py-1 text-right">{formatWon(before)}</td>
-                  <td className="px-2 py-1 text-right">{formatWon(after)}</td>
-                  <td className="px-2 py-1 text-right">{formatWon(r.deltaAnnualWelfare)}</td>
-                  <td className="px-2 py-1 text-right">{r.remainingMonths}</td>
-                  <td className="px-2 py-1 text-right">{formatWon(r.addPerMonth)}</td>
-                  <td className="px-2 py-1 text-right">{formatWon(r.remainderAtDecember)}</td>
-                  <td className="px-2 py-1 text-left text-[var(--warn)]">
-                    {overage ? "연간 급여>baseSalary · " : ""}
-                    {r.warnings.join(" · ")}
-                  </td>
-                </tr>
+                <Fragment key={r.employeeId}>
+                  <tr className="border-b border-[var(--border)]/50 tabular-nums">
+                    <th
+                      rowSpan={2}
+                      className="sticky left-0 z-10 bg-[var(--panel)] px-2 py-1 text-left align-top font-normal"
+                    >
+                      [{r.employeeCode}] {r.name}
+                      <br />
+                      <span className="text-[var(--muted)]">
+                        L{r.currentLevel}
+                        {r.newLevel != null && r.newLevel !== r.currentLevel ? ` → L${r.newLevel}` : ""}
+                      </span>
+                    </th>
+                    {months.map((m) => {
+                      const v = r.welfareBeforeByMonth[m] ?? 0;
+                      const isPre = m < effectiveMonth;
+                      return (
+                        <td
+                          key={m}
+                          className={`px-1.5 py-0.5 text-right ${isPre ? "bg-[var(--border)]/30 text-[var(--muted)]" : "text-[var(--muted)]"}`}
+                          title="변경 前 사복"
+                        >
+                          {v ? formatWon(v) : "-"}
+                        </td>
+                      );
+                    })}
+                    <td className="px-2 py-0.5 text-right text-[var(--muted)]">{formatWon(beforeSum)}</td>
+                    <td className="px-2 py-0.5 text-right" rowSpan={2}>
+                      {formatWon(r.deltaAnnualWelfare)}
+                    </td>
+                    <td className="px-2 py-0.5 text-right" rowSpan={2}>
+                      {r.remainingMonths}
+                    </td>
+                    <td className="px-2 py-0.5 text-right" rowSpan={2}>
+                      {formatWon(r.addPerMonth)}
+                    </td>
+                    <td className="px-2 py-0.5 text-right" rowSpan={2}>
+                      {formatWon(r.remainderAtDecember)}
+                    </td>
+                    <td className="px-2 py-0.5 text-left text-[var(--warn)]" rowSpan={2}>
+                      {overage ? "연간 급여>baseSalary · " : ""}
+                      {r.warnings.join(" · ")}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-[var(--border)] tabular-nums">
+                    {months.map((m) => {
+                      const before = r.welfareBeforeByMonth[m] ?? 0;
+                      const after = r.welfareAfterByMonth[m] ?? 0;
+                      const isPre = m < effectiveMonth;
+                      const changed = !isPre && before !== after;
+                      const frozenOk = isPre && before === after;
+                      return (
+                        <td
+                          key={m}
+                          className={`px-1.5 py-0.5 text-right ${
+                            isPre
+                              ? frozenOk
+                                ? "bg-[var(--border)]/30 text-[var(--text)]"
+                                : "bg-[var(--danger-bg,#fee2e2)] text-[var(--danger,#b91c1c)]"
+                              : changed
+                                ? "bg-[var(--warn-bg,#fef3c7)] font-semibold text-[var(--text)]"
+                                : "text-[var(--text)]"
+                          }`}
+                          title={
+                            isPre
+                              ? frozenOk
+                                ? "이미 지급된 월 · 변경 없음"
+                                : "⚠ 이미 지급된 월인데 금액이 변동 (버그 가능)"
+                              : changed
+                                ? `변경 前 ${formatWon(before)} → 변경 後 ${formatWon(after)}`
+                                : "변동 없음"
+                          }
+                        >
+                          {after ? formatWon(after) : "-"}
+                        </td>
+                      );
+                    })}
+                    <td className="px-2 py-0.5 text-right font-semibold">{formatWon(afterSum)}</td>
+                  </tr>
+                </Fragment>
               );
             })}
           </tbody>

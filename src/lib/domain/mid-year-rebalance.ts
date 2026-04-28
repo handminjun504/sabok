@@ -29,8 +29,12 @@ import {
 /** 1~12월 중 실효 시작 월 (effectiveMonth=1 이면 전 연도 재계산, 스냅샷 없음). */
 export type EffectiveMonth = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
-/** 변경 유형 3종 */
-export type MidYearChangeKind = "LEVEL_RULE" | "EMPLOYEE_LEVEL" | "EMPLOYEE_AMOUNT";
+/** 변경 유형 4종 */
+export type MidYearChangeKind =
+  | "LEVEL_RULE"
+  | "EMPLOYEE_LEVEL"
+  | "EMPLOYEE_AMOUNT"
+  | "EMPLOYEE_MONTHLY_EDIT";
 
 /** L1: 레벨 규칙 전체 수정 */
 export type LevelRuleChangeInput = {
@@ -58,9 +62,28 @@ export type EmployeeAmountChangeInput = {
   newAmountsByEventKey: Readonly<Record<string, number>>;
 };
 
+/**
+ * L4: 월별 × 이벤트별 개별 수정 (스케줄 페이지 "개별 수정" 진입점).
+ *
+ * - `editsByMonth`: `{ [month(1~12)]: { [eventKey|itemKey]: amount } }`
+ * - 정기/커스텀 이벤트는 귀속월, 분기는 지급월 기준으로 키가 들어온다 (UI 가 월·eventKey 짝을 그대로 전달).
+ * - 0 도 "0원으로 확정" 을 의미. 해당 eventKey 를 `editsByMonth` 에서 완전히 제거하면 override 해제.
+ * - baseSalary 불변 원칙은 L1·L2·L3 와 동일하게 잔여 월 조정급여에 Δ 를 분배해 유지.
+ */
+export type EmployeeMonthlyEditInput = {
+  kind: "EMPLOYEE_MONTHLY_EDIT";
+  employeeId: string;
+  editsByMonth: Readonly<Record<number, Readonly<Record<string, number>>>>;
+};
+
 export type MidYearChangeRequest = {
   effectiveMonth: EffectiveMonth;
-} & (LevelRuleChangeInput | EmployeeLevelChangeInput | EmployeeAmountChangeInput);
+} & (
+  | LevelRuleChangeInput
+  | EmployeeLevelChangeInput
+  | EmployeeAmountChangeInput
+  | EmployeeMonthlyEditInput
+);
 
 /** 계획 계산에 필요한 컨텍스트. 서버 액션이 DB 에서 조립해 넘긴다. */
 export type MidYearRebalanceContext = {
@@ -114,6 +137,7 @@ export type EmployeeRebalanceResult = {
     welfareOverrideAmount?: number | null;
     adjustedSalaryOverrideAmount?: number | null;
     levelOverride?: number | null;
+    eventAmountOverrides?: Readonly<Record<string, number>> | null;
   }>;
 };
 
@@ -216,11 +240,36 @@ function affectedEmployeesOf(ctx: MidYearRebalanceContext): Employee[] {
     case "LEVEL_RULE":
       return active.filter((e) => employeeLevelNorm(e) === clampLevel(request.level));
     case "EMPLOYEE_LEVEL":
-    case "EMPLOYEE_AMOUNT": {
+    case "EMPLOYEE_AMOUNT":
+    case "EMPLOYEE_MONTHLY_EDIT": {
       const emp = active.find((e) => e.id === request.employeeId);
       return emp ? [emp] : [];
     }
   }
+}
+
+/**
+ * 월별 개별 수정 입력(`editsByMonth`) 을 정규화한다.
+ * - 유효한 월 키(1~12)만 유지
+ * - 각 amount 는 정수/음수 방지 정규화
+ * - 빈 월 엔트리는 제거
+ */
+function normalizeMonthlyEdits(
+  edits: Readonly<Record<number, Readonly<Record<string, number>>>>,
+): Record<number, Record<string, number>> {
+  const out: Record<number, Record<string, number>> = {};
+  for (const [mk, evMap] of Object.entries(edits)) {
+    const m = Math.round(Number(mk));
+    if (!Number.isFinite(m) || m < 1 || m > 12) continue;
+    const inner: Record<string, number> = {};
+    for (const [k, v] of Object.entries(evMap ?? {})) {
+      const n = Number(v);
+      if (!Number.isFinite(n)) continue;
+      inner[k] = Math.max(0, Math.round(n));
+    }
+    if (Object.keys(inner).length > 0) out[m] = inner;
+  }
+  return out;
 }
 
 /**
@@ -265,6 +314,15 @@ function buildAfterRulesForEmployee(
   if (request.kind === "EMPLOYEE_LEVEL") {
     const newLv = clampLevel(request.newLevel);
     return { rules: currentRules, overrides: currentOverrides, forcedLevel: newLv };
+  }
+
+  if (request.kind === "EMPLOYEE_MONTHLY_EDIT") {
+    /**
+     * 월별 × 이벤트별 개별 수정은 rules / overrides / level 을 전혀 바꾸지 않는다.
+     * 새 금액은 월별 노트의 `eventAmountOverrides` 로만 저장되고,
+     * "after" 시뮬레이션은 `planMidYearRebalance` 에서 afterNotes 에 가짜 overrides 를 주입해 처리한다.
+     */
+    return { rules: currentRules, overrides: currentOverrides, forcedLevel: null };
   }
 
   /** EMPLOYEE_AMOUNT */
@@ -364,6 +422,25 @@ export function planMidYearRebalance(ctx: MidYearRebalanceContext): MidYearRebal
       continue;
     }
 
+    /**
+     * 기존 월별 노트 맵 — pre-effective 월의 기저장된 welfareOverride·levelOverride 를
+     * "이미 지급된 확정 값" 으로 간주해 그대로 유지하기 위한 참조.
+     */
+    const existingNotesByMonth = new Map<
+      number,
+      { welfareOverrideAmount: number | null; levelOverride: number | null }
+    >();
+    for (const n of ctx.notes) {
+      if (n.employeeId !== emp.id || n.year !== year) continue;
+      const m = Math.round(Number(n.month));
+      if (!Number.isFinite(m) || m < 1 || m > 12) continue;
+      const prev = existingNotesByMonth.get(m) ?? { welfareOverrideAmount: null, levelOverride: null };
+      existingNotesByMonth.set(m, {
+        welfareOverrideAmount: n.welfareOverrideAmount ?? prev.welfareOverrideAmount,
+        levelOverride: n.levelOverride ?? prev.levelOverride,
+      });
+    }
+
     /** Level5Override ↔ 일반 레벨 전환 시 안내 — 기존 override 가 새 레벨에서 무시됨을 명시 */
     if (request.kind === "EMPLOYEE_LEVEL") {
       const curLevel = employeeLevelNorm(emp);
@@ -412,9 +489,54 @@ export function planMidYearRebalance(ctx: MidYearRebalanceContext): MidYearRebal
     /** "after" = 새 규칙/오버라이드/레벨 반영. 기존 월별 노트의 welfareOverrideAmount 는 after 시뮬레이션에서는 무시
      *  (새 값을 기준으로 재계산해야 하므로).  단, levelOverride 는 유지 — 2차 변경에서 혼선 방지. */
     const { rules: afterRules, overrides: afterOverrides, forcedLevel } = buildAfterRulesForEmployee(ctx, emp);
+    const monthlyEditsNormalized =
+      request.kind === "EMPLOYEE_MONTHLY_EDIT"
+        ? normalizeMonthlyEdits(request.editsByMonth)
+        : null;
     const afterNotes = ctx.notes
       .filter((n) => n.employeeId === emp.id)
-      .map((n) => ({ ...n, welfareOverrideAmount: null }));
+      .map((n) => {
+        /**
+         * 월별 개별 수정: 사용자가 보낸 `editsByMonth[m]` 을 해당 월 note 의
+         * eventAmountOverrides 로 덮어씌운다 (기존 per-event override 는 교체).
+         * 그 외 경우는 welfareOverrideAmount 만 무효화 (재분배는 새 규칙 기반 재계산).
+         */
+        if (monthlyEditsNormalized) {
+          const m = Math.round(Number(n.month));
+          const ev = monthlyEditsNormalized[m] ?? null;
+          return {
+            ...n,
+            welfareOverrideAmount: null,
+            eventAmountOverrides: ev,
+          };
+        }
+        return { ...n, welfareOverrideAmount: null };
+      });
+    /**
+     * 월별 개별 수정에서 기존 노트가 없는 월도 edits 가 있을 수 있다 — 그 경우 가상의 note 를 추가해
+     * buildMonthlyBreakdown 이 per-event override 를 볼 수 있도록 한다.
+     */
+    if (monthlyEditsNormalized) {
+      const haveMonths = new Set(afterNotes.map((n) => Math.round(Number(n.month))));
+      for (const [mk, ev] of Object.entries(monthlyEditsNormalized)) {
+        const m = Math.round(Number(mk));
+        if (haveMonths.has(m)) continue;
+        afterNotes.push({
+          id: `__virtual_note_${emp.id}_${year}_${m}`,
+          employeeId: emp.id,
+          year,
+          month: m,
+          optionalWelfareText: null,
+          optionalExtraAmount: null,
+          incentiveAccrualAmount: null,
+          incentiveWelfarePaymentAmount: null,
+          welfareOverrideAmount: null,
+          adjustedSalaryOverrideAmount: null,
+          levelOverride: null,
+          eventAmountOverrides: ev,
+        });
+      }
+    }
     const afterByMonth = monthlyWelfareTotals(
       emp,
       year,
@@ -425,15 +547,31 @@ export function planMidYearRebalance(ctx: MidYearRebalanceContext): MidYearRebal
       forcedLevel,
     );
 
-    /** m < effectiveMonth 는 before 값을 고정 (스냅샷). m >= effectiveMonth 는 after 값. */
+    /**
+     * 월별 before/after 산출 — "이미 지급된 월" 은 기존 DB 확정값을 최우선으로 고정한다.
+     *
+     * - m < effectiveMonth:
+     *   기존 노트의 `welfareOverrideAmount` 가 있으면 그 값을 그대로 사용 (절대 불변).
+     *   없으면 `beforeByMonth[m]` (현재 규칙 기준 재계산값) 을 스냅샷으로 사용.
+     *   이 경우 before == after 로 동일 보장 → 재분배는 Δ 계산에서도 0 기여.
+     * - m >= effectiveMonth: 새 규칙 기반 `afterByMonth[m]`.
+     */
     const welfareBeforeByMonth: Record<number, number> = {};
     const welfareAfterByMonth: Record<number, number> = {};
     for (let m = 1; m <= 12; m++) {
-      welfareBeforeByMonth[m] = activeMonths.includes(m) ? (beforeByMonth[m] ?? 0) : 0;
       if (!activeMonths.includes(m)) {
+        welfareBeforeByMonth[m] = 0;
         welfareAfterByMonth[m] = 0;
-      } else if (m < effectiveMonth) {
-        welfareAfterByMonth[m] = beforeByMonth[m] ?? 0;
+        continue;
+      }
+      const existing = existingNotesByMonth.get(m);
+      const frozenValue =
+        m < effectiveMonth && existing?.welfareOverrideAmount != null
+          ? Math.max(0, Math.round(Number(existing.welfareOverrideAmount)))
+          : null;
+      welfareBeforeByMonth[m] = frozenValue != null ? frozenValue : (beforeByMonth[m] ?? 0);
+      if (m < effectiveMonth) {
+        welfareAfterByMonth[m] = welfareBeforeByMonth[m];
       } else {
         welfareAfterByMonth[m] = afterByMonth[m] ?? 0;
       }
@@ -516,17 +654,22 @@ export function planMidYearRebalance(ctx: MidYearRebalanceContext): MidYearRebal
      *     재분배 일관성을 위해 L1·L2 도 동일하게 스냅샷 — 2차 변경 시 기존값 유지)
      *  3) effectiveMonth 이후 활성 월의 `adjustedSalaryOverrideAmount`
      *  4) L2 시 effectiveMonth 이전 활성 월의 `levelOverride` = 기존 레벨 (스냅샷)
+     *  5) L4(EMPLOYEE_MONTHLY_EDIT) 는 effectiveMonth 이후 활성 월의 `eventAmountOverrides`
+     *     + `welfareOverrideAmount` 스냅샷(= welfareAfterByMonth).
      */
     const noteWrites: Array<{
       month: number;
       welfareOverrideAmount?: number | null;
       adjustedSalaryOverrideAmount?: number | null;
       levelOverride?: number | null;
+      eventAmountOverrides?: Readonly<Record<string, number>> | null;
     }> = [];
     const currentLevel = employeeLevelNorm(emp);
     const isLevelChange = request.kind === "EMPLOYEE_LEVEL";
     const isAmountChangeNonL5 =
       request.kind === "EMPLOYEE_AMOUNT" && currentLevel !== 5;
+    const isMonthlyEdit = request.kind === "EMPLOYEE_MONTHLY_EDIT";
+    const monthlyEditsForWrite = isMonthlyEdit && monthlyEditsNormalized ? monthlyEditsNormalized : null;
 
     for (const m of activeMonths) {
       const entry: {
@@ -534,25 +677,56 @@ export function planMidYearRebalance(ctx: MidYearRebalanceContext): MidYearRebal
         welfareOverrideAmount?: number | null;
         adjustedSalaryOverrideAmount?: number | null;
         levelOverride?: number | null;
+        eventAmountOverrides?: Readonly<Record<string, number>> | null;
       } = { month: m };
-      const hasSnapshotValue =
-        (m < effectiveMonth) || (m >= effectiveMonth && (isAmountChangeNonL5 || request.kind === "LEVEL_RULE"));
-      if (hasSnapshotValue) {
-        const value = m < effectiveMonth ? (welfareBeforeByMonth[m] ?? 0) : (welfareAfterByMonth[m] ?? 0);
-        entry.welfareOverrideAmount = value;
+      const existing = existingNotesByMonth.get(m);
+
+      /**
+       * welfareOverrideAmount:
+       * - pre-effective 월: 기존 override 가 있으면 재-저장조차 하지 않아 DB 불변 보장.
+       *   기존 override 가 없을 때만 `welfareBeforeByMonth` 스냅샷 기록.
+       * - >= effectiveMonth 월: L1·L3(비-L5)·L4 는 새 값으로 덮어쓰기.
+       */
+      if (m < effectiveMonth) {
+        if (existing?.welfareOverrideAmount == null) {
+          entry.welfareOverrideAmount = welfareBeforeByMonth[m] ?? 0;
+        }
+      } else if (isAmountChangeNonL5 || request.kind === "LEVEL_RULE" || isMonthlyEdit) {
+        entry.welfareOverrideAmount = welfareAfterByMonth[m] ?? 0;
       }
+
       if (m >= effectiveMonth && remainingMonths > 0 && baseSalaryAnnual > 0 && adjustedAnnualDb > 0) {
         const isLast = m === remainingEnd;
         entry.adjustedSalaryOverrideAmount = isLast ? adjustedDecemberSalary : adjustedMonthlyAddedSalary;
       }
+
+      /**
+       * levelOverride:
+       * - L2(EMPLOYEE_LEVEL) 의 pre-effective 월 — 기존값 있으면 유지, 없으면 현재 레벨 스냅샷.
+       */
       if (isLevelChange && m < effectiveMonth) {
-        entry.levelOverride = currentLevel;
+        if (existing?.levelOverride == null) {
+          entry.levelOverride = currentLevel;
+        }
       }
+
+      /**
+       * eventAmountOverrides (L4 월별 개별 수정):
+       * - pre-effective 월: 건드리지 않음 (기존 DB 값 유지).
+       * - >= effectiveMonth 월: 요청의 editsByMonth[m] 을 그대로 저장.
+       *   빈 객체/undefined 이면 null 로 기록해 override 해제.
+       */
+      if (monthlyEditsForWrite && m >= effectiveMonth) {
+        const ev = monthlyEditsForWrite[m];
+        entry.eventAmountOverrides = ev && Object.keys(ev).length > 0 ? ev : null;
+      }
+
       /** 빈 엔트리는 제외 */
       if (
         entry.welfareOverrideAmount !== undefined ||
         entry.adjustedSalaryOverrideAmount !== undefined ||
-        entry.levelOverride !== undefined
+        entry.levelOverride !== undefined ||
+        entry.eventAmountOverrides !== undefined
       ) {
         noteWrites.push(entry);
       }
