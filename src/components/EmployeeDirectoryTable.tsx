@@ -18,6 +18,7 @@ import {
   type EmployeeStatusForYear,
 } from "@/lib/domain/schedule";
 import { effectiveWelfareAllocationWon } from "@/lib/domain/salary-inclusion";
+import { computeAdjustedSalaryAudit } from "@/lib/domain/adjusted-salary-audit";
 import { formatWon, yn } from "@/lib/spreadsheet-format";
 
 export type EmployeeDirectoryPayrollYearContext = {
@@ -112,7 +113,15 @@ export function EmployeeDirectoryTable({
             )
           : 0;
       const salaryY = payrollYearContext != null ? effectiveAnnualSalaryWon(e) : 0;
-      return { e, status, welfareY, totalY: salaryY + welfareY };
+      /**
+       * 조정연봉 감사 — 조사표(`Employee.adjustedSalary`) vs 월별 누적(`resolveEffectiveAdjustedSalary` 합).
+       * 중도 변동(월별 `adjustedSalaryOverrideAmount`) 이 있는 직원만 유의미한 차이가 발생한다.
+       */
+      const salaryAudit =
+        payrollYearContext != null
+          ? computeAdjustedSalaryAudit(e, payrollYearContext.activeYear, n)
+          : null;
+      return { e, status, welfareY, totalY: salaryY + welfareY, salaryAudit };
     });
   }, [employees, payrollYearContext]);
 
@@ -238,7 +247,25 @@ export function EmployeeDirectoryTable({
                           <div>
                             <SectionTitle>급여 · 복지</SectionTitle>
                             <Row label="기존연봉" value={`${won(e.baseSalary)}원`} />
-                            <Row label="조정급여" value={`${won(e.adjustedSalary)}원`} />
+                            <Row
+                              label="조정급여"
+                              value={
+                                r.salaryAudit && r.salaryAudit.overrideMonths.length > 0 && r.salaryAudit.diff !== 0 ? (
+                                  <span
+                                    className="inline-flex flex-wrap items-baseline justify-end gap-x-1.5"
+                                    title={`조사표 ${won(r.salaryAudit.surveyAdjustedAnnual)}원 vs 실제 누적 ${won(r.salaryAudit.actualAdjustedAnnual)}원 — 월별 재분배 ${r.salaryAudit.overrideMonths.length}개월`}
+                                  >
+                                    <span>{won(e.adjustedSalary)}원</span>
+                                    <span className="badge badge-warn">
+                                      중도변동 {r.salaryAudit.diff > 0 ? "+" : "−"}
+                                      {won(Math.abs(r.salaryAudit.diff))}원
+                                    </span>
+                                  </span>
+                                ) : (
+                                  `${won(e.adjustedSalary)}원`
+                                )
+                              }
+                            />
                             <Row label="사복지급분" value={`${won(e.welfareAllocation)}원`} />
                             {showEffWelfare ? (
                               <>

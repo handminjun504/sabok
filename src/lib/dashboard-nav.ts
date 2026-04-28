@@ -1,9 +1,5 @@
 import type { Role } from "@/lib/role";
-import {
-  canEditCompanySettings,
-  canEditLevelRules,
-  canTriggerGlSync,
-} from "@/lib/permissions";
+import { canEditCompanySettings, canTriggerGlSync } from "@/lib/permissions";
 import { isSingleTenantMode } from "@/lib/single-tenant";
 
 export type NavItem = { href: string; label: string };
@@ -34,7 +30,13 @@ export function getDashboardNav(opts: {
     return [];
   }
 
-  /** 업체 입장 후: 사이드바에는 대시보드만(다른 거래처는 상단「다른 거래처로 전환」). */
+  /**
+   * 업체 입장 후 사이드바 — 메뉴를 세 그룹으로 단순화.
+   * - 시작: 홈·보고
+   * - 업무: 직원/지급 규칙(분기 요율·대상자 포함)/월별 스케줄/급여포함신고
+   * - 관리: 전사 설정·감사 로그·GL 동기화 (권한 있는 항목만)
+   * (분기 지원 메뉴는 '지급 규칙' 페이지 탭으로 흡수되었음 — 중복 메뉴 제거)
+   */
   const startItems: NavItem[] = [
     { href: "/dashboard", label: "대시보드" },
     { href: "/dashboard/operating-report", label: "운영상황 보고" },
@@ -42,31 +44,25 @@ export function getDashboardNav(opts: {
   groups.push({ title: "시작", items: startItems });
 
   const work: NavItem[] = [{ href: "/dashboard/employees", label: "직원" }];
-  if (canEditLevelRules(role)) {
-    work.push({ href: "/dashboard/rules", label: "지급 규칙" });
-  }
   work.push(
-    { href: "/dashboard/quarterly", label: "분기 지원" },
+    { href: "/dashboard/rules", label: "지급 규칙" },
     { href: "/dashboard/schedule", label: "월별 스케줄" },
     { href: "/dashboard/salary-inclusion-report", label: "급여포함신고" },
   );
-  if (canEditCompanySettings(role)) {
-    work.push({ href: "/dashboard/settings", label: "전사 설정" });
-  }
   groups.push({ title: "업무", items: work });
 
-  if (isPlatformAdmin) {
-    groups.push({
-      title: "운영",
-      items: [{ href: "/dashboard/audit", label: "감사 로그" }],
-    });
+  const manage: NavItem[] = [];
+  if (canEditCompanySettings(role)) {
+    manage.push({ href: "/dashboard/settings", label: "전사 설정" });
   }
-
-  if (hasActiveTenant && canTriggerGlSync(role)) {
-    groups.push({
-      title: "연동",
-      items: [{ href: "/dashboard/gl", label: "GL 동기화" }],
-    });
+  if (isPlatformAdmin) {
+    manage.push({ href: "/dashboard/audit", label: "감사 로그" });
+  }
+  if (canTriggerGlSync(role)) {
+    manage.push({ href: "/dashboard/gl", label: "GL 동기화" });
+  }
+  if (manage.length > 0) {
+    groups.push({ title: "관리", items: manage });
   }
 
   return groups;

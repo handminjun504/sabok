@@ -5,25 +5,11 @@ import {
   vendorListByTenant,
 } from "@/lib/pb/repository";
 import { DashboardReserveStatusPanel } from "@/components/DashboardReserveStatusPanel";
-import { DashboardTenantProfileForm } from "@/components/DashboardTenantProfileForm";
 import { summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { employeeIsInactiveForYear } from "@/lib/domain/schedule";
-import type { Tenant } from "@/types/models";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
-
-function tenantProfileFormKey(t: Tenant): string {
-  return [
-    t.name,
-    t.memo ?? "",
-    t.approvalNumber ?? "",
-    t.businessRegNo ?? "",
-    String(t.headOfficeCapital ?? ""),
-    t.clientEntityType,
-    t.operationMode,
-  ].join("|");
-}
 
 export default async function DashboardHomePage() {
   const { tenantId } = await requireTenantContext();
@@ -101,9 +87,21 @@ export default async function DashboardHomePage() {
 
       <DashboardReserveStatusPanel summary={reserveSummary} />
 
-      {tenant ? (
-        <DashboardTenantProfileForm key={tenantProfileFormKey(tenant)} tenant={tenant} />
-      ) : null}
+      <section className="surface dash-panel-pad" aria-labelledby="tenant-quick-link">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 id="tenant-quick-link" className="text-sm font-bold text-[var(--text)]">
+              거래처 프로필·전사 설정
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+              거래처 등록 정보·기금 운영 방식·창립월·기준 연도 등은 설정 페이지에서 한 번에 관리합니다.
+            </p>
+          </div>
+          <Link href="/dashboard/settings" className="btn btn-outline shrink-0 text-sm">
+            설정 열기 →
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,17 +1,41 @@
-import { companySettingsByTenant, employeeListByTenantCodeAsc } from "@/lib/pb/repository";
+import {
+  companySettingsByTenant,
+  employeeListByTenantCodeAsc,
+  tenantGetById,
+} from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings } from "@/lib/permissions";
 import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
 import { CompanySettingsForm } from "@/components/CompanySettingsForm";
+import { DashboardTenantProfileForm } from "@/components/DashboardTenantProfileForm";
 import { SALARY_INCLUSION_VARIANCE_MODES } from "@/lib/domain/salary-inclusion-display";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert } from "@/components/ui/Alert";
+import { Tabs } from "@/components/Tabs";
+import type { Tenant } from "@/types/models";
+
+function tenantProfileFormKey(t: Tenant): string {
+  /** DashboardTenantProfileForm 은 tenant prop 변경 시 내부 state 를 초기화하기 위해 key 로 무효화한다. */
+  return [
+    t.name,
+    t.memo ?? "",
+    t.approvalNumber ?? "",
+    t.businessRegNo ?? "",
+    String(t.headOfficeCapital ?? ""),
+    t.clientEntityType,
+    t.operationMode,
+    t.announcementMode,
+    String(t.announcementBatchFromMonth ?? ""),
+    String(t.announcementBatchToMonth ?? ""),
+  ].join("|");
+}
 
 export default async function SettingsPage() {
   const { tenantId, role } = await requireTenantContext();
-  const [s, allEmployees] = await Promise.all([
+  const [s, allEmployees, tenant] = await Promise.all([
     companySettingsByTenant(tenantId),
     employeeListByTenantCodeAsc(tenantId),
+    tenantGetById(tenantId),
   ]);
   const canEdit = canEditCompanySettings(role);
   const varianceMode = s?.salaryInclusionVarianceMode ?? "BOTH";
@@ -34,13 +58,9 @@ export default async function SettingsPage() {
   const repReturnEmployees = allEmployees
     .filter((e) => e.flagRepReturn)
     .map((e) => ({ id: e.id, employeeCode: e.employeeCode, name: e.name }));
-  return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <PageHeader
-        eyebrow="환경 설정"
-        title="전사 설정"
-        description="선택한 거래처 기준 · 창립월·급여일·기준 연도·지급 표시"
-      />
+
+  const companySettingsTab = (
+    <>
       {!canEdit && (
         <Alert tone="warn">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</Alert>
       )}
@@ -94,6 +114,28 @@ export default async function SettingsPage() {
           </p>
         </div>
       )}
+    </>
+  );
+
+  const tenantProfileTab = tenant ? (
+    <DashboardTenantProfileForm key={tenantProfileFormKey(tenant)} tenant={tenant} />
+  ) : (
+    <p className="text-sm text-[var(--muted)]">거래처 정보를 불러올 수 없습니다.</p>
+  );
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-6">
+      <PageHeader
+        eyebrow="환경 설정"
+        title="설정"
+        description="전사 설정과 거래처 프로필을 한 곳에서 관리합니다."
+      />
+      <Tabs
+        tabs={[
+          { label: "전사 설정", content: companySettingsTab },
+          { label: "거래처 프로필", content: tenantProfileTab },
+        ]}
+      />
     </div>
   );
 }

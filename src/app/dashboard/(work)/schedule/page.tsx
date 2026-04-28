@@ -53,6 +53,8 @@ import { Tabs } from "@/components/Tabs";
 import { ScheduleEmployeeLevelAssignments } from "@/components/ScheduleEmployeeLevelAssignments";
 import { MonthlyIncentiveAccrualGrid } from "@/components/MonthlyIncentiveAccrualGrid";
 import { ScheduleAnnouncementPanel } from "@/components/ScheduleAnnouncementPanel";
+import { AdjustedSalaryAuditPanel } from "@/components/AdjustedSalaryAuditPanel";
+import { computeAdjustedSalaryAuditList } from "@/lib/domain/adjusted-salary-audit";
 import {
   ScheduleEmployeeTable,
   type ScheduleTableEmploymentStatus,
@@ -390,15 +392,14 @@ export default async function SchedulePage() {
       <p className="text-sm text-[var(--muted)]">거래처 정보를 불러올 수 없습니다.</p>
     );
 
-  const incentiveAccrualTab = (
-    <div className="surface dash-panel-pad">
-      <MonthlyIncentiveAccrualGrid
-        year={year}
-        rows={incentiveAccrualRows}
-        canEdit={canNote}
-        setCell={setMonthlyIncentiveAccrualCellAction}
-      />
-    </div>
+  /**
+   * 조정연봉 점검 — 조사표에 올린 `Employee.adjustedSalary` 와 월별 노트로 누적된
+   * 실제 조정연봉을 비교해 불일치 직원을 목록화한다. `canNote` 와 동일한 권한으로
+   * 재동기화 가능 (직원 정보 편집 권한).
+   */
+  const adjustedSalaryAudits = computeAdjustedSalaryAuditList(employees, year, notes);
+  const adjustedSalaryAuditTab = (
+    <AdjustedSalaryAuditPanel year={year} rows={adjustedSalaryAudits} canEdit={canNote} />
   );
 
   const levelAssignmentTab = (
@@ -417,54 +418,79 @@ export default async function SchedulePage() {
     </div>
   );
 
-  const noteTab = canNote ? (
-    <CollapsibleEditorPanel
-      title="선택적 복지·메모"
-      triggerLabel="작성·수정 열기"
-      defaultOpen={false}
-    >
-      <form action={saveMonthlyNoteFormAction} className="space-y-3">
-        <input type="hidden" name="year" value={year} />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="sm:col-span-2">
-            <label className="dash-field-label">직원</label>
-            <select name="employeeId"
-              className="input w-full max-w-md text-xs"
-              required>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="dash-field-label">월</label>
-            <input name="month" type="number" min={1} max={12}
-              className="input w-[4.5rem] text-xs"
-              required />
-          </div>
-          <div>
-            <label className="dash-field-label">선택적 복지 금액</label>
-            <CommaWonInput name="optionalExtraAmount" className="input w-full max-w-xs text-xs" placeholder="원 단위" />
-          </div>
-          <div>
-            <label className="dash-field-label">발생 인센 (선택)</label>
-            <CommaWonInput name="incentiveAccrualAmount" className="input w-full max-w-xs text-xs" placeholder="그 달 귀속" />
-          </div>
-          <div>
-            <label className="dash-field-label">사복으로 지급할 인센 (선택)</label>
-            <CommaWonInput name="incentiveWelfarePaymentAmount" className="input w-full max-w-xs text-xs" placeholder="그 달 사복 지급분" />
-          </div>
-          <div className="sm:col-span-2 lg:col-span-4">
-            <label className="dash-field-label">메모 (선택)</label>
-            <input name="optionalWelfareText"
-              className="input w-full text-xs" />
-          </div>
-        </div>
-        <button type="submit" className="btn btn-primary">저장</button>
-      </form>
-    </CollapsibleEditorPanel>
-  ) : (
-    <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
+  /**
+   * 월별 메모 탭 — 기존 '월별 발생 인센' 그리드와 '선택적 복지·메모' 폼을 한 탭으로 합쳤음.
+   * 두 기능 모두 `sabok_monthly_notes` 컬렉션을 직원·월 단위로 다루기 때문에 한 흐름에 두는 편이 자연스럽다.
+   */
+  const monthlyNoteTab = (
+    <div className="space-y-5">
+      <div className="surface dash-panel-pad">
+        <h3 className="mb-3 text-sm font-semibold tracking-normal text-[var(--text)]">월별 발생 인센</h3>
+        <MonthlyIncentiveAccrualGrid
+          year={year}
+          rows={incentiveAccrualRows}
+          canEdit={canNote}
+          setCell={setMonthlyIncentiveAccrualCellAction}
+        />
+      </div>
+
+      {canNote ? (
+        <CollapsibleEditorPanel
+          title="선택적 복지·메모"
+          description="직원·월 단위로 선택 복지 금액·사복 인센 지급액·메모를 함께 저장합니다."
+          triggerLabel="작성·수정 열기"
+          defaultOpen={false}
+        >
+          <form action={saveMonthlyNoteFormAction} className="space-y-3">
+            <input type="hidden" name="year" value={year} />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="sm:col-span-2">
+                <label className="dash-field-label">직원</label>
+                <select
+                  name="employeeId"
+                  className="input w-full max-w-md text-xs"
+                  required
+                >
+                  {employees.map((e) => (
+                    <option key={e.id} value={e.id}>{e.employeeCode} — {e.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="dash-field-label">월</label>
+                <input
+                  name="month"
+                  type="number"
+                  min={1}
+                  max={12}
+                  className="input w-[4.5rem] text-xs"
+                  required
+                />
+              </div>
+              <div>
+                <label className="dash-field-label">선택적 복지 금액</label>
+                <CommaWonInput name="optionalExtraAmount" className="input w-full max-w-xs text-xs" placeholder="원 단위" />
+              </div>
+              <div>
+                <label className="dash-field-label">발생 인센 (선택)</label>
+                <CommaWonInput name="incentiveAccrualAmount" className="input w-full max-w-xs text-xs" placeholder="그 달 귀속" />
+              </div>
+              <div>
+                <label className="dash-field-label">사복으로 지급할 인센 (선택)</label>
+                <CommaWonInput name="incentiveWelfarePaymentAmount" className="input w-full max-w-xs text-xs" placeholder="그 달 사복 지급분" />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-4">
+                <label className="dash-field-label">메모 (선택)</label>
+                <input name="optionalWelfareText" className="input w-full text-xs" />
+              </div>
+            </div>
+            <button type="submit" className="btn btn-primary">저장</button>
+          </form>
+        </CollapsibleEditorPanel>
+      ) : (
+        <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
+      )}
+    </div>
   );
 
   /** 분기 항목이 등록은 됐지만 paymentMonths 가 한 달뿐인 게 전부면, PB 컬럼이 빠진 사고일 가능성 — 스케줄 카드에 분기 합이 한 달만 잡혀 보일 수 있어 한 번 더 안내. */
@@ -479,19 +505,21 @@ export default async function SchedulePage() {
         <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">{year}년 — 정기 지급(귀속월) + 분기 지원(지급월) + 선택 복지를 같은 칸에 합산해 표시합니다.</p>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          카카오·문자 안내문은 <span className="font-semibold text-[var(--text)]">「안내 멘트」</span> 탭에서,
-          자본금 50% 한도·추가 적립 누적·메모는 <span className="font-semibold text-[var(--text)]">「적립금」</span>{" "}
-          탭에서 확인할 수 있습니다.
+          카카오·문자 안내문은 <span className="font-semibold text-[var(--text)]">「안내 멘트」</span> 탭,
+          월별 발생 인센·선택 복지·메모는 <span className="font-semibold text-[var(--text)]">「월별 메모」</span> 탭,
+          자본금 50% 한도·추가 적립 누적은 <span className="font-semibold text-[var(--text)]">「적립금」</span> 탭,
+          중도 변동으로 조사표 조정연봉이 어긋난 직원은{" "}
+          <span className="font-semibold text-[var(--text)]">「조정연봉 점검」</span> 탭에서 확인·동기화할 수 있습니다.
         </p>
       </div>
 
       {quarterlyEmpty ? (
         <Alert tone="info" title="분기 지원이 아직 등록되지 않았습니다">
           월별 스케줄에는 정기 지급만 표시되고 있습니다. 분기 지원 금액을 함께 보려면{" "}
-          <Link href="/dashboard/quarterly" className="font-semibold text-[var(--accent)] hover:underline">
-            「분기 지원금」
+          <Link href="/dashboard/rules" className="font-semibold text-[var(--accent)] hover:underline">
+            「지급 규칙 → 분기 대상자 체크」
           </Link>{" "}
-          메뉴에서 항목·지급 월·금액을 등록하세요.
+          탭에서 항목·지급 월·금액을 등록하세요.
         </Alert>
       ) : quarterlyOnlySingleMonth ? (
         <Alert tone="warn" title="분기 지원의 지급 월이 1개씩만 저장되어 있습니다">
@@ -501,20 +529,20 @@ export default async function SchedulePage() {
           </code>{" "}
           컬렉션에 <strong>json 필드 paymentMonths</strong> 가 없으면 첫 달만 저장돼 스케줄·총 지급금액에도 일부만
           반영됩니다.{" "}
-          <Link href="/dashboard/quarterly" className="font-semibold text-[var(--accent)] hover:underline">
-            「분기 지원금」
+          <Link href="/dashboard/rules" className="font-semibold text-[var(--accent)] hover:underline">
+            「지급 규칙 → 분기 대상자 체크」
           </Link>{" "}
-          페이지의 진단 배너를 따라 PB 필드를 추가한 뒤, 각 항목을 다시 저장해 주세요.
+          탭의 진단 배너를 따라 PB 필드를 추가한 뒤, 각 항목을 다시 저장해 주세요.
         </Alert>
       ) : null}
       <Tabs
         tabs={[
           { label: "월별 스케줄", content: scheduleTab },
           { label: "안내 멘트", content: announcementTab },
+          { label: "월별 메모", content: monthlyNoteTab },
           { label: "적립금", content: reserveTab },
-          { label: "월별 발생 인센", content: incentiveAccrualTab },
           { label: "레벨·예정액", content: levelAssignmentTab },
-          { label: "선택적 복지·메모", content: noteTab },
+          { label: "조정연봉 점검", content: adjustedSalaryAuditTab },
         ]}
       />
     </div>

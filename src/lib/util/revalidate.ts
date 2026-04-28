@@ -20,15 +20,21 @@ export function revalidateEmployeeArtifacts(opts?: { detailPath?: string; includ
   revalidateScheduleArtifacts();
 }
 
-/** 레벨 규칙·정기 행사 변경 시. */
+/**
+ * 레벨 규칙·정기 행사 변경 시 — 지급 규칙 페이지(레벨·분기 탭 통합)와 스케줄 계열까지 무효화.
+ * 과거 `/dashboard/levels` 경로는 `/dashboard/rules` 로 redirect 되므로 그쪽만 갱신해도 충분하다.
+ */
 export function revalidateLevelArtifacts(): void {
-  revalidatePath("/dashboard/levels");
+  revalidatePath("/dashboard/rules");
   revalidateScheduleArtifacts();
 }
 
-/** 분기 항목·월별 노트 변경 시. */
+/**
+ * 분기 항목·월별 노트 변경 시 — 분기 탭이 지급 규칙 페이지로 이사했으므로 `/dashboard/rules` 를 무효화한다.
+ * 과거 `/dashboard/quarterly` 는 redirect only.
+ */
 export function revalidateQuarterlyArtifacts(): void {
-  revalidatePath("/dashboard/quarterly");
+  revalidatePath("/dashboard/rules");
   revalidateScheduleArtifacts();
 }
 

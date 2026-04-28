@@ -397,7 +397,7 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
         <Link href="/dashboard/schedule" className="text-[var(--accent)] hover:underline">
           월별지급스케줄 →
         </Link>
-        <Link href="/dashboard/levels" className="text-[var(--accent)] hover:underline">
+        <Link href="/dashboard/rules" className="text-[var(--accent)] hover:underline">
           레벨·정기지급 →
         </Link>
         <Link href="/dashboard/salary-inclusion-report" className="text-[var(--accent)] hover:underline">
