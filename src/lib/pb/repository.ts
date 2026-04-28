@@ -1295,7 +1295,14 @@ export async function auditLogCreate(input: {
 export async function auditLogListRecent(limit: number): Promise<AuditLogRow[]> {
   try {
     const pb = await getAdminPb();
-    const rows = await pb.collection(C.auditLogs).getList(1, limit, { sort: "-created" });
+    /**
+     * 운영 PB 의 sabok_audit_logs 컬렉션에는 autodate `created` 시스템 필드가 없어
+     * `sort: "-created"` 가 400 을 반환해 서버 컴포넌트 렌더 전체가 깨졌다.
+     * autogen id 는 `[a-z0-9]{15}` 랜덤이라 정확한 시간순은 아니지만 400 은 피하고
+     * PB 기본 페이지네이션이 일관되게 동작한다. 진짜 시간 정렬이 필요하면 PB 스키마에
+     * `created` autodate 필드를 추가하고 이 정렬을 되돌리면 된다.
+     */
+    const rows = await pb.collection(C.auditLogs).getList(1, limit, { sort: "-id" });
     const out: AuditLogRow[] = [];
     for (const x of rows.items) {
       const r = asRecord(x);
@@ -1335,9 +1342,14 @@ export async function glSyncJobCreate(data: { tenantId: string; status: string; 
 export async function glSyncJobListByTenant(tenantId: string, limit: number): Promise<GlSyncJobRow[]> {
   try {
     const pb = await getAdminPb();
+    /**
+     * sabok_gl_sync_jobs 에도 autodate `created` 가 없어 `-created` 정렬은 400 을 낸다.
+     * id 역순으로 대체 — 정확한 시간순은 아니지만 PB 는 400 을 내지 않고,
+     * 필요하면 PB 스키마에 autodate 필드를 추가해 `-created` 로 되돌리면 된다.
+     */
     const rows = await pb.collection(C.glSyncJobs).getList(1, limit, {
       filter: `tenantId="${esc(tenantId)}"`,
-      sort: "-created",
+      sort: "-id",
     });
     return rows.items.map((x) => {
       const r = asRecord(x);
@@ -1422,9 +1434,14 @@ export async function vendorUpdate(
 
 export async function vendorContributionListByVendor(vendorId: string, limit: number): Promise<VendorContribution[]> {
   const pb = await getAdminPb();
+  /**
+   * sabok_vendor_contributions 에는 autodate `created` 가 없어 `-created` 정렬이 400 을 낸다.
+   * 이 컬렉션의 실질적 시간 축은 거래처가 입력한 발생일(`occurredAt`, ISO "YYYY-MM-DD" text) 이므로
+   * 최신 발생순 정렬에 더 맞다. occurredAt 이 비어 있는 과거 레코드는 뒤로 밀린다.
+   */
   const rows = await pb.collection(C.vendorContributions).getList(1, limit, {
     filter: `vendorId="${esc(vendorId)}"`,
-    sort: "-created",
+    sort: "-occurredAt",
   });
   return rows.items.map((x) => mapVendorContributionRow(asRecord(x)));
 }
@@ -1434,9 +1451,13 @@ export async function vendorContributionListByTenantYear(
   year: number,
 ): Promise<VendorContribution[]> {
   const pb = await getAdminPb();
+  /**
+   * 위와 같은 이유로 PB 정렬 축을 `occurredAt` 으로 변경. 연도 필터는 JS 단계에서
+   * `occurredAt` 앞 4자리로 판별한다(아래 filter 유지).
+   */
   const rows = await pb.collection(C.vendorContributions).getFullList({
     filter: `tenantId="${esc(tenantId)}"`,
-    sort: "created",
+    sort: "occurredAt",
   });
   return rows
     .map((x) => mapVendorContributionRow(asRecord(x)))
