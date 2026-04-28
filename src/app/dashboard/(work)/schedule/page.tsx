@@ -33,7 +33,7 @@ import {
   welfareByScheduleDisplayMonth,
   welfareScheduleLinesByMonth,
 } from "@/lib/domain/schedule";
-import { PAYMENT_EVENT_LABELS, QUARTERLY_ITEM_LABELS } from "@/lib/business-rules";
+import { PAYMENT_EVENT, PAYMENT_EVENT_LABELS, QUARTERLY_ITEM_LABELS } from "@/lib/business-rules";
 import type { PaymentEventKey, QuarterlyItemKey } from "@/lib/business-rules";
 import type {
   ScheduleEditAvailableEvent,
@@ -284,7 +284,13 @@ export default async function SchedulePage() {
      *      · 분기 → 그 직원 config 의 `amount`
      */
     const availableEvents: ScheduleEditAvailableEvent[] = [];
-    for (const eventKey of allPaymentEventKeysForYear(settings, year)) {
+    /** 월 임의 지급 키는 드롭다운 맨 위에 두어 "자연 이벤트 없이" 넣기 쉽게 한다. */
+    const allKeys = allPaymentEventKeysForYear(settings, year);
+    const adhoc = PAYMENT_EVENT.MONTHLY_ADHOC;
+    const keysOrdered = allKeys.includes(adhoc)
+      ? [adhoc, ...allKeys.filter((k) => k !== adhoc)]
+      : [...allKeys];
+    for (const eventKey of keysOrdered) {
       const label = Object.prototype.hasOwnProperty.call(PAYMENT_EVENT_LABELS, eventKey)
         ? PAYMENT_EVENT_LABELS[eventKey as PaymentEventKey]
         : paymentEventLabel(eventKey, customDefs);

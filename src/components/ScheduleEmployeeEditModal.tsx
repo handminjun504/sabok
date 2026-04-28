@@ -311,9 +311,10 @@ export function ScheduleEmployeeEditModal(props: ScheduleEmployeeEditModalProps)
               [{employee.code}] {employee.name} · L{employee.level} — 월별 개별 금액 수정
             </h2>
             <p className="mt-0.5 text-xs leading-snug text-[var(--muted)]">
-              {year}년 스케줄의 월별 이벤트 금액을 개별 수정합니다. 자연 발생 이벤트가 없는 월에도 「＋ 항목 추가」 로
-              지급 항목을 끼워 넣을 수 있어요. 적용 월 이전은 이미 지급된 값으로 고정, 이후는 새 금액이 저장되고
-              연간 기본급여 합계는 불변으로 유지됩니다.
+              {year}년 스케줄의 월별 이벤트 금액을 개별 수정합니다. 정기·분기 일정을 쓰지 않아도 드롭다운 맨 위의
+              「월 임의 지급」으로 금액만 넣을 수 있어요. 다른 항목은 자연 발생이 없는 월에도 「＋ 항목 추가」로
+              넣을 수 있습니다. 적용 월 이전은 이미 지급된 값으로 고정, 이후는 새 금액이 저장되고 연간 기본급여
+              합계는 불변으로 유지됩니다.
             </p>
           </div>
           <button

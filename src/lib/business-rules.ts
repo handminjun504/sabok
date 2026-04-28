@@ -56,6 +56,11 @@ export const PAYMENT_EVENT = {
   FOUNDING_MONTH: "FOUNDING_MONTH",
   BIRTH_MONTH: "BIRTH_MONTH",
   WEDDING_MONTH: "WEDDING_MONTH",
+  /**
+   * 귀속월 스케줄에 자연 발생하지 않는 "월 임의 지급" 전용 키.
+   * 레벨별 정기 금액을 비워 두어도 월별 개별 수정·중도 재분배에서 금액만 넣어 지급 가능.
+   */
+  MONTHLY_ADHOC: "MONTHLY_ADHOC",
 } as const;
 
 export type PaymentEventKey = (typeof PAYMENT_EVENT)[keyof typeof PAYMENT_EVENT];
@@ -70,6 +75,7 @@ export const PAYMENT_EVENT_LABELS: Record<PaymentEventKey, string> = {
   FOUNDING_MONTH: "창립기념",
   BIRTH_MONTH: "생일",
   WEDDING_MONTH: "결혼기념",
+  MONTHLY_ADHOC: "월 임의 지급\n(정기·분기 외)",
 };
 
 /** 고정 월 이벤트 → 귀속 월 */

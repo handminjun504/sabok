@@ -127,6 +127,7 @@ export function legalCategoryForRegularEventKey(eventKey: string): number {
       return 64;
     case PAYMENT_EVENT.HIRE_MONTH:
     case PAYMENT_EVENT.BIRTH_MONTH:
+    case PAYMENT_EVENT.MONTHLY_ADHOC:
       return 66;
     default:
       return 66;

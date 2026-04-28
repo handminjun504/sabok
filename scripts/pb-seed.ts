@@ -180,12 +180,14 @@ async function main() {
         const ex = await firstByFilter(C.levelPaymentRules, f);
         if (!ex?.id) {
           const base = level * 100_000;
+          /** 월 임의 지급은 귀속 일정이 없으므로 시드 기본 금액은 0 — 필요 시 월별 수정으로만 쓴다. */
+          const amount = eventKey === PAYMENT_EVENT.MONTHLY_ADHOC ? 0 : base;
           await pb.collection(C.levelPaymentRules).create({
             tenantId: firstTenantId,
             year,
             level,
             eventKey,
-            amount: base,
+            amount,
           });
         }
       }
