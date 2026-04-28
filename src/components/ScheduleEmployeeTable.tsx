@@ -5,6 +5,7 @@ import { Fragment, useState, useTransition, type ReactNode } from "react";
 import type { ScheduleCapBlock, ScheduleWelfareLine } from "@/components/ScheduleEmployeeCards";
 import {
   ScheduleEmployeeEditModal,
+  type ScheduleEditAvailableEvent,
   type ScheduleEditMonthEvent,
 } from "@/components/ScheduleEmployeeEditModal";
 import type { setMonthPaidConfirmedAction } from "@/app/actions/quarterly";
@@ -49,6 +50,10 @@ export type ScheduleTableRow = {
   showCapUnder: boolean;
   /** 월별 개별 수정 모달 prefill 데이터 */
   editableEventsByMonth?: Record<number, ScheduleEditMonthEvent[]>;
+  /** 모달의 "＋ 항목 추가" 후보(정기/커스텀/분기) */
+  availableEvents?: ScheduleEditAvailableEvent[];
+  /** 직원 활성 월 범위(부분 재직자) */
+  activeRange?: { fromMonth: number; toMonth: number } | null;
   /** 이벤트별 수정된 월 — 셀 배경 강조용 */
   modifiedMonths?: number[];
 };
@@ -535,6 +540,8 @@ export function ScheduleEmployeeTable({
             level: editingRow.level,
           }}
           eventsByMonth={editingRow.editableEventsByMonth}
+          availableEvents={editingRow.availableEvents ?? []}
+          activeRange={editingRow.activeRange ?? undefined}
           defaultEffectiveMonth={inferredDefaultEffective}
           canEdit={canEdit}
         />

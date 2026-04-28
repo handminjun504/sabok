@@ -67,13 +67,35 @@ export type ScheduleEditEmployeeInfo = {
   level: number;
 };
 
+/**
+ * 한 해 동안 "아무 달에도 쓰일 수 있는" 이벤트/분기 목록.
+ * 모달의 "＋ 항목 추가" 드롭다운에서 월별로 덧붙일 수 있는 후보를 제공한다.
+ */
+export type ScheduleEditAvailableEvent = {
+  eventKey: string;
+  label: string;
+  kind: "regular" | "quarterly";
+  /**
+   * 자연 발생이 아닌 월에 기본으로 제안할 금액(옵션). 예를 들어 현재 레벨 규칙 기준 금액.
+   * 사용자는 선택 후 자유롭게 수정 가능. null 이면 0 으로 시작.
+   */
+  suggestedAmount?: number | null;
+};
+
 export type ScheduleEmployeeEditModalProps = {
   open: boolean;
   onClose: () => void;
   year: number;
   employee: ScheduleEditEmployeeInfo;
-  /** 1~12월 각 월의 편집 가능한 이벤트 목록 */
+  /** 1~12월 각 월의 편집 가능한 이벤트 목록(자연 발생·기존 override 기반) */
   eventsByMonth: Record<number, ScheduleEditMonthEvent[]>;
+  /** 추가 가능한 이벤트/분기 후보 — 직원 활성 범위를 공유 기준으로 사용 */
+  availableEvents: ScheduleEditAvailableEvent[];
+  /**
+   * 직원 활성 월 범위(1~12). 제공되면 그 범위만 편집 영역으로 노출.
+   * 미제공이면 1~12 전 구간을 노출한다.
+   */
+  activeRange?: { fromMonth: number; toMonth: number };
   /** 적용 시작 월 기본값 (현재 달 이후 가장 가까운 활성 월 등) */
   defaultEffectiveMonth: number;
   canEdit: boolean;
@@ -91,7 +113,17 @@ const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
  * - baseSalary 불변 유지 — 잔여 월 조정급여 자동 보전
  */
 export function ScheduleEmployeeEditModal(props: ScheduleEmployeeEditModalProps) {
-  const { open, onClose, year, employee, eventsByMonth, defaultEffectiveMonth, canEdit } = props;
+  const {
+    open,
+    onClose,
+    year,
+    employee,
+    eventsByMonth,
+    availableEvents,
+    activeRange,
+    defaultEffectiveMonth,
+    canEdit,
+  } = props;
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [effectiveMonth, setEffectiveMonth] = useState<number>(Math.min(12, Math.max(1, defaultEffectiveMonth)));
@@ -116,11 +148,18 @@ export function ScheduleEmployeeEditModal(props: ScheduleEmployeeEditModalProps)
   }, [eventsByMonth]);
 
   const [inputs, setInputs] = useState<Record<number, Record<string, number>>>(buildInitialInputs);
+  /**
+   * "자연 발생하지 않는 월" 에 사용자가 새로 추가한 항목 목록.
+   * `{ [month]: eventKey[] }`. 각 키의 금액은 `inputs[month][eventKey]` 에 담긴다.
+   * 저장 시 inputs 에서 해당 값이 `> 0` 이면 override 로 보내고, 0 이면 제외한다.
+   */
+  const [addedByMonth, setAddedByMonth] = useState<Record<number, string[]>>({});
 
   /** 모달이 열리거나 대상이 바뀌면 입력 초기화 */
   useEffect(() => {
     if (!open) return;
     setInputs(buildInitialInputs());
+    setAddedByMonth({});
     setPreview(null);
     setPreviewError(null);
     setApplyError(null);
@@ -134,6 +173,13 @@ export function ScheduleEmployeeEditModal(props: ScheduleEmployeeEditModalProps)
   const [applySuccess, setApplySuccess] = useState<string | null>(null);
   const [isPreviewing, startPreview] = useTransition();
   const [isApplying, startApply] = useTransition();
+
+  /** 추가 후보 빠른 조회용 맵 */
+  const availableByKey = useMemo(() => {
+    const m = new Map<string, ScheduleEditAvailableEvent>();
+    for (const ev of availableEvents) m.set(ev.eventKey, ev);
+    return m;
+  }, [availableEvents]);
 
   /** "원래와 다른" 이벤트만 서버에 넘기는 최종 editsByMonth 구성 */
   const changedEditsByMonth = useMemo<Record<number, Record<string, number>>>(() => {
@@ -155,10 +201,17 @@ export function ScheduleEmployeeEditModal(props: ScheduleEmployeeEditModalProps)
           diffRow[ev.eventKey] = Math.max(0, Math.round(ev.currentOverride));
         }
       }
+      /** 사용자가 새로 추가한 항목 — 0 초과일 때만 override 로 저장. */
+      for (const addedKey of addedByMonth[m] ?? []) {
+        if (evs.some((e) => e.eventKey === addedKey)) continue; // 기존에 이미 있으면 위에서 처리됨
+        const v = Number(row[addedKey] ?? 0);
+        if (!Number.isFinite(v) || v <= 0) continue;
+        diffRow[addedKey] = Math.max(0, Math.round(v));
+      }
       if (Object.keys(diffRow).length > 0) out[m] = diffRow;
     }
     return out;
-  }, [inputs, eventsByMonth]);
+  }, [inputs, eventsByMonth, addedByMonth]);
 
   /** 실제로 "다른" 이벤트가 하나라도 있는지 — 미리보기/적용 버튼 활성화 조건 */
   const hasDiff = useMemo(() => {
@@ -170,9 +223,14 @@ export function ScheduleEmployeeEditModal(props: ScheduleEmployeeEditModalProps)
         const baseline = ev.currentOverride != null ? ev.currentOverride : ev.currentAmount;
         if (Math.round(cur) !== Math.round(baseline)) return true;
       }
+      for (const addedKey of addedByMonth[m] ?? []) {
+        if (evs.some((e) => e.eventKey === addedKey)) continue;
+        const v = Number(row[addedKey] ?? 0);
+        if (Number.isFinite(v) && v > 0) return true;
+      }
     }
     return false;
-  }, [inputs, eventsByMonth]);
+  }, [inputs, eventsByMonth, addedByMonth]);
 
   const buildInput = useCallback((): MidYearChangeInput => ({
     kind: "EMPLOYEE_MONTHLY_EDIT",
@@ -222,7 +280,13 @@ export function ScheduleEmployeeEditModal(props: ScheduleEmployeeEditModalProps)
   if (!open) return null;
 
   const busy = isPreviewing || isApplying;
-  const monthsWithEvents = MONTHS.filter((m) => (eventsByMonth[m] ?? []).length > 0);
+  /**
+   * 노출 월 범위 — `activeRange` 가 주어지면 그 범위만, 아니면 1~12 전부.
+   * 자연 발생 이벤트가 없어도 "＋ 항목 추가" 로 쓸 수 있어야 하므로 이벤트 유무로 걸러내지 않는다.
+   */
+  const displayMonths = activeRange
+    ? MONTHS.filter((m) => m >= activeRange.fromMonth && m <= activeRange.toMonth)
+    : [...MONTHS];
 
   return (
     <div
@@ -247,8 +311,9 @@ export function ScheduleEmployeeEditModal(props: ScheduleEmployeeEditModalProps)
               [{employee.code}] {employee.name} · L{employee.level} — 월별 개별 금액 수정
             </h2>
             <p className="mt-0.5 text-xs leading-snug text-[var(--muted)]">
-              {year}년 스케줄의 월별 이벤트 금액을 개별 수정합니다. 적용 월 이전은 이미 지급된 값으로 고정, 이후는
-              새 금액이 저장되고 연간 기본급여 합계는 불변으로 유지됩니다.
+              {year}년 스케줄의 월별 이벤트 금액을 개별 수정합니다. 자연 발생 이벤트가 없는 월에도 「＋ 항목 추가」 로
+              지급 항목을 끼워 넣을 수 있어요. 적용 월 이전은 이미 지급된 값으로 고정, 이후는 새 금액이 저장되고
+              연간 기본급여 합계는 불변으로 유지됩니다.
             </p>
           </div>
           <button
@@ -293,13 +358,22 @@ export function ScheduleEmployeeEditModal(props: ScheduleEmployeeEditModalProps)
 
           <section>
             <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">월별 이벤트 금액</h3>
-            {monthsWithEvents.length === 0 ? (
-              <p className="text-sm text-[var(--muted)]">수정 가능한 이벤트가 없습니다.</p>
+            {displayMonths.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">편집 가능한 월이 없습니다.</p>
             ) : (
               <div className="grid gap-2 md:grid-cols-2">
-                {monthsWithEvents.map((m) => {
-                  const evs = eventsByMonth[m]!;
+                {displayMonths.map((m) => {
+                  const evs = eventsByMonth[m] ?? [];
+                  const addedKeys = addedByMonth[m] ?? [];
+                  const addedOnly = addedKeys.filter((k) => !evs.some((e) => e.eventKey === k));
                   const isPre = m < effectiveMonth;
+                  const hasAnything = evs.length > 0 || addedOnly.length > 0;
+                  /** 드롭다운 후보 — 이미 월에 등장하는 키(자연 발생 + 추가된 것) 는 제외 */
+                  const taken = new Set<string>([
+                    ...evs.map((e) => e.eventKey),
+                    ...addedOnly,
+                  ]);
+                  const candidates = availableEvents.filter((ev) => !taken.has(ev.eventKey));
                   return (
                     <div
                       key={m}
@@ -373,7 +447,114 @@ export function ScheduleEmployeeEditModal(props: ScheduleEmployeeEditModalProps)
                             </li>
                           );
                         })}
+                        {addedOnly.map((key) => {
+                          const meta = availableByKey.get(key);
+                          const row = inputs[m] ?? {};
+                          const cur = Number(row[key] ?? 0);
+                          const label = meta?.label ?? key;
+                          const kind = meta?.kind ?? "regular";
+                          return (
+                            <li
+                              key={`added-${key}`}
+                              className="flex items-center gap-2 rounded-sm bg-[color:color-mix(in_srgb,var(--warn)_8%,transparent)] px-1.5 py-0.5"
+                            >
+                              <span
+                                className={
+                                  "shrink-0 rounded-sm border px-1 py-px text-[10px] font-bold leading-none " +
+                                  (kind === "quarterly"
+                                    ? "border-[color:color-mix(in_srgb,var(--accent)_30%,transparent)] bg-[var(--accent-soft)] text-[var(--accent-dim)]"
+                                    : "border-[var(--border)] bg-[var(--surface-hover)] text-[var(--muted)]")
+                                }
+                              >
+                                {kind === "quarterly" ? "분기" : "정기"}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-xs text-[var(--text)]">
+                                {label}
+                                <span className="ml-1 rounded-sm bg-[var(--warn-soft)] px-1 py-px text-[9px] font-semibold text-[var(--warn)]">
+                                  추가
+                                </span>
+                              </span>
+                              <InlineWonInput
+                                className={
+                                  "input w-28 text-right text-xs tabular-nums " +
+                                  (cur > 0 && !isPre
+                                    ? "border-[var(--warn)] bg-[color:color-mix(in_srgb,var(--warn)_15%,var(--surface))]"
+                                    : "")
+                                }
+                                value={cur}
+                                onChange={(n) => {
+                                  setInputs((prev) => {
+                                    const nextRow = { ...(prev[m] ?? {}) };
+                                    nextRow[key] = n;
+                                    return { ...prev, [m]: nextRow };
+                                  });
+                                }}
+                                disabled={busy || !canEdit || isPre}
+                              />
+                              <button
+                                type="button"
+                                className="text-[10px] text-[var(--danger)] underline-offset-2 hover:underline"
+                                onClick={() => {
+                                  setAddedByMonth((prev) => ({
+                                    ...prev,
+                                    [m]: (prev[m] ?? []).filter((k) => k !== key),
+                                  }));
+                                  setInputs((prev) => {
+                                    const nextRow = { ...(prev[m] ?? {}) };
+                                    delete nextRow[key];
+                                    return { ...prev, [m]: nextRow };
+                                  });
+                                }}
+                                disabled={busy}
+                                title="추가 취소"
+                              >
+                                ×
+                              </button>
+                            </li>
+                          );
+                        })}
                       </ul>
+                      {!hasAnything ? (
+                        <p className="mb-1 text-[10px] leading-snug text-[var(--muted)]">
+                          이 달에는 자연 발생 이벤트가 없습니다. 아래에서 추가해 지급할 수 있어요.
+                        </p>
+                      ) : null}
+                      {canEdit && !isPre && candidates.length > 0 ? (
+                        <div className="mt-2">
+                          <select
+                            className="input w-full text-xs"
+                            value=""
+                            onChange={(e) => {
+                              const key = e.target.value;
+                              if (!key) return;
+                              const meta = availableByKey.get(key);
+                              setAddedByMonth((prev) => ({
+                                ...prev,
+                                [m]: [...(prev[m] ?? []), key],
+                              }));
+                              setInputs((prev) => {
+                                const nextRow = { ...(prev[m] ?? {}) };
+                                const seed =
+                                  meta?.suggestedAmount != null && Number.isFinite(meta.suggestedAmount)
+                                    ? Math.max(0, Math.round(Number(meta.suggestedAmount)))
+                                    : 0;
+                                nextRow[key] = seed;
+                                return { ...prev, [m]: nextRow };
+                              });
+                              /** 한 번 선택 후 select 는 다시 placeholder 로 돌아가도록 */
+                              e.currentTarget.value = "";
+                            }}
+                            disabled={busy}
+                          >
+                            <option value="">＋ 항목 추가…</option>
+                            {candidates.map((c) => (
+                              <option key={c.eventKey} value={c.eventKey}>
+                                [{c.kind === "quarterly" ? "분기" : "정기"}] {c.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}

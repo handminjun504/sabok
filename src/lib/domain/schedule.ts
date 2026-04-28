@@ -353,6 +353,42 @@ export function buildMonthlyBreakdown(
       const ov = pickEventOverride(eventOverridesPaid, q.itemKey);
       return { itemKey: q.itemKey, amount: ov != null ? ov : q.amount };
     });
+
+    /**
+     * "금액 안 쓰여있는 월"(자연 발생하지 않는 월) 에도 override 를 통해 항목을 추가할 수 있게 지원.
+     *
+     * `eventAmountOverrides` 에 들어 있는 키 중, 위에서 이미 처리된 것들 외에 새로 등장한 키를 합류시킨다.
+     *   - 직원의 분기 config 에 있는 itemKey → `quarterlyAtPaidMonth` 로(= paidMonth 의 override 를 본다)
+     *   - 그 외 유효한 이벤트 키 → `regularEvents` 로(= accrualMonth 의 override 를 본다)
+     *
+     * 서버 액션(`EMPLOYEE_MONTHLY_EDIT`) 이 사전에 허용된 eventKey/itemKey 만 통과시키므로
+     * 여기서는 직원의 분기 config 여부만으로 분기/정기를 구분해도 안전하다.
+     */
+    const employeeQuarterlyItemKeys = new Set(
+      quarterly.filter((q) => q.year === year).map((q) => q.itemKey),
+    );
+    if (eventOverridesAccrual) {
+      const seen = new Set(regularEvents.map((r) => r.eventKey));
+      for (const [eventKey, rawAmount] of Object.entries(eventOverridesAccrual)) {
+        if (seen.has(eventKey)) continue;
+        if (employeeQuarterlyItemKeys.has(eventKey)) continue;
+        const amt = pickEventOverride({ [eventKey]: rawAmount }, eventKey);
+        if (amt == null) continue;
+        regularEvents.push({ eventKey, amount: amt });
+        seen.add(eventKey);
+      }
+    }
+    if (eventOverridesPaid) {
+      const seen = new Set(quarterlyAtPaidMonth.map((q) => q.itemKey));
+      for (const [itemKey, rawAmount] of Object.entries(eventOverridesPaid)) {
+        if (seen.has(itemKey)) continue;
+        if (!employeeQuarterlyItemKeys.has(itemKey)) continue;
+        const amt = pickEventOverride({ [itemKey]: rawAmount }, itemKey);
+        if (amt == null) continue;
+        quarterlyAtPaidMonth.push({ itemKey, amount: amt });
+        seen.add(itemKey);
+      }
+    }
     const totalRegular = regularEvents.reduce((s, e) => s + e.amount, 0);
     const totalQ = quarterlyAtPaidMonth.reduce((s, e) => s + e.amount, 0);
     const naturalTotal = totalRegular + totalQ;

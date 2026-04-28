@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import {
   ScheduleEmployeeEditModal,
+  type ScheduleEditAvailableEvent,
   type ScheduleEditMonthEvent,
 } from "@/components/ScheduleEmployeeEditModal";
 
@@ -64,6 +65,10 @@ export type ScheduleCardRow = {
   showCapUnder: boolean;
   /** 월별 개별 수정 모달 prefill 데이터 (없으면 편집 버튼 비활성) */
   editableEventsByMonth?: Record<number, ScheduleEditMonthEvent[]>;
+  /** 모달의 "＋ 항목 추가" 후보(정기/커스텀/분기). 비어 있으면 추가 UI 가 표시되지 않는다. */
+  availableEvents?: ScheduleEditAvailableEvent[];
+  /** 직원 활성 월 범위(부분 재직자) — 모달이 노출할 월 결정에 사용. null 이면 1~12 전체. */
+  activeRange?: { fromMonth: number; toMonth: number } | null;
   /** 이벤트별 수정이 있는 월 — 셀 배경색 강조 */
   modifiedMonths?: number[];
 };
@@ -390,6 +395,8 @@ export function ScheduleEmployeeCards({
             level: editingRow.level,
           }}
           eventsByMonth={editingRow.editableEventsByMonth}
+          availableEvents={editingRow.availableEvents ?? []}
+          activeRange={editingRow.activeRange ?? undefined}
           defaultEffectiveMonth={inferredDefaultEffective}
           canEdit={canEdit}
         />

@@ -15,9 +15,11 @@ import {
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings, canEditEmployees } from "@/lib/permissions";
 import {
+  allPaymentEventKeysForYear,
   customPaymentDefsForYear,
   customPaymentScheduleRows,
   effectiveFixedEventMonthMap,
+  paymentEventLabel,
 } from "@/lib/domain/payment-events";
 import {
   buildMonthlyBreakdown,
@@ -27,13 +29,16 @@ import {
   monthlyOverrideMapFromNotes,
   monthlySalaryPortion,
   regularAnnualTotalsByLevel,
+  resolveEventAmount,
   welfareByScheduleDisplayMonth,
   welfareScheduleLinesByMonth,
 } from "@/lib/domain/schedule";
 import { PAYMENT_EVENT_LABELS, QUARTERLY_ITEM_LABELS } from "@/lib/business-rules";
 import type { PaymentEventKey, QuarterlyItemKey } from "@/lib/business-rules";
-import { paymentEventLabel } from "@/lib/domain/payment-events";
-import type { ScheduleEditMonthEvent } from "@/components/ScheduleEmployeeEditModal";
+import type {
+  ScheduleEditAvailableEvent,
+  ScheduleEditMonthEvent,
+} from "@/components/ScheduleEmployeeEditModal";
 import { resolveEffectiveAdjustedSalaryForMonth } from "@/lib/domain/salary-inclusion";
 import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 import { additionalReserveStatus, summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
@@ -125,6 +130,10 @@ export default async function SchedulePage() {
     capBlocks: ReturnType<typeof computeSalaryInclusionCapBlocks>;
     /** 이 직원의 월별 편집 가능한 이벤트 목록 (모달 prefill 용) */
     editableEventsByMonth: Record<number, ScheduleEditMonthEvent[]>;
+    /** "＋ 항목 추가" 드롭다운 후보 — 직원별 정기/커스텀/분기 모두 합친 목록 */
+    availableEvents: ScheduleEditAvailableEvent[];
+    /** 직원의 활성 월 범위(부분 재직자) — 모달에서 노출할 월 결정에 사용 */
+    activeRange: { fromMonth: number; toMonth: number } | null;
     /** per-event/per-month 수정이 있는 월 (UI 배경색 강조 용) */
     modifiedMonths: Set<number>;
   };
@@ -266,6 +275,47 @@ export default async function SchedulePage() {
       }
     }
 
+    /**
+     * "＋ 항목 추가" 드롭다운 후보 — 직원이 어느 달에든 새로 지급할 수 있는 정기/커스텀/분기 키 전체.
+     *  - 정기/커스텀: `allPaymentEventKeysForYear` (테넌트 정의 기준)
+     *  - 분기: 이 직원의 `quarterly` config 가 가진 itemKey
+     *  - `suggestedAmount`: 모달에서 항목 추가 시 prefill 할 기본값
+     *      · 정기 → `resolveEventAmount` 로 직원 레벨 기준 규칙 금액
+     *      · 분기 → 그 직원 config 의 `amount`
+     */
+    const availableEvents: ScheduleEditAvailableEvent[] = [];
+    for (const eventKey of allPaymentEventKeysForYear(settings, year)) {
+      const label = Object.prototype.hasOwnProperty.call(PAYMENT_EVENT_LABELS, eventKey)
+        ? PAYMENT_EVENT_LABELS[eventKey as PaymentEventKey]
+        : paymentEventLabel(eventKey, customDefs);
+      availableEvents.push({
+        eventKey,
+        label: label.replace(/\s*\n\s*/g, " ").trim(),
+        kind: "regular",
+        suggestedAmount: resolveEventAmount(emp, eventKey, year, rules, ovr),
+      });
+    }
+    for (const q of qcfg) {
+      const label = Object.prototype.hasOwnProperty.call(QUARTERLY_ITEM_LABELS, q.itemKey)
+        ? QUARTERLY_ITEM_LABELS[q.itemKey as QuarterlyItemKey]
+        : q.itemKey;
+      availableEvents.push({
+        eventKey: q.itemKey,
+        label,
+        kind: "quarterly",
+        suggestedAmount: q.amount,
+      });
+    }
+
+    /** 활성 월 범위 — 퇴사자/신규입사자는 부분 범위만 모달에 노출. */
+    const empStatus = employeeStatusForYear(emp, year);
+    const activeRange: { fromMonth: number; toMonth: number } | null =
+      empStatus.kind === "ACTIVE_FULL_YEAR"
+        ? { fromMonth: 1, toMonth: 12 }
+        : empStatus.kind === "ACTIVE_PARTIAL"
+          ? { fromMonth: empStatus.range.fromMonth, toMonth: empStatus.range.toMonth }
+          : null;
+
     return {
       emp,
       welfareByMonth,
@@ -276,6 +326,8 @@ export default async function SchedulePage() {
       hasSalaryOverride,
       capBlocks,
       editableEventsByMonth,
+      availableEvents,
+      activeRange,
       modifiedMonths,
     };
   });
@@ -319,6 +371,8 @@ export default async function SchedulePage() {
         underForSalaryReport: b.underForSalaryReport,
       })),
       editableEventsByMonth: r.editableEventsByMonth,
+      availableEvents: r.availableEvents,
+      activeRange: r.activeRange,
       modifiedMonths: Array.from(r.modifiedMonths),
     };
   });
