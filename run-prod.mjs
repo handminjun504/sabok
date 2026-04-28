@@ -59,9 +59,19 @@ if (!portRaw) {
 }
 const port = portRaw;
 
-const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
 const tsxCli = path.join(__dirname, "node_modules", "tsx", "dist", "cli.mjs");
 const seedScript = path.join(__dirname, "scripts", "pb-seed.ts");
+
+const isWin = process.platform === "win32";
+/**
+ * 부모가 실제 콘솔(stdout TTY)을 가지고 있는지 추정.
+ *
+ * - Windows 에서 VBS/Task Scheduler/서비스로 숨김 기동하면 `process.stdout.isTTY` 는 false.
+ *   이때 자식을 `stdio: "inherit"` 로 띄우면 Node 가 새 콘솔(CMD 창)을 Flash 할 수 있어
+ *   pipe 로 연결한 뒤 부모 stdout 에 쓰도록 전환한다.
+ * - 일반 터미널 기동(TTY)에서는 지금까지와 같이 그대로 상속한다.
+ */
+const isConsoleParent = !isWin || process.stdout?.isTTY === true;
 
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret || sessionSecret.length < 16) {
@@ -90,20 +100,28 @@ function runPbSeed() {
   }
   console.log("[sabok] PocketBase seed …");
   const seedEnv = { ...process.env, NODE_ENV: process.env.NODE_ENV || "production" };
-  const r = fs.existsSync(tsxCli)
-    ? spawnSync(process.execPath, [tsxCli, seedScript], {
-        cwd: __dirname,
-        stdio: "inherit",
-        windowsHide: true,
-        env: seedEnv,
-      })
-    : spawnSync(npmCmd, ["run", "pb:seed"], {
-        cwd: __dirname,
-        stdio: "inherit",
-        shell: true,
-        windowsHide: true,
-        env: seedEnv,
-      });
+  if (!fs.existsSync(tsxCli)) {
+    /**
+     * 과거에는 npm.cmd + shell:true 로 폴백했지만, Windows 에서 콘솔이 없는 부모(숨김 VBS/서비스)로
+     * 기동할 때 CMD 창이 튀어나오는 사고가 있어 제거했다. 로컬 빌드/배포에서 devDependencies 가
+     * 반드시 설치되어 tsx 가 존재해야 한다.
+     */
+    console.error(
+      "[sabok] tsx 가 없습니다. 시드를 건너뜁니다. `npm install --include=dev` 후 재시도하세요.",
+    );
+    return 1;
+  }
+  const r = spawnSync(process.execPath, [tsxCli, seedScript], {
+    cwd: __dirname,
+    stdio: isConsoleParent ? "inherit" : ["ignore", "pipe", "pipe"],
+    windowsHide: true,
+    env: seedEnv,
+  });
+  if (!isConsoleParent) {
+    /** 숨김 기동(VBS/서비스) 시: 자식 출력은 부모에 직접 전달 — 우리 로그 파이프라인으로 흘러간다. */
+    r.stdout?.toString && process.stdout.write(r.stdout);
+    r.stderr?.toString && process.stderr.write(r.stderr);
+  }
   const code = r.status ?? 1;
   if (code !== 0) {
     console.error(
@@ -132,10 +150,14 @@ if (
   console.log("[sabok] SABOK_BUILD_BEFORE_START — next build …");
   const br = spawnSync(process.execPath, [nextBin, "build"], {
     cwd: __dirname,
-    stdio: "inherit",
+    stdio: isConsoleParent ? "inherit" : ["ignore", "pipe", "pipe"],
     windowsHide: true,
     env: { ...process.env, NODE_ENV: "production" },
   });
+  if (!isConsoleParent) {
+    br.stdout?.toString && process.stdout.write(br.stdout);
+    br.stderr?.toString && process.stderr.write(br.stderr);
+  }
   if ((br.status ?? 1) !== 0) {
     console.error("[sabok] npm run build failed — exit");
     process.exit(br.status ?? 1);
@@ -168,7 +190,6 @@ function warnIfBuildOlderThanGitTip() {
 }
 warnIfBuildOlderThanGitTip();
 
-const isWin = process.platform === "win32";
 const nextStartArgs = [nextBin, "start", "-H", "0.0.0.0", "-p", String(port)];
 const child = spawn(process.execPath, nextStartArgs, {
   cwd: __dirname,
