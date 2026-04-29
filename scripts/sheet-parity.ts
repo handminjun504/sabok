@@ -151,6 +151,8 @@ if (fs.existsSync(snapPath)) {
     surveyShowWorkerNet: true,
     paymentEventDefs: null,
     reserveProgressNote: null,
+    vendorWelfareApplied: null,
+    vendorWelfareRatio: null,
     fixedEventMonths: null,
     quarterlyPayMonths: null,
     repReturnSchedule: null,

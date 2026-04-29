@@ -204,6 +204,18 @@ export type CompanySettings = {
    * 없으면 코드 기본값 [3,6,9,12] 사용.
    */
   quarterlyPayMonths: Partial<Record<string, number[]>> | null;
+  /**
+   * 운영상황 보고 — 협력업체 복리후생 사용 여부(㊱~◯54 적용 판정).
+   * true/false 로 명시되지 않으면 null(미확정) → 기본 "없음"으로 처리.
+   * PB `vendorWelfareApplied` 필드. 없으면 null.
+   */
+  vendorWelfareApplied: boolean | null;
+  /**
+   * 운영상황 보고 — 협력업체 복리후생 사용 비율(80/90/20/25/30 중 하나).
+   * `vendorWelfareApplied === true` 일 때만 의미가 있으며, ㉚/㉜ 자동 비율 판정·사용현황 매트릭스의 기본 사용액 계산에 사용.
+   * PB `vendorWelfareRatio` 필드. 없으면 null.
+   */
+  vendorWelfareRatio: 80 | 90 | 20 | 25 | 30 | null;
 };
 
 export type Tenant = {
@@ -446,4 +458,160 @@ export type VendorContribution = {
   note: string | null;
   occurredAt: string | null;
   created: Date;
+};
+
+/**
+ * 업로드된 분개장에서 추출한 한 건의 전표.
+ * - `date`: `YYYY-MM-DD` 또는 부분 형식(월/일만 있으면 파서가 연도 보정)
+ * - `account`: 원문 계정과목 그대로(공백 정리는 파서 책임)
+ * - `side`: 차변/대변
+ * - `amount`: 원 단위 정수 (천원 변환은 집계 단계에서)
+ * - `party`: 거래처명(직원/외부 구분 판정 입력)
+ * - `memo`: 부가 메모(없으면 null)
+ * - `sourceLine`: 원 파일의 원본 라인 번호/식별자(디버깅용, 없으면 null)
+ */
+export type JournalEntry = {
+  date: string | null;
+  entryNo: string | null;
+  account: string;
+  side: "DEBIT" | "CREDIT";
+  amount: number;
+  party: string | null;
+  memo: string | null;
+  sourceLine: number | null;
+};
+
+/**
+ * 계정명 → 양식 칸(법정코드) 매핑 결과.
+ * - `code`: 57~66, 68 중 하나 또는 "contribution"(⑬), "interestIncome"(㉙), null(미매핑).
+ * - `confident`: 키워드 매핑에서 결정됐으면 true, 규칙이 모호해 사용자 확인이 필요하면 false.
+ * - `reason`: 매핑 근거(키워드 또는 "미매핑").
+ */
+export type JournalMappingTarget =
+  | { kind: "BIZ"; code: 57 | 58 | 59 | 60 | 61 | 62 | 63 | 64 | 65 | 66 }
+  | { kind: "OPERATION_COST" } // ◯68
+  | { kind: "EMPLOYER_CONTRIBUTION" } // ⑬
+  | { kind: "INTEREST_INCOME" } // ㉙
+  | { kind: "CASH_FLOW" } // 보통예금 등, 집계 제외
+  | { kind: "UNMAPPED" };
+
+export type JournalMappingLogItem = {
+  account: string;
+  target: JournalMappingTarget;
+  amount: number;
+  confident: boolean;
+  reason: string;
+};
+
+/**
+ * 분개장을 스펙 양식에 맞게 집계한 결과(원 단위).
+ * `computeOperatingReportView` 에 `journalAggregate` 로 주입되면 자동 기본값을 덮는다.
+ */
+export type JournalAggregate = {
+  /** 입력 파일 정보(디버깅·UI 표시용) */
+  source: {
+    files: Array<{ name: string; kind: "JOURNAL_PDF" | "JOURNAL_XLSX" | "TRIAL_BALANCE_PDF" | "BALANCE_XLSX" | "UNKNOWN"; entryCount: number }>;
+    totalDebit: number;
+    totalCredit: number;
+    balanceOk: boolean;
+  };
+  /** ⑬ 사업주 출연(고유목적사업준비금전입수입 등) */
+  employerContribution: number;
+  /** ㉙ 기금운용 수익금(이자수익 등) */
+  interestIncome: number;
+  /** ◯68 기금 운영비(수수료·세금과공과·통신비 등) */
+  operationCost: number;
+  /** 양식 코드별(57~66) 목적사업 금액 합 */
+  purposeByCode: Record<number, number>;
+  /** 양식 코드별(57~66) 수혜자 수(외부 거래처 제외, 직원 unique) */
+  recipientsByCode: Record<number, number>;
+  /** 매핑 로그 (원계정명별 집계) */
+  mappingLog: JournalMappingLogItem[];
+  /** 집계 경고(미매핑·외부거래처 혼입·차대 불일치 등) */
+  warnings: string[];
+  /** 수혜자 집계에 포함된 직원 이름 목록(디버깅·UI) */
+  uniqueRecipientNames: string[];
+  /** 전체 목적사업 합(57~66) */
+  totalPurpose: number;
+  /** 분개장 커버 기간(YYYY-MM-DD) */
+  periodFrom: string | null;
+  periodTo: string | null;
+};
+
+/**
+ * 스펙 문서의 JSON 출력 포맷(별지 제15호서식 운영상황 보고 JSON).
+ * 단위는 "천원"(입력단 원 단위 → toThousand 반올림).
+ */
+export type SpecOperatingReportJson = {
+  기금법인: {
+    "①기금법인명": string;
+    "②인가번호": string;
+    "⑨소속근로자수": number;
+    "⑩협력업체근로자수": number | null;
+    "⑪납입자본금": number;
+  };
+  기본재산현황: {
+    "⑫직전기본재산": number;
+    "⑬사업주출연": number;
+    "⑭수익금이월금전입": number;
+    "⑮사업주외의자출연": number;
+    "⑯기금법인합병": number;
+    "⑰기본재산사용": number;
+    "⑱기금법인분할등": number;
+    "⑲소계": number;
+    "⑳해당회계연도기본재산": number;
+  };
+  기금운용관리: {
+    "㉑금융회사예입예탁": number;
+    "㉒투자신탁수익증권": number;
+    "㉓유가증권매입": number;
+    "㉔자사주유상증자": number;
+    "㉕부동산투자회사주식": number;
+    "㉖기타": number;
+    "㉗근로자대부": number;
+    "㉘합계": number;
+  };
+  기금사업재원: {
+    "㉙기금운용수익금": number;
+    "㉚출연금범위": number;
+    "㉚적용비율": "50%" | "80%" | "90%";
+    "㉛자본금50초과액": number;
+    "㉜직전기본재산범위": number;
+    "㉜적용비율": "20%" | "25%" | "30%" | null;
+    "㉝공동근로복지기금": number;
+    "㉞이월금등": number;
+    "㉟합계": number;
+  };
+  협력업체사용현황: {
+    적용여부: boolean;
+    출연금80범위: { "㊱출연금": number | null; "㊲복지혜택협력업체수": number | null; "㊳복리후생사용금액": number | null } | null;
+    출연금90범위: { "㊴출연금": number | null; "㊵복지혜택협력업체수": number | null; "㊶복리후생사용금액": number | null } | null;
+    기본재산20범위: object | null;
+    기본재산25범위: object | null;
+    기본재산30범위: object | null;
+  };
+  사업실적: {
+    "◯57주택구입임차자금": { 금액: number; 수혜자수: number };
+    "◯58우리사주": { 금액: number; 수혜자수: number };
+    "◯59생활안정자금": { 금액: number; 수혜자수: number };
+    "◯60장학금": { 금액: number; 수혜자수: number };
+    "◯61재난구호금": { 금액: number; 수혜자수: number };
+    "◯62체육문화활동": { 금액: number; 수혜자수: number };
+    "◯63모성보호": { 금액: number; 수혜자수: number };
+    "◯64근로자의날": { 금액: number; 수혜자수: number };
+    "◯65근로복지시설": { 금액: number; 수혜자수: number };
+    "◯66그밖의복지비": { 금액: number; 수혜자수: number };
+    "◯67소계": { 금액: number; 수혜자수: number };
+    "◯68기금운영비": number;
+    "◯69잔액": number;
+    "◯70합계": number;
+  };
+  선택적복지비: { "◯71금액": number; "◯72수혜자수": number };
+  부동산현황: Array<{ 번호: number; 명칭: string; 금액: number; 취득일: string | null }>;
+  정합성검증: {
+    결과: "PASS" | "FAIL";
+    검증항목: Array<{ 항목: string; 기대값: number; 실제값: number; 결과: "OK" | "NG" }>;
+  };
+  매핑로그: Array<{ 원계정명: string; 매핑항목: string; 금액: number }>;
+  경고및확인필요사항: string[];
 };

@@ -32,7 +32,7 @@ import {
   firstCeoNameFromEmployees,
 } from "@/lib/domain/operating-report";
 import { Tabs } from "@/components/Tabs";
-import { OperatingReportPreview } from "@/components/OperatingReportPreview";
+import { OperatingReportPreviewClient } from "@/components/OperatingReportPreviewClient";
 import { OperatingReportTenantBasicForm } from "@/components/OperatingReportTenantBasicForm";
 import { BaseAssetAnnualForm } from "@/components/BaseAssetAnnualForm";
 import { FundOperationAnnualForm } from "@/components/FundOperationAnnualForm";
@@ -129,7 +129,7 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
   const autoCeoName = firstCeoNameFromEmployees(employees);
   const autoOptionalRecipients = estimateOptionalRecipientsByNotes(notes, year);
 
-  const view = computeOperatingReportView({
+  const computeArgs = {
     tenant,
     settings,
     year,
@@ -143,6 +143,18 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
     },
     prevBaseAsset,
     prevFundSource,
+    autos: {
+      autoEmployerContribution: employerTotal,
+      autoNonEmployerContribution: otherTotal,
+      autoBaseAssetUsed: summary.totalYearlyWelfare,
+      autoEmployeeCount: summary.employeeCount,
+      legalAllocByCodeEntries: Array.from(legalAllocByCode.entries()) as Array<[number, number]>,
+      autoCeoName,
+      autoOptionalRecipients,
+    },
+  };
+  const view = computeOperatingReportView({
+    ...computeArgs,
     autos: {
       autoEmployerContribution: employerTotal,
       autoNonEmployerContribution: otherTotal,
@@ -200,7 +212,13 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
         tabs={[
           {
             label: warningCount > 0 ? `미리보기 (${warningCount})` : "미리보기",
-            content: <OperatingReportPreview view={view} year={year} />,
+            content: (
+              <OperatingReportPreviewClient
+                computeArgs={computeArgs}
+                initialView={view}
+                realEstate={realEstateRows}
+              />
+            ),
           },
           {
             label: "기본정보",

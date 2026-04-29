@@ -316,7 +316,31 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     fixedEventMonths: parseFixedEventMonths(r.fixedEventMonths),
     quarterlyPayMonths: parseQuarterlyPayMonths(r.quarterlyPayMonths),
     repReturnSchedule: parseRepReturnSchedule(r.repReturnSchedule),
+    vendorWelfareApplied: parseVendorWelfareApplied(r.vendorWelfareApplied),
+    vendorWelfareRatio: parseVendorWelfareRatio(r.vendorWelfareRatio),
   };
+}
+
+/** 협력업체 복리후생 사용 여부 — PB 컬럼 없으면 null. */
+function parseVendorWelfareApplied(v: unknown): boolean | null {
+  if (v === true || v === 1) return true;
+  if (v === false || v === 0) return false;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (s === "true" || s === "1" || s === "y" || s === "yes") return true;
+    if (s === "false" || s === "0" || s === "n" || s === "no") return false;
+  }
+  return null;
+}
+
+/** 협력업체 복리후생 사용 비율 — 80/90/20/25/30 외는 null. */
+function parseVendorWelfareRatio(v: unknown): 80 | 90 | 20 | 25 | 30 | null {
+  if (v == null || v === "") return null;
+  const n = Math.round(Number(v));
+  if (n === 80 || n === 90 || n === 20 || n === 25 || n === 30) {
+    return n as 80 | 90 | 20 | 25 | 30;
+  }
+  return null;
 }
 
 /**

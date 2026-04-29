@@ -20,12 +20,14 @@ import type {
   Employee,
   FundOperationAnnual,
   FundSourceAnnual,
+  JournalAggregate,
   MonthlyEmployeeNote,
   RealEstateHolding,
   Tenant,
   Vendor,
   VendorContribution,
 } from "@/types/models";
+import { computeFundSourceFM, recommendContribUsageRatio } from "./journal-ingest";
 import { LEGAL_WELFARE_CATEGORY_ROWS } from "./operating-welfare-legal-categories";
 
 export const BIZ_ITEM_CODES = [57, 58, 59, 60, 61, 62, 63, 64, 65, 66] as const;
@@ -135,6 +137,11 @@ export type OperatingReportAutoSources = {
   autoCeoName: string | null;
   /** ◯72 선택적 복지 수혜자 수 자동 추정 */
   autoOptionalRecipients: number;
+  /**
+   * 분개장 집계 결과(있으면 ⑬·㉙·◯68·◯57~◯66·수혜자 자동값을 모두 덮어씀).
+   * 단위: 원.
+   */
+  journalAggregate?: JournalAggregate | null;
 };
 
 export type OperatingReportView = {
@@ -261,17 +268,20 @@ export function computeOperatingReportView(args: {
   prevFundSource: FundSourceAnnual | null;
   autos: OperatingReportAutoSources;
 }): OperatingReportView {
-  const { tenant, year, inputs, prevBaseAsset, prevFundSource, autos } = args;
+  const { tenant, settings, year, inputs, prevBaseAsset, prevFundSource, autos } = args;
 
   const capital = int(tenant?.headOfficeCapital);
+  const journal = autos.journalAggregate ?? null;
 
   /** ⑫ 직전말 — override 없으면 전년도 ⑳ 자동 */
   const prevAuto = computeEndTotalAuto(prevBaseAsset);
   const prevYearEndTotal = pick(inputs.baseAsset?.prevYearEndTotal ?? null, prevAuto);
 
+  /** ⑬ — 분개장이 있으면 분개장 집계가 자동값. 없으면 vendor 기반 자동값. */
+  const employerAuto = journal != null ? journal.employerContribution : autos.autoEmployerContribution;
   const employerContribution = pick(
     inputs.baseAsset?.employerContributionOverride ?? null,
-    autos.autoEmployerContribution,
+    employerAuto,
   );
   const nonEmployerContribution = pick(
     inputs.baseAsset?.nonEmployerContributionOverride ?? null,
@@ -280,7 +290,9 @@ export function computeOperatingReportView(args: {
   const investReturnAndCarryover = int(inputs.baseAsset?.investReturnAndCarryover);
   const mergerIn = int(inputs.baseAsset?.mergerIn);
   const splitOut = int(inputs.baseAsset?.splitOut);
-  const baseAssetUsed = autos.autoBaseAssetUsed;
+  /** ⑰ 기본재산 사용 — 분개장이 있으면 ◯57~◯66 합 + ◯68 운영비 */
+  const baseAssetUsed =
+    journal != null ? journal.totalPurpose + journal.operationCost : autos.autoBaseAssetUsed;
   const subtotal =
     employerContribution + investReturnAndCarryover + nonEmployerContribution + mergerIn - baseAssetUsed - splitOut;
   const currentYearEndTotalAuto = prevYearEndTotal + subtotal;
@@ -309,37 +321,53 @@ export function computeOperatingReportView(args: {
     fundOpVals.loan;
 
   /** 재원 ㉙~㉟ */
-  const ratioContrib: ContribUsageRatio =
-    inputs.fundSource?.contribUsageRatio ??
-    (tenant?.clientEntityType === "INDIVIDUAL" ? 50 : 80);
+  const recommendedRatio = recommendContribUsageRatio({
+    isIndividual: tenant?.clientEntityType === "INDIVIDUAL",
+    vendorWelfareApplied: settings?.vendorWelfareApplied ?? false,
+    vendorWelfareRatio: settings?.vendorWelfareRatio ?? null,
+  });
+  const ratioContrib: ContribUsageRatio = inputs.fundSource?.contribUsageRatio ?? recommendedRatio;
   const ratioPrev: PrevBaseAssetUsageRatio =
     inputs.fundSource?.prevBaseAssetUsageRatio ??
     (tenant?.clientEntityType === "INDIVIDUAL" ? 20 : 25);
 
   const contribBase = employerContribution + nonEmployerContribution;
-  const autoContribUsageAmount = Math.floor((contribBase * ratioContrib) / 100);
-  const contribUsageAmount = pick(
-    inputs.fundSource?.contribUsageAmount ?? null,
-    autoContribUsageAmount,
-  );
+  /** ㉙ 기금운용 수익금 — 분개장 우선, 없으면 inputs.fundSource.operationIncome */
+  const operationIncome =
+    journal != null ? journal.interestIncome : int(inputs.fundSource?.operationIncome);
 
-  const halfCapital = Math.floor(capital * 0.5);
-  const autoExcessCapitalUsage = Math.max(0, currentYearEndTotal - halfCapital);
-  const excessCapitalUsage = pick(
-    inputs.fundSource?.excessCapitalUsage ?? null,
-    autoExcessCapitalUsage,
-  );
-
-  const autoPrevBaseUsageAmount = Math.floor((prevYearEndTotal * ratioPrev) / 100);
-  const prevBaseAssetUsageAmount = pick(
-    inputs.fundSource?.prevBaseAssetUsageAmount ?? null,
-    autoPrevBaseUsageAmount,
-  );
-
-  const operationIncome = int(inputs.fundSource?.operationIncome);
   const jointFundSupport = int(inputs.fundSource?.jointFundSupport);
   const carryoverAuto = computeCarryoverAutoFromPrev(prevFundSource);
   const carryover = inputs.fundSource?.carryover == null ? carryoverAuto : int(inputs.fundSource.carryover);
+
+  /** FM 방식: ㉛/㉜ 자동 잔여분 배치. override 가 있으면 그 값을 그대로 사용. */
+  const fm = computeFundSourceFM({
+    contribBase,
+    prevYearEndTotal,
+    currentYearEndTotal: prevYearEndTotal, // ⑳은 아래에서 다시 계산되지만 여기선 prev 기준 한도만 필요
+    capital,
+    contribUsageRatio: ratioContrib,
+    prevBaseAssetUsageRatio: ratioPrev,
+    vendorWelfareApplied: settings?.vendorWelfareApplied ?? false,
+    employeeCount: autos.autoEmployeeCount,
+    jointFundSupport,
+    carryover,
+    interestIncome: operationIncome,
+  });
+  const fmWarnings = fm.warnings;
+
+  const contribUsageAmount = pick(
+    inputs.fundSource?.contribUsageAmount ?? null,
+    fm.contribUsageAmount,
+  );
+  const excessCapitalUsage = pick(
+    inputs.fundSource?.excessCapitalUsage ?? null,
+    fm.excessCapitalUsage,
+  );
+  const prevBaseAssetUsageAmount = pick(
+    inputs.fundSource?.prevBaseAssetUsageAmount ?? null,
+    fm.prevBaseAssetUsageAmount,
+  );
 
   const fundSourceTotal =
     operationIncome +
@@ -398,19 +426,24 @@ export function computeOperatingReportView(args: {
   };
   u30.perHead = safePerHead(u30.amount, u30.recipientCount);
 
-  /** 사업실적 */
+  /** 사업실적 — 분개장 우선 (◯57~◯66 자동값 + 수혜자 수) */
   const items = BIZ_ITEM_CODES.map((code) => {
     const label = LEGAL_WELFARE_CATEGORY_ROWS.find((row) => row.code === code)?.label ?? String(code);
-    const auto = int(autos.legalAllocByCode.get(code));
+    const journalAuto = journal?.purposeByCode[code] ?? 0;
+    const fallbackAuto = int(autos.legalAllocByCode.get(code));
+    const auto = journal != null ? journalAuto : fallbackAuto;
     const saved: BizResultItem | undefined = inputs.biz?.bizItems?.[String(code)];
     const purposeAmount = saved?.purposeAmountOverride == null ? auto : int(saved.purposeAmountOverride);
+    const journalCount = journal?.recipientsByCode[code] ?? 0;
+    const purposeCount =
+      saved?.purposeCount != null ? int(saved.purposeCount) : journal != null ? journalCount : 0;
     return {
       code,
       label,
       purposeAmount,
       purposeAmountAuto: auto,
       purposeAmountOverridden: saved?.purposeAmountOverride != null,
-      purposeCount: int(saved?.purposeCount),
+      purposeCount,
       loanAmount: int(saved?.loanAmount),
       loanCount: int(saved?.loanCount),
     };
@@ -419,10 +452,18 @@ export function computeOperatingReportView(args: {
   const subtotalPurpose = items.reduce((s, it) => s + it.purposeAmount, 0);
   const subtotalLoan = items.reduce((s, it) => s + it.loanAmount, 0);
   const bizSubtotal = subtotalPurpose + subtotalLoan;
-  const operationCost = int(inputs.biz?.operationCost);
+  /** ◯68 운영비 — 분개장 우선 */
+  const operationCost =
+    inputs.biz?.operationCost != null
+      ? int(inputs.biz.operationCost)
+      : journal != null
+        ? journal.operationCost
+        : 0;
 
-  /** 잔액(◯69) 기본값: 재원 합(㉟) − 기본재산 사용(⑰) − 운영비(◯68) */
-  const balanceAuto = Math.max(0, fundSourceTotal - baseAssetUsed - operationCost);
+  /**
+   * 잔액(◯69) = ㉟ − ◯67 − ◯68. ⑰(기본재산 사용)에는 이미 ◯67+◯68 이 포함되므로 이중 차감 회피.
+   */
+  const balanceAuto = Math.max(0, fundSourceTotal - bizSubtotal - operationCost);
   const bizTotal = bizSubtotal + operationCost + balanceAuto;
 
   /** ◯71 선택적 복지 */
@@ -447,7 +488,8 @@ export function computeOperatingReportView(args: {
   const reTotal = reRows.reduce((s, r) => s + r.amount, 0);
 
   /** 검증 경고 */
-  const warnings: string[] = [];
+  const warnings: string[] = [...fmWarnings];
+  if (journal && journal.warnings.length > 0) warnings.push(...journal.warnings);
   if (fundOpTotal !== currentYearEndTotal) {
     warnings.push(
       `기금 운용방법 합계(㉘=${fundOpTotal.toLocaleString("ko-KR")})가 당해 기본재산 말 총액(⑳=${currentYearEndTotal.toLocaleString("ko-KR")})과 일치하지 않습니다.`,
