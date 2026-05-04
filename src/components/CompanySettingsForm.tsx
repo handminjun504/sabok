@@ -133,10 +133,44 @@ export function CompanySettingsForm({
           className="input max-w-[10rem] text-xs"
         />
       </div>
-      <label className="flex items-center gap-2 text-xs">
-        <input type="checkbox" name="accrualCurrentMonthPayNext" defaultChecked={accrualCurrentMonthPayNext} />
-        당월 귀속·차월 지급 (정기분 표시)
-      </label>
+      <fieldset className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
+        <legend className="dash-field-label px-1">지급 방식</legend>
+        <p className="mb-2 text-xs leading-relaxed text-[var(--muted)]">
+          월별 스케줄 칼럼이 어느 달 귀속분을 보여줄지 결정합니다.
+        </p>
+        <div className="space-y-2">
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-[var(--border)] bg-[var(--surface)] p-2.5 text-xs hover:border-[var(--border-strong)]">
+            <input
+              type="radio"
+              name="payTimingMode"
+              value="SAME"
+              defaultChecked={!accrualCurrentMonthPayNext}
+              className="mt-0.5"
+            />
+            <span className="min-w-0">
+              <span className="font-medium text-[var(--text)]">당월 귀속 · 당월 지급</span>
+              <span className="mt-0.5 block text-[11px] leading-4 text-[var(--muted)]">
+                예: 2월 칸에는 <b>2월</b> 귀속분이 그대로 표시됩니다.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-[var(--border)] bg-[var(--surface)] p-2.5 text-xs hover:border-[var(--border-strong)]">
+            <input
+              type="radio"
+              name="payTimingMode"
+              value="NEXT"
+              defaultChecked={accrualCurrentMonthPayNext}
+              className="mt-0.5"
+            />
+            <span className="min-w-0">
+              <span className="font-medium text-[var(--text)]">당월 귀속 · 차월 지급</span>
+              <span className="mt-0.5 block text-[11px] leading-4 text-[var(--muted)]">
+                예: 2월 칸에는 <b>1월</b> 귀속분이 표시됩니다(2월에 1월 분을 지급).
+              </span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
 
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
         <p className="dash-field-label mb-2">정기 지급 4종 — 귀속(=지급) 월</p>

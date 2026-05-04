@@ -11,6 +11,7 @@ import {
   parseAnnouncementMode,
   parseTenantClientEntityType,
 } from "@/lib/domain/tenant-profile";
+import { isIndustryCode } from "@/lib/domain/industry-categories";
 import {
   companySettingsCreateForTenant,
   tenantCreate,
@@ -42,6 +43,16 @@ const tenantCreateSchema = z.object({
   ),
   announcementBatchFromMonth: z.string().optional(),
   announcementBatchToMonth: z.string().optional(),
+  /** 운영상황 보고 기본정보 ③~⑧ — 업체 등록 시점에 선택 입력 */
+  ceoName: z.string().optional(),
+  industry: z.string().optional(),
+  phone: z.string().optional(),
+  addressLine: z.string().optional(),
+  incorporationDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "설립등기일은 YYYY-MM-DD 형식이어야 합니다.")
+    .optional(),
+  accountingYearStartMonth: z.string().optional(),
 });
 
 /** 플랫폼 관리자 전용. 거래처(테넌트) 생성 — TenantCreateForm과 동일한 useActionState 패턴. */
@@ -63,6 +74,12 @@ export async function createTenantAction(
   const capitalRaw = String(formData.get("headOfficeCapital") ?? "")
     .replace(/,/g, "")
     .trim();
+  const ceoRaw = String(formData.get("ceoName") ?? "").trim();
+  const industryRaw = String(formData.get("industry") ?? "").trim();
+  const phoneRaw = String(formData.get("phone") ?? "").trim();
+  const addressRaw = String(formData.get("addressLine") ?? "").trim();
+  const incorpRaw = String(formData.get("incorporationDate") ?? "").trim().slice(0, 10);
+  const startMonthRaw = String(formData.get("accountingYearStartMonth") ?? "").trim();
 
   const parsed = tenantCreateSchema.safeParse({
     code: String(formData.get("code") ?? "").trim(),
@@ -76,9 +93,25 @@ export async function createTenantAction(
     announcementMode: formData.get("announcementMode"),
     announcementBatchFromMonth: String(formData.get("announcementBatchFromMonth") ?? "").trim() || undefined,
     announcementBatchToMonth: String(formData.get("announcementBatchToMonth") ?? "").trim() || undefined,
+    ceoName: ceoRaw.length > 0 ? ceoRaw : undefined,
+    industry: industryRaw.length > 0 ? industryRaw : undefined,
+    phone: phoneRaw.length > 0 ? phoneRaw : undefined,
+    addressLine: addressRaw.length > 0 ? addressRaw : undefined,
+    incorporationDate: incorpRaw.length > 0 ? incorpRaw : undefined,
+    accountingYearStartMonth: startMonthRaw.length > 0 ? startMonthRaw : undefined,
   });
   if (!parsed.success) {
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };
+  }
+
+  const industryCode = parsed.data.industry && isIndustryCode(parsed.data.industry) ? parsed.data.industry : null;
+  let startMonth: number | null = null;
+  if (parsed.data.accountingYearStartMonth) {
+    const n = Math.round(Number(parsed.data.accountingYearStartMonth));
+    if (!Number.isFinite(n) || n < 1 || n > 12) {
+      return { 오류: "회계연도 시작 월은 1~12 사이여야 합니다." };
+    }
+    startMonth = n;
   }
 
   let headOfficeCapital: number | null = null;
@@ -116,6 +149,12 @@ export async function createTenantAction(
       announcementMode: parsed.data.announcementMode,
       announcementBatchFromMonth: batchRange.fromMonth,
       announcementBatchToMonth: batchRange.toMonth,
+      ceoName: parsed.data.ceoName?.trim() || null,
+      industry: industryCode,
+      phone: parsed.data.phone?.trim() || null,
+      addressLine: parsed.data.addressLine?.trim() || null,
+      incorporationDate: parsed.data.incorporationDate ?? null,
+      accountingYearStartMonth: startMonth,
     });
   } catch (e) {
     console.error("[createTenantAction] tenantCreate", e);
@@ -141,6 +180,12 @@ export async function createTenantAction(
     announcementMode: parsed.data.announcementMode,
     announcementBatchFromMonth: batchRange.fromMonth,
     announcementBatchToMonth: batchRange.toMonth,
+    ceoName: parsed.data.ceoName?.trim() || null,
+    industry: industryCode,
+    phone: parsed.data.phone?.trim() || null,
+    addressLine: parsed.data.addressLine?.trim() || null,
+    incorporationDate: parsed.data.incorporationDate ?? null,
+    accountingYearStartMonth: startMonth,
   };
 
   try {

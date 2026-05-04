@@ -126,7 +126,7 @@ export function employeeIsInactiveForYear(
 }
 
 /** 특정 월이 활성 범위 안인지 — 정기/분기/노트 적용 시 공통으로 사용 */
-function monthIsActive(status: EmployeeStatusForYear, month: number): boolean {
+export function monthIsActive(status: EmployeeStatusForYear, month: number): boolean {
   if (status.kind === "ACTIVE_FULL_YEAR") return true;
   if (status.kind === "ACTIVE_PARTIAL") {
     return month >= status.range.fromMonth && month <= status.range.toMonth;
@@ -328,9 +328,32 @@ export function buildMonthlyBreakdown(
      */
     const accrualActive = monthIsActive(status, accrualMonth);
     const paidActive = monthIsActive(status, paidMonth);
-    const eventKeys = accrualActive && paidActive
-      ? eventsOccurringInMonth(accrualMonth, employee, foundingMonth, customPaymentEvents, fixedEventMonthsOverride)
-      : [];
+
+    /**
+     * 퇴사월 이후에는 **어떤 형태의 사복 지급도 발생하지 않는다**.
+     * 귀속·지급 한쪽이라도 활성 범위 밖이면 그 월의 월별 행은 0으로 고정한다.
+     *
+     * 이렇게 하지 않으면 퇴사 전에 등록된 월별 노트(`welfareOverrideAmount`·`eventAmountOverrides`)
+     * 가 남아 있을 때 정기/분기 자연 지급은 차단돼도 override 경로로 금액이 관통되는 사고가 난다.
+     */
+    if (!accrualActive || !paidActive) {
+      months.push({
+        accrualMonth,
+        paidMonth,
+        regularEvents: [],
+        quarterly: [],
+        totalWelfareMonth: 0,
+      });
+      continue;
+    }
+
+    const eventKeys = eventsOccurringInMonth(
+      accrualMonth,
+      employee,
+      foundingMonth,
+      customPaymentEvents,
+      fixedEventMonthsOverride,
+    );
     const noteOverride = notesByAccrualMonth?.get(accrualMonth);
     const levelOverride = pickLevelOverride(noteOverride?.levelOverride ?? null);
     const levelResolveTarget: Pick<Employee, "level"> = levelOverride != null
@@ -570,14 +593,15 @@ export function sumByPaidMonth(all: MonthBreakdown[]): Map<number, number> {
 }
 
 /**
- * 월별 스케줄 표(1~12월 열)용 금액 — 참고 시트 「월별지급스케줄」처럼 정기는 **귀속월**,
- * 분기 지원은 설정한 **지급월**에 나눠 담습니다. (당월 귀속·익월 지급이어도 정기는 귀속 달 열에 표시)
- * 선택 복지 노트는 `month`를 지급월로 보고 같은 열에 합산합니다.
- * 열 합계는 `yearlyWelfareTotal(br) + 노트 추가액`과 일치합니다.
+ * 월별 스케줄 표(1~12월 열)용 금액 — **모든 항목을 지급월(paidMonth) 기준**으로 한 칸에 합산.
  *
- * `welfareOverrideByAccrualMonth`(중도 재분배 스냅샷/오버라이드)가 주어지면 해당 귀속월 행은
- * 정기·분기를 합산하지 않고 오버라이드 값을 귀속월 열에 한 번에 기재한다. 이 경우 그 행의
- * `totalWelfareMonth` 와 컬럼 합이 일치한다.
+ * - 「당월 귀속 · 당월 지급」(`accrualCurrentMonthPayNext=false`) 모드: paidMonth = accrualMonth → N월 칸에 N월 귀속분.
+ * - 「당월 귀속 · 차월 지급」(`accrualCurrentMonthPayNext=true`) 모드: paidMonth = accrualMonth + 1 → 2월 칸에 1월 귀속분이 보인다.
+ *
+ * 정기·분기·선택 복지(노트)·중도 재분배 오버라이드 모두 paidMonth 칼럼에 모이도록 통일하므로
+ * 사용자가 보는 “2월 칸”은 “2월에 실제 지급되는 금액”으로 일관되게 해석된다.
+ *
+ * `welfareOverrideByAccrualMonth` 의 키는 (저장 형식상) 귀속월이지만 표시는 매칭 row 의 paidMonth 칼럼에 둔다.
  */
 export function welfareByScheduleDisplayMonth(
   br: MonthBreakdown[],
@@ -589,13 +613,13 @@ export function welfareByScheduleDisplayMonth(
     const ovr = welfareOverrideByAccrualMonth?.get(row.accrualMonth);
     if (ovr != null && Number.isFinite(ovr)) {
       if (ovr !== 0) {
-        map.set(row.accrualMonth, (map.get(row.accrualMonth) ?? 0) + ovr);
+        map.set(row.paidMonth, (map.get(row.paidMonth) ?? 0) + ovr);
       }
       continue;
     }
     const reg = row.regularEvents.reduce((s, e) => s + e.amount, 0);
     if (reg !== 0) {
-      map.set(row.accrualMonth, (map.get(row.accrualMonth) ?? 0) + reg);
+      map.set(row.paidMonth, (map.get(row.paidMonth) ?? 0) + reg);
     }
     const q = row.quarterly.reduce((s, e) => s + e.amount, 0);
     if (q !== 0) {
@@ -611,7 +635,7 @@ export function welfareByScheduleDisplayMonth(
   return map;
 }
 
-/** 스케줄 표 열(월)에 맞춘 내역 — 정기는 귀속월, 분기·노트는 지급월 (`welfareByScheduleDisplayMonth` 와 동일 기준) */
+/** 스케줄 표 열(월) 내역 — `welfareByScheduleDisplayMonth` 와 동일하게 모두 paidMonth 기준. */
 export type WelfareScheduleDisplayLine = {
   label: string;
   amount: number;
@@ -633,49 +657,46 @@ export function welfareScheduleLinesByMonth(
   welfareOverrideByAccrualMonth?: ReadonlyMap<number, number>,
 ): Map<number, WelfareScheduleDisplayLine[]> {
   const byMonth = new Map<number, WelfareScheduleDisplayLine[]>();
-  const overrideMonths = new Set<number>();
-  for (let m = 1; m <= 12; m++) {
-    const lines: WelfareScheduleDisplayLine[] = [];
-    const accrualRow = br.find((r) => r.accrualMonth === m);
-    const ovr = welfareOverrideByAccrualMonth?.get(m);
-    const hasOverride = ovr != null && Number.isFinite(ovr);
-    if (hasOverride) {
-      overrideMonths.add(m);
+  /** 한 paidMonth 칸에 동일 귀속월의 override 가 들어왔는지 추적 — 들어왔으면 그 칸은 정기/분기 라인을 따로 추가하지 않음 */
+  const paidMonthsWithOverride = new Set<number>();
+  for (const row of br) {
+    const ovr = welfareOverrideByAccrualMonth?.get(row.accrualMonth);
+    if (ovr != null && Number.isFinite(ovr)) {
+      paidMonthsWithOverride.add(row.paidMonth);
       if (ovr !== 0) {
-        lines.push({
-          label: "중도 재분배 반영",
-          amount: Number(ovr),
-          kind: "regular",
-        });
-      }
-    } else if (accrualRow) {
-      for (const ev of accrualRow.regularEvents) {
-        if (ev.amount === 0) continue;
-        lines.push({
-          label: eventLabelForScheduleRow(ev.eventKey, customDefs),
-          amount: ev.amount,
-          kind: "regular",
-        });
+        const list = byMonth.get(row.paidMonth) ?? [];
+        list.push({ label: "중도 재분배 반영", amount: Number(ovr), kind: "regular" });
+        byMonth.set(row.paidMonth, list);
       }
     }
-    if (!hasOverride) {
-      for (const row of br) {
-        if (row.paidMonth !== m) continue;
-        if (overrideMonths.has(row.accrualMonth)) continue;
-        for (const q of row.quarterly) {
-          if (q.amount === 0) continue;
-          const lab = Object.prototype.hasOwnProperty.call(QUARTERLY_ITEM_LABELS, q.itemKey)
-            ? QUARTERLY_ITEM_LABELS[q.itemKey as QuarterlyItemKey]
-            : q.itemKey;
-          lines.push({ label: lab, amount: q.amount, kind: "quarterly" });
-        }
-      }
+  }
+  for (const row of br) {
+    if (paidMonthsWithOverride.has(row.paidMonth)) continue;
+    const list = byMonth.get(row.paidMonth) ?? [];
+    for (const ev of row.regularEvents) {
+      if (ev.amount === 0) continue;
+      list.push({
+        label: eventLabelForScheduleRow(ev.eventKey, customDefs),
+        amount: ev.amount,
+        kind: "regular",
+      });
     }
-    const noteExtra = noteExtrasByPaidMonth?.get(m) ?? 0;
-    if (noteExtra > 0) {
-      lines.push({ label: "선택적 복지(월별 노트)", amount: noteExtra, kind: "note" });
+    for (const q of row.quarterly) {
+      if (q.amount === 0) continue;
+      const lab = Object.prototype.hasOwnProperty.call(QUARTERLY_ITEM_LABELS, q.itemKey)
+        ? QUARTERLY_ITEM_LABELS[q.itemKey as QuarterlyItemKey]
+        : q.itemKey;
+      list.push({ label: lab, amount: q.amount, kind: "quarterly" });
     }
-    if (lines.length > 0) byMonth.set(m, lines);
+    if (list.length > 0) byMonth.set(row.paidMonth, list);
+  }
+  if (noteExtrasByPaidMonth) {
+    for (const [m, amt] of noteExtrasByPaidMonth) {
+      if (amt <= 0 || m < 1 || m > 12) continue;
+      const list = byMonth.get(m) ?? [];
+      list.push({ label: "선택적 복지(월별 노트)", amount: amt, kind: "note" });
+      byMonth.set(m, list);
+    }
   }
   return byMonth;
 }

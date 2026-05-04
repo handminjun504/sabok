@@ -223,11 +223,16 @@ export default async function SchedulePage() {
     const editableEventsByMonth: Record<number, ScheduleEditMonthEvent[]> = {};
     const modifiedMonths = new Set<number>();
     const overridesByAccrualMonth = new Map<number, Record<string, number>>();
+    /**
+     * note.month 는 귀속월 기준이지만, 표시는 paidMonth 칼럼 통일(차월지급 모드에서 1월 귀속 → 2월 칼럼)이므로
+     * 셀 강조도 paidMonth 로 변환해서 표시·강조가 같은 칸에서 일어나도록 한다.
+     */
+    const paidMonthByAccrual = new Map<number, number>(br.map((r) => [r.accrualMonth, r.paidMonth]));
     for (const n of empNotes) {
       if (n.year !== year) continue;
       if (n.eventAmountOverrides && Object.keys(n.eventAmountOverrides).length > 0) {
         overridesByAccrualMonth.set(n.month, n.eventAmountOverrides as Record<string, number>);
-        modifiedMonths.add(n.month);
+        modifiedMonths.add(paidMonthByAccrual.get(n.month) ?? n.month);
       }
     }
     for (const row of br) {
@@ -263,14 +268,14 @@ export default async function SchedulePage() {
         });
       }
       if (evs.length > 0) {
-        /** 이벤트의 귀속 기준은 row.accrualMonth, 분기는 paidMonth — 사용자는 "그 달에 보이는" 것으로 인식하므로 paidMonth 키로 합쳐 관리. */
+        /**
+         * 표시 칼럼은 `welfareByScheduleDisplayMonth`/`welfareScheduleLinesByMonth` 와 동일하게
+         * **paidMonth 기준**으로 통일한다(정기·분기 모두 row.paidMonth 키).
+         * 사용자는 "2월 칸"을 "2월 지급분"으로 일관되게 인식한다.
+         */
         editableEventsByMonth[row.paidMonth] = [
           ...(editableEventsByMonth[row.paidMonth] ?? []),
-          ...evs.filter((x) => x.kind === "quarterly"),
-        ];
-        editableEventsByMonth[row.accrualMonth] = [
-          ...(editableEventsByMonth[row.accrualMonth] ?? []),
-          ...evs.filter((x) => x.kind === "regular"),
+          ...evs,
         ];
       }
     }

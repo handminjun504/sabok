@@ -27,6 +27,12 @@ function tenantProfileFormKey(t: Tenant): string {
     t.announcementMode,
     String(t.announcementBatchFromMonth ?? ""),
     String(t.announcementBatchToMonth ?? ""),
+    t.ceoName ?? "",
+    t.industry ?? "",
+    t.phone ?? "",
+    t.addressLine ?? "",
+    t.incorporationDate ?? "",
+    String(t.accountingYearStartMonth ?? ""),
   ].join("|");
 }
 

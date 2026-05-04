@@ -9,6 +9,7 @@ import {
   TENANT_OPERATION_MODES,
   type AnnouncementMode,
 } from "@/lib/domain/tenant-profile";
+import { INDUSTRY_CATEGORIES } from "@/lib/domain/industry-categories";
 
 const MONTH_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
@@ -114,18 +115,90 @@ export function TenantCreateForm({
           <p className="dash-eyebrow mb-2">사업자·등록 정보 (선택)</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">인가번호</label>
+              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">② 인가번호</label>
               <input name="approvalNumber" className="input w-full" placeholder="예: 위탁 인가 번호" autoComplete="off" />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-[var(--muted)]">사업자등록번호</label>
-              <input name="businessRegNo" className="input w-full" placeholder="하이픈 포함·생략 모두 가능" autoComplete="off" />
+              <input name="businessRegNo" className="input w-full" placeholder="000-00-00000" autoComplete="off" />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">본사 자본금 (원)</label>
+              <label className="mb-1 block text-sm font-medium text-[var(--muted)]">⑪ 본사 자본금 (원)</label>
               <CommaWonInput name="headOfficeCapital" className="input w-full text-xs" placeholder="선택" />
             </div>
           </div>
+        </div>
+
+        <div className="sm:col-span-2">
+          <details className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)] px-4 py-3 open:pb-4">
+            <summary className="cursor-pointer text-sm font-medium text-[var(--text)]">
+              운영상황 보고용 상세정보 (선택) — ③ 설립등기일 · ④ 전화번호 · ⑤ 소재지 · ⑥ 회계연도 · ⑦ 대표자 · ⑧ 업종
+            </summary>
+            <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+              운영상황 보고서 미리보기 ①~⑪ 칸에 그대로 불러와 사용됩니다. 나중에 대시보드 설정 → 거래처 정보에서 수정할 수 있습니다.
+            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[var(--muted)]">③ 설립등기일</label>
+                <input name="incorporationDate" type="date" className="input w-full text-sm" autoComplete="off" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[var(--muted)]">④ 전화번호</label>
+                <input
+                  name="phone"
+                  type="tel"
+                  className="input w-full text-sm"
+                  placeholder="02-0000-0000"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-sm font-medium text-[var(--muted)]">⑤ 소재지</label>
+                <input
+                  name="addressLine"
+                  className="input w-full text-sm"
+                  placeholder="시·도 · 구 · 도로명 주소"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[var(--muted)]">⑥ 회계연도 시작 월(1~12)</label>
+                <input
+                  name="accountingYearStartMonth"
+                  type="number"
+                  min={1}
+                  max={12}
+                  className="input w-full text-sm"
+                  placeholder="예: 1"
+                />
+                <p className="mt-1 text-[11px] leading-4 text-[var(--muted)]">
+                  비어 있으면 1월 시작(1.1~12.31)로 간주됩니다.
+                </p>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[var(--muted)]">⑦ 대표자</label>
+                <input
+                  name="ceoName"
+                  className="input w-full text-sm"
+                  placeholder="비워 두면 position=대표이사 직원을 자동 사용"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-sm font-medium text-[var(--muted)]">
+                  ⑧ 업종 (한국표준산업분류 대분류)
+                </label>
+                <select name="industry" className="input w-full text-sm" defaultValue="">
+                  <option value="">— 선택 —</option>
+                  {INDUSTRY_CATEGORIES.map((cat) => (
+                    <option key={cat.code} value={cat.code}>
+                      {cat.code}. {cat.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </details>
         </div>
 
         <div className="sm:col-span-2">

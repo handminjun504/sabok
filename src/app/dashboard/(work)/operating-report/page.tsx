@@ -33,7 +33,7 @@ import {
 } from "@/lib/domain/operating-report";
 import { Tabs } from "@/components/Tabs";
 import { OperatingReportPreviewClient } from "@/components/OperatingReportPreviewClient";
-import { OperatingReportTenantBasicForm } from "@/components/OperatingReportTenantBasicForm";
+import { industryLabelOf } from "@/lib/domain/industry-categories";
 import { BaseAssetAnnualForm } from "@/components/BaseAssetAnnualForm";
 import { FundOperationAnnualForm } from "@/components/FundOperationAnnualForm";
 import { FundSourceAnnualForm } from "@/components/FundSourceAnnualForm";
@@ -43,6 +43,30 @@ import { RealEstateHoldingsForm } from "@/components/RealEstateHoldingsForm";
 
 function format(n: number) {
   return n.toLocaleString("ko-KR");
+}
+
+function BasicRow({
+  label,
+  value,
+  mono = false,
+  full = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  full?: boolean;
+}) {
+  const display = value?.toString().trim() ? value : "—";
+  const valueCls =
+    (mono ? "font-mono " : "") + (full ? "" : "") + "text-[var(--text)]";
+  return (
+    <tr className="border-b border-[var(--border)] last:border-b-0">
+      <th className="w-[28%] bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">
+        {label}
+      </th>
+      <td className={`px-3 py-2 ${valueCls}`}>{display}</td>
+    </tr>
+  );
 }
 
 type PageProps = {
@@ -224,11 +248,49 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
             label: "기본정보",
             content: tenant ? (
               <div className="space-y-3">
-                <p className="text-xs text-[var(--muted)]">
-                  양식 ③~⑧, ⑪ 칸에 직접 반영됩니다. ⑦ 대표자를 비워 두면 position=대표이사 직원({" "}
-                  <b>{autoCeoName ?? "미지정"}</b>)으로 자동 표시됩니다.
-                </p>
-                <OperatingReportTenantBasicForm tenant={tenant} />
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface-hover)] p-3 text-xs leading-relaxed text-[var(--muted)]">
+                  양식 ①~⑪ 기본정보는{" "}
+                  <Link href="/dashboard/settings" className="text-[var(--accent)] hover:underline">
+                    대시보드 설정 → 거래처 정보
+                  </Link>
+                  에서 입력·수정합니다. 이곳에서는 읽기 전용 요약만 보여줍니다. ⑦ 대표자가 비어 있으면
+                  position=대표이사 직원(<b>{autoCeoName ?? "미지정"}</b>)이 자동 적용됩니다.
+                </div>
+                <div className="overflow-x-auto rounded-md border border-[var(--border)]">
+                  <table className="w-full border-collapse text-xs">
+                    <tbody>
+                      <BasicRow label="① 기금법인명" value={view.basic.name} />
+                      <BasicRow label="② 인가번호" value={view.basic.approvalNumber} mono />
+                      <BasicRow label="사업자등록번호" value={tenant.businessRegNo ?? ""} mono />
+                      <BasicRow label="③ 설립등기일" value={view.basic.incorporationDate} mono />
+                      <BasicRow label="④ 전화번호" value={view.basic.phone} mono />
+                      <BasicRow label="⑤ 소재지" value={view.basic.addressLine} full />
+                      <BasicRow label="⑥ 회계연도" value={view.basic.accountingYearLabel} mono />
+                      <BasicRow label="⑦ 대표자" value={view.basic.ceoName} />
+                      <BasicRow
+                        label="⑧ 업종"
+                        value={
+                          view.basic.industry ? `${view.basic.industry}. ${industryLabelOf(view.basic.industry)}` : ""
+                        }
+                      />
+                      <BasicRow
+                        label="⑪ 납입자본금"
+                        value={
+                          view.basic.headOfficeCapital
+                            ? `${view.basic.headOfficeCapital.toLocaleString("ko-KR")} 원`
+                            : ""
+                        }
+                        mono
+                      />
+                    </tbody>
+                  </table>
+                </div>
+                <Link
+                  href="/dashboard/settings"
+                  className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--accent-hover)]"
+                >
+                  거래처 정보 편집하러 가기 →
+                </Link>
               </div>
             ) : (
               <p className="text-sm text-[var(--muted)]">사업체 정보가 없습니다.</p>

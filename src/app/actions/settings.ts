@@ -127,7 +127,13 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     foundingMonth: formData.get("foundingMonth"),
     defaultPayDay: formData.get("defaultPayDay"),
     activeYear: formData.get("activeYear"),
-    accrualCurrentMonthPayNext: formData.get("accrualCurrentMonthPayNext") === "on",
+    /**
+     * UI 가 라디오(`payTimingMode` = "NEXT" | "SAME") 로 보내지만 구버전 체크박스(`accrualCurrentMonthPayNext`=on)도 호환.
+     * 신규 키가 우선이고 그 외에는 기존 동작과 동일.
+     */
+    accrualCurrentMonthPayNext:
+      formData.get("payTimingMode") === "NEXT" ||
+      (formData.get("payTimingMode") == null && formData.get("accrualCurrentMonthPayNext") === "on"),
     salaryInclusionVarianceMode: formData.get("salaryInclusionVarianceMode"),
     surveyShowRepReturn: formData.get("surveyShowRepReturn") === "on",
     surveyShowSpouseReceipt: formData.get("surveyShowSpouseReceipt") === "on",

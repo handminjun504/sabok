@@ -9,7 +9,13 @@
  */
 import type { Employee, Level5Override, LevelPaymentRule, MonthlyEmployeeNote, QuarterlyEmployeeConfig } from "@/types/models";
 import { PAYMENT_EVENT, QUARTERLY_ITEM, type PaymentEventKey, type QuarterlyItemKey } from "@/lib/business-rules";
-import { type CustomPaymentScheduleDef, buildMonthlyBreakdown, monthlyOverrideMapFromNotes } from "./schedule";
+import {
+  type CustomPaymentScheduleDef,
+  buildMonthlyBreakdown,
+  employeeStatusForYear,
+  monthIsActive,
+  monthlyOverrideMapFromNotes,
+} from "./schedule";
 
 export const LEGAL_WELFARE_CATEGORY_ROWS: { code: number; label: string }[] = [
   { code: 57, label: "주택구입 임차자금" },
@@ -52,6 +58,7 @@ export function aggregateWelfareSpendBySource(
   let optionalExtraTotal = 0;
 
   for (const emp of employees) {
+    const status = employeeStatusForYear(emp, year);
     const ovr = overrides.filter((x) => x.employeeId === emp.id);
     const qcfg = quarterly.filter((x) => x.employeeId === emp.id);
     const empNotes = notes.filter((n) => n.employeeId === emp.id);
@@ -69,6 +76,15 @@ export function aggregateWelfareSpendBySource(
       overrideMap,
     );
     for (const row of br) {
+      /**
+       * 퇴사월 이후 지급은 규정상 발생하지 않는다.
+       * `buildMonthlyBreakdown` 가 비활성 월을 totalWelfareMonth=0 으로 잘라내지만
+       * 여기서는 `overrideMap` 를 직접 조회하므로 동일한 방어를 한 번 더 걸어
+       * 퇴사 이전에 남아 있던 welfareOverrideAmount 가 MIDYEAR_OVERRIDE 에 누수되는 것을 차단한다.
+       */
+      if (!monthIsActive(status, row.accrualMonth) || !monthIsActive(status, row.paidMonth)) {
+        continue;
+      }
       const ovrAmt = overrideMap.get(row.accrualMonth)?.welfareOverrideAmount ?? null;
       if (ovrAmt != null) {
         /**
@@ -89,6 +105,11 @@ export function aggregateWelfareSpendBySource(
     }
     for (const n of empNotes) {
       if (n.year !== year) continue;
+      /**
+       * 선택적 복지(`optionalExtraAmount`)도 퇴사월 이후 월의 노트는 집계에서 제외.
+       * 레거시로 month 가 비어 있는 노트는 종전 동작 유지(직원 전체 연도 인정).
+       */
+      if (n.month != null && !monthIsActive(status, Number(n.month))) continue;
       const ex = n.optionalExtraAmount != null ? Number(n.optionalExtraAmount) : 0;
       if (ex !== 0) optionalExtraTotal += ex;
     }

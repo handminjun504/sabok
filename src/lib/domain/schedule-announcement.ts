@@ -37,12 +37,26 @@ export function applyAdditionalReserve(amount: number): number {
   return Math.round(Math.max(0, amount) * (1 + VENDOR_CONTRIBUTION_RESERVE_RATE));
 }
 
+/** 「N월 지급분 없음」 안내문 — 빌더들이 합계 0 일 때 공통으로 반환한다. */
+export function buildEmptyMonthNotice(month: number): string {
+  return `안녕하세요. ${month}월 사내근로복지기금 지급분은 없습니다!`;
+}
+
+export function buildEmptyMonthRangeNotice(monthFrom: number, monthTo: number): string {
+  const lo = Math.min(Math.max(1, monthFrom), 12);
+  const hi = Math.max(Math.min(12, monthTo), 1);
+  if (lo === hi) return buildEmptyMonthNotice(lo);
+  return `안녕하세요. ${lo}월~${hi}월 사내근로복지기금 지급분은 없습니다!`;
+}
+
 /**
  * 법인·단일월 카톡 양식: 인사 → 통장 이체 금액 → 직원별(지급>0) → 마무리
  * 예) 안녕하세요! 2월 … / 통장에 23,820,000원 이체하신 후 / … / 이체해주시면 됩니다.
  *
  * `additionalReserveActive` 가 true 이면 통장 이체 금액에 +20% 적립금을 자동 포함하고,
  * 그 줄 옆에 “(적립금 20% 포함)” 표기를 덧붙인다(개인사업자 / 자본금 50% 미달 법인).
+ *
+ * 해당 월의 근로자 지급 합계가 0 원이면 "지급분 없음" 한 줄 안내(`buildEmptyMonthNotice`)만 반환.
  */
 export function buildWelfareFundNotice(
   month: number,
@@ -51,6 +65,8 @@ export function buildWelfareFundNotice(
 ): string {
   const sorted = sortByEmployeeCode(rows);
   const sum = sorted.reduce((s, r) => s + Math.max(0, Math.round(r.welfareMonth)), 0);
+  if (sum <= 0) return buildEmptyMonthNotice(month);
+
   const reserveActive = options.additionalReserveActive;
   const transferAmount = reserveActive ? applyAdditionalReserve(sum) : sum;
   const transferTail = reserveActive ? " (적립금 20% 포함)" : "";
@@ -122,7 +138,7 @@ export function buildWelfareFundBatchedNotice(
   const foot = ["", "각각 이체해주시면됩니다.", `(저번처럼 각 인원 ${monthLabels} 총 ${hi - lo + 1}번씩 이체해주셔야합니다!)`];
 
   if (personBlocks.length === 0) {
-    return [...head, `(해당 기간에 스케줄상 지급액이 있는 직원이 없습니다.)`, ...foot].join("\n");
+    return buildEmptyMonthRangeNotice(lo, hi);
   }
 
   return [...head, ...personBlocks, ...foot].join("\n");
@@ -173,6 +189,15 @@ export function buildTransferAndDetailNotice(
 ): string {
   const sorted = sortByEmployeeCode(rows);
   const sumWelfare = sorted.reduce((s, r) => s + Math.max(0, Math.round(r.welfareMonth)), 0);
+  /**
+   * 지급액·대표반환·알아서금액 어느 것도 없으면 "지급분 없음" 단문으로 반환.
+   * (대표반환 플래그/알아서금액 양수가 하나라도 있으면 기존 상세 양식 유지)
+   */
+  const hasAnything = sorted.some(
+    (r) => Math.round(r.welfareMonth) > 0 || r.flagRepReturn || (r.discretionaryAmount != null && Math.round(r.discretionaryAmount) > 0),
+  );
+  if (!hasAnything) return buildEmptyMonthNotice(month);
+
   const reserveActive = options.additionalReserveActive;
   const transferAmount = reserveActive ? applyAdditionalReserve(sumWelfare) : sumWelfare;
 

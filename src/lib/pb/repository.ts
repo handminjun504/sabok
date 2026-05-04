@@ -279,6 +279,13 @@ export async function tenantCreate(data: {
   announcementMode?: AnnouncementMode | null;
   announcementBatchFromMonth?: number | null;
   announcementBatchToMonth?: number | null;
+  /** 운영상황 보고 기본정보 (②~⑧, ⑪) — 업체 등록 시 바로 입력 가능 */
+  ceoName?: string | null;
+  industry?: string | null;
+  phone?: string | null;
+  addressLine?: string | null;
+  incorporationDate?: string | null;
+  accountingYearStartMonth?: number | null;
 }): Promise<Tenant> {
   const pb = await getAdminPb();
 
@@ -307,6 +314,24 @@ export async function tenantCreate(data: {
   if (data.announcementBatchToMonth != null) {
     optional.announcementBatchToMonth = data.announcementBatchToMonth;
   }
+  const ceo = data.ceoName != null ? String(data.ceoName).trim() : "";
+  if (ceo) optional.ceoName = ceo;
+  const ind = data.industry != null ? String(data.industry).trim() : "";
+  if (ind) optional.industry = ind;
+  const phone = data.phone != null ? String(data.phone).trim() : "";
+  if (phone) optional.phone = phone;
+  const addr = data.addressLine != null ? String(data.addressLine).trim() : "";
+  if (addr) optional.addressLine = addr;
+  const inc = data.incorporationDate != null ? String(data.incorporationDate).trim().slice(0, 10) : "";
+  if (inc) optional.incorporationDate = inc;
+  if (
+    data.accountingYearStartMonth != null &&
+    Number.isFinite(data.accountingYearStartMonth) &&
+    data.accountingYearStartMonth >= 1 &&
+    data.accountingYearStartMonth <= 12
+  ) {
+    optional.accountingYearStartMonth = data.accountingYearStartMonth;
+  }
 
   const withOptional = { ...base, ...optional };
 
@@ -322,7 +347,7 @@ export async function tenantCreate(data: {
       const created = asRecord(await pb.collection(C.tenants).create(base));
       logPbClientError("tenantCreate (first attempt failed; retried without optional fields)", e);
       console.warn(
-        "[pb] tenantCreate: 인가번호·사업자번호·본사자본금·안내 모드(announcementMode 등)는 저장되지 않았습니다. sabok_tenants에 해당 필드를 추가한 뒤 다시 등록하세요.",
+        "[pb] tenantCreate: 인가번호·사업자번호·본사자본금·안내 모드(announcementMode)·대표자·업종·전화번호·소재지·설립등기일·회계연도시작월 중 일부가 저장되지 않았습니다. sabok_tenants에 해당 컬럼을 추가한 뒤 다시 등록하세요.",
       );
       return tenantFromPbRecord(created);
     } catch (e2) {
@@ -350,42 +375,74 @@ export async function tenantUpdateProfile(
     announcementMode: AnnouncementMode;
     announcementBatchFromMonth: number | null;
     announcementBatchToMonth: number | null;
+    /** 운영상황 보고용 ③~⑧ — 미입력 시 null 로 기존값을 덮어씀(의도 명시 필요). */
+    ceoName: string | null;
+    industry: string | null;
+    phone: string | null;
+    addressLine: string | null;
+    incorporationDate: string | null;
+    accountingYearStartMonth: number | null;
   }
 ): Promise<Tenant> {
   const pb = await getAdminPb();
-  /** PB에 announcement* 컬럼이 없으면 unknown field 400 — 우선 모든 키로 시도하고, 실패 시 새 필드만 빼고 재시도. */
-  const fullPayload = {
-    name: data.name.trim(),
+  /**
+   * PB에 일부 컬럼이 없으면 unknown field 400 — 모든 키로 시도하고, 실패 시 호환 필드만 남겨 재시도.
+   */
+  const name = data.name.trim();
+  const coreBase = {
+    name,
     memo: data.memo ?? null,
     clientEntityType: data.clientEntityType,
     operationMode: data.operationMode,
     approvalNumber: data.approvalNumber,
     businessRegNo: data.businessRegNo,
     headOfficeCapital: data.headOfficeCapital,
+  };
+  const operatingReportFields = {
+    ceoName: data.ceoName ?? null,
+    industry: data.industry ?? null,
+    phone: data.phone ?? null,
+    addressLine: data.addressLine ?? null,
+    incorporationDate: data.incorporationDate ?? null,
+    accountingYearStartMonth: data.accountingYearStartMonth ?? null,
+  };
+  const announcementFields = {
     announcementMode: data.announcementMode,
     announcementBatchFromMonth: data.announcementBatchFromMonth,
     announcementBatchToMonth: data.announcementBatchToMonth,
   };
+
+  const fullPayload = { ...coreBase, ...operatingReportFields, ...announcementFields };
+
   try {
     const r = asRecord(await pb.collection(C.tenants).update(id, fullPayload));
     return tenantFromPbRecord(r);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (!/announcement|unknown field|invalid_value/i.test(msg)) throw e;
-    const fallback = {
-      name: data.name.trim(),
-      memo: data.memo ?? null,
-      clientEntityType: data.clientEntityType,
-      operationMode: data.operationMode,
-      approvalNumber: data.approvalNumber,
-      businessRegNo: data.businessRegNo,
-      headOfficeCapital: data.headOfficeCapital,
-    };
-    const r = asRecord(await pb.collection(C.tenants).update(id, fallback));
-    console.warn(
-      "[pb] tenantUpdateProfile: announcementMode/announcementBatchFromMonth/announcementBatchToMonth 컬럼이 없어 저장되지 않았습니다. sabok_tenants 에 해당 필드를 추가하세요.",
-    );
-    return tenantFromPbRecord(r);
+    if (!/announcement|ceoName|industry|phone|addressLine|incorporationDate|accountingYearStartMonth|unknown field|invalid_value/i.test(msg)) {
+      throw e;
+    }
+    /** 1차 재시도: announcement 계열만 제외 */
+    try {
+      const r = asRecord(
+        await pb.collection(C.tenants).update(id, { ...coreBase, ...operatingReportFields }),
+      );
+      console.warn(
+        "[pb] tenantUpdateProfile: announcementMode/announcementBatch* 컬럼이 없어 저장되지 않았습니다. sabok_tenants 에 해당 필드를 추가하세요.",
+      );
+      return tenantFromPbRecord(r);
+    } catch (e2) {
+      const msg2 = e2 instanceof Error ? e2.message : String(e2);
+      if (!/ceoName|industry|phone|addressLine|incorporationDate|accountingYearStartMonth|unknown field|invalid_value/i.test(msg2)) {
+        throw e2;
+      }
+      /** 2차 재시도: 운영상황 보고 필드도 제외 (오래된 스키마) */
+      const r = asRecord(await pb.collection(C.tenants).update(id, coreBase));
+      console.warn(
+        "[pb] tenantUpdateProfile: 운영상황 보고용 컬럼(ceoName/industry/phone/addressLine/incorporationDate/accountingYearStartMonth)과 안내 모드 일부가 저장되지 않았습니다. sabok_tenants 에 해당 컬럼을 추가하세요.",
+      );
+      return tenantFromPbRecord(r);
+    }
   }
 }
 
