@@ -216,6 +216,15 @@ export type CompanySettings = {
    * PB `vendorWelfareRatio` 필드. 없으면 null.
    */
   vendorWelfareRatio: 80 | 90 | 20 | 25 | 30 | null;
+  /**
+   * 월별 발생 인센 자동 변환 비율(세후 비율, %). 1~100 정수.
+   * - 사용자가 셀에 적은 "세전" 금액에 자동으로 곱해 "세후" 금액으로 저장한다.
+   *   예: 80 → 1,000,000 입력 시 800,000 저장.
+   * - 100 또는 null 이면 변환 비활성(입력값 그대로 저장).
+   * - 0 / 음수 / 범위 초과는 매퍼에서 null 로 정리.
+   * PB `incentiveNetRatioPercent` 필드. 없으면 null.
+   */
+  incentiveNetRatioPercent: number | null;
 };
 
 export type Tenant = {

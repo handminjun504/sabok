@@ -102,6 +102,7 @@ export default async function SettingsPage() {
             quarterlyPayMonths={quarterlyPayMonths ?? undefined}
             repReturnSchedule={repReturnSchedule}
             repReturnEmployees={repReturnEmployees}
+            incentiveNetRatioPercent={s?.incentiveNetRatioPercent ?? null}
           />
         </CollapsibleEditorPanel>
       ) : (

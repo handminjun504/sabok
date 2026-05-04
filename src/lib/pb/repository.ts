@@ -573,6 +573,51 @@ export async function companySettingsUpdateReserveProgressNote(
   });
 }
 
+/**
+ * 월별 발생 인센 자동 변환 비율(세후 비율, %)만 단건 갱신.
+ * - PB 에 `incentiveNetRatioPercent` 컬럼이 없는 환경에서는 업데이트 자체가 거절될 수 있어,
+ *   unknown field 류 메시지면 한 번 무시하고 안내 로그만 남긴다(다른 설정 변경에 영향 X).
+ * - `null` / `100` 은 둘 다 "변환 비활성"을 의미하지만, 사용자가 명시적으로 100 을 적었을 때
+ *   값을 지우면 의도가 달라 보이므로 100 도 그대로 저장해 둔다(읽기 시점에 동일하게 처리).
+ */
+export async function companySettingsUpdateIncentiveNetRatio(
+  tenantId: string,
+  percent: number | null,
+): Promise<void> {
+  const existing = await companySettingsByTenant(tenantId);
+  if (!existing?.id) throw new Error("전사 설정(company settings)이 없습니다.");
+  const pb = await getAdminPb();
+  const norm =
+    percent == null || !Number.isFinite(Number(percent))
+      ? null
+      : Math.max(1, Math.min(100, Math.round(Number(percent))));
+  try {
+    await pb.collection(C.companySettings).update(existing.id, {
+      incentiveNetRatioPercent: norm,
+    });
+  } catch (e) {
+    if (!(e instanceof ClientResponseError)) {
+      logPbClientError("companySettingsUpdateIncentiveNetRatio", e);
+      throw e;
+    }
+    const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
+    if (
+      detailLower.includes("incentivenetratiopercent") &&
+      (detailLower.includes("unknown") ||
+        detailLower.includes("invalid") ||
+        detailLower.includes("not found"))
+    ) {
+      console.warn(
+        "[pb] companySettingsUpdateIncentiveNetRatio: PocketBase 에 incentiveNetRatioPercent 컬럼이 없습니다. " +
+          "Admin → company_settings 컬렉션에 number(min=1, max=100) 필드를 추가하면 저장이 정상화됩니다.",
+      );
+      return;
+    }
+    logPbClientError("companySettingsUpdateIncentiveNetRatio", e);
+    throw e;
+  }
+}
+
 function companySettingsAccrualNonemptyIssue(detailLower: string): boolean {
   return (
     detailLower.includes("accrualcurrentmonthpaynext") &&
@@ -639,10 +684,21 @@ export async function companySettingsUpsert(
     quarterlyPayMonths?: Record<string, number[]> | null;
     /** 대표반환 월별 금액 일정 — { 직원ID: { "월": 원금액 } }. null 이면 초기화. */
     repReturnSchedule?: Record<string, Partial<Record<string, number>>> | null;
+    /**
+     * 월별 발생 인센 자동 세후 변환 비율(%). 1~100. null 이면 변환 비활성.
+     * 폼에서 명시적으로 받지 않은 경우 undefined 로 두면 기존 값 유지(payload 에서 제외).
+     */
+    incentiveNetRatioPercent?: number | null;
   }
 ): Promise<void> {
   const existing = await companySettingsByTenant(tenantId);
   const pb = await getAdminPb();
+  /** 새 PB 컬럼이 누락된 환경에서도 안전하도록, 알려진 신규 옵션 키만 따로 분리해 retry 시 제거할 수 있게 한다. */
+  const stripIncentiveRatio = (payload: Record<string, unknown>): Record<string, unknown> => {
+    const { incentiveNetRatioPercent: _omit, ...rest } = payload;
+    void _omit;
+    return rest;
+  };
   if (existing) {
     try {
       await pb.collection(C.companySettings).update(existing.id, data);
@@ -655,6 +711,19 @@ export async function companySettingsUpsert(
             "PocketBase Admin에서 해당 필드의 Nonempty를 끄거나, 서버에서 `npm run pb:fix-company-settings-schema` 를 실행한 뒤 다시 저장하세요. " +
             "(surveyShow* 등 다른 bool도 동일할 수 있습니다.)",
         );
+      }
+      if (
+        detailLower.includes("incentivenetratiopercent") &&
+        (detailLower.includes("unknown") ||
+          detailLower.includes("invalid") ||
+          detailLower.includes("not found"))
+      ) {
+        await pb.collection(C.companySettings).update(existing.id, stripIncentiveRatio(data));
+        console.warn(
+          "[pb] companySettingsUpsert(update): incentiveNetRatioPercent 컬럼 누락으로 해당 필드를 빼고 저장했습니다. " +
+            "Admin → company_settings 에 number(min=1,max=100) 필드를 추가하세요.",
+        );
+        return;
       }
       throw e;
     }
@@ -669,23 +738,36 @@ export async function companySettingsUpsert(
       throw e;
     }
     const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
-    if (!companySettingsAccrualNonemptyIssue(detailLower)) {
+    const accrualIssue = companySettingsAccrualNonemptyIssue(detailLower);
+    const incentiveColMissing =
+      detailLower.includes("incentivenetratiopercent") &&
+      (detailLower.includes("unknown") || detailLower.includes("invalid") || detailLower.includes("not found"));
+    if (!accrualIssue && !incentiveColMissing) {
       logPbClientError("companySettingsUpsert(create)", e);
       throw e;
     }
     try {
-      await pb.collection(C.companySettings).create({
+      const payload: Record<string, unknown> = {
         tenantId,
-        ...data,
-        accrualCurrentMonthPayNext: true,
+        ...(incentiveColMissing ? stripIncentiveRatio(data) : data),
+        ...(accrualIssue ? { accrualCurrentMonthPayNext: true } : {}),
         paymentEventDefs: {},
-      });
-      console.warn(
-        "[pb] companySettingsUpsert(create): accrualCurrentMonthPayNext=false 가 Nonempty 등으로 거절되어 true 로 생성했습니다. " +
-          "`npm run pb:fix-company-settings-schema` 로 스키마를 고치면 false 로도 저장할 수 있습니다.",
-      );
+      };
+      await pb.collection(C.companySettings).create(payload);
+      if (accrualIssue) {
+        console.warn(
+          "[pb] companySettingsUpsert(create): accrualCurrentMonthPayNext=false 가 Nonempty 등으로 거절되어 true 로 생성했습니다. " +
+            "`npm run pb:fix-company-settings-schema` 로 스키마를 고치면 false 로도 저장할 수 있습니다.",
+        );
+      }
+      if (incentiveColMissing) {
+        console.warn(
+          "[pb] companySettingsUpsert(create): incentiveNetRatioPercent 컬럼 누락으로 해당 필드를 빼고 생성했습니다. " +
+            "Admin → company_settings 에 number(min=1,max=100) 필드를 추가하세요.",
+        );
+      }
     } catch (e2) {
-      logPbClientError("companySettingsUpsert(create, retry accrual=true)", e2);
+      logPbClientError("companySettingsUpsert(create, retry)", e2);
       throw e2;
     }
   }

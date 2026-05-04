@@ -318,7 +318,21 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     repReturnSchedule: parseRepReturnSchedule(r.repReturnSchedule),
     vendorWelfareApplied: parseVendorWelfareApplied(r.vendorWelfareApplied),
     vendorWelfareRatio: parseVendorWelfareRatio(r.vendorWelfareRatio),
+    incentiveNetRatioPercent: parseIncentiveNetRatioPercent(r.incentiveNetRatioPercent),
   };
+}
+
+/**
+ * 월별 발생 인센 자동 세후 변환 비율(%) 파싱.
+ * - 1~100 정수만 허용. 0/음수/100 초과/유한수 아님 → null(변환 비활성).
+ * - PB 컬럼 자체가 없을 때도 안전하게 null.
+ */
+function parseIncentiveNetRatioPercent(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n)) return null;
+  if (n < 1 || n > 100) return null;
+  return n;
 }
 
 /** 협력업체 복리후생 사용 여부 — PB 컬럼 없으면 null. */

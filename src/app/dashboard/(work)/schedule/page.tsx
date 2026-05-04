@@ -44,6 +44,7 @@ import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 import { additionalReserveStatus, summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
 import {
   saveMonthlyNoteFormAction,
+  setCompanyIncentiveNetRatioAction,
   setMonthPaidConfirmedAction,
   setMonthlyIncentiveAccrualCellAction,
 } from "@/app/actions/quarterly";
@@ -496,6 +497,8 @@ export default async function SchedulePage() {
           rows={incentiveAccrualRows}
           canEdit={canNote}
           setCell={setMonthlyIncentiveAccrualCellAction}
+          netRatioPercent={settings?.incentiveNetRatioPercent ?? null}
+          setNetRatio={setCompanyIncentiveNetRatioAction}
         />
       </div>
 

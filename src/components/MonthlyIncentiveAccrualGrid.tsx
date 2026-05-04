@@ -1,10 +1,38 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { CommaWonInput } from "@/components/CommaWonInput";
-import type { setMonthlyIncentiveAccrualCellAction } from "@/app/actions/quarterly";
+import type {
+  setCompanyIncentiveNetRatioAction,
+  setMonthlyIncentiveAccrualCellAction,
+} from "@/app/actions/quarterly";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+
+/**
+ * 비율 정규화 — UI 입력 또는 props 의 raw 값을 받아 1~100 정수로 정리.
+ * - null/빈값/유한수 아님/0 이하/100 초과 → null(=변환 비활성).
+ * - 100 은 그대로 100 으로 둔다(변환 비활성과 의미는 같지만, 사용자가 명시한 값이라면 보존).
+ */
+function normalizeNetRatio(raw: number | string | null | undefined): number | null {
+  if (raw == null) return null;
+  const s = typeof raw === "string" ? raw.trim() : raw;
+  if (s === "" || s === null) return null;
+  const n = Math.round(Number(s));
+  if (!Number.isFinite(n) || n <= 0 || n > 100) return null;
+  return n;
+}
+
+/**
+ * 사용자가 적은 "세전" 금액에 비율을 곱해 "세후" 금액으로 변환.
+ * - ratio 가 null 또는 100 이면 변환 비활성 → 입력값 그대로.
+ * - 음수·NaN 입력은 그대로(상위에서 다시 검증). 변환 결과는 항상 정수.
+ */
+function applyNetRatio(grossWon: number, ratioPct: number | null): number {
+  if (ratioPct == null || ratioPct === 100) return Math.round(grossWon);
+  if (!Number.isFinite(grossWon)) return 0;
+  return Math.round((grossWon * ratioPct) / 100);
+}
 
 /**
  * 컬럼 폭:
@@ -37,24 +65,35 @@ function cellKey(employeeId: string, month: number): CellKey {
 }
 
 type CellStatus = "idle" | "pending" | "saved" | "error";
+type RatioStatus = "idle" | "pending" | "saved" | "error";
 
 export function MonthlyIncentiveAccrualGrid({
   year,
   rows,
   canEdit,
   setCell,
+  netRatioPercent,
+  setNetRatio,
 }: {
   year: number;
   rows: MonthlyIncentiveAccrualGridRow[];
   canEdit: boolean;
   /** 한 셀(직원·월) 한 칸을 자동 저장하는 서버 액션. */
   setCell: typeof setMonthlyIncentiveAccrualCellAction;
+  /**
+   * 월별 발생 인센 자동 변환 비율(세후 비율, %). 1~100 또는 null(=비활성).
+   * 비활성이면 셀 입력값이 그대로 저장된다.
+   */
+  netRatioPercent: number | null;
+  /** 비율을 자동 저장하는 서버 액션. 권한이 없으면 그리드 상단에서 readonly 로만 보여준다. */
+  setNetRatio: typeof setCompanyIncentiveNetRatioAction;
 }) {
   const [statusByCell, setStatusByCell] = useState<Map<CellKey, CellStatus>>(() => new Map());
   const [errorByCell, setErrorByCell] = useState<Map<CellKey, string>>(() => new Map());
   /**
    * 12개월 입력값을 라이브로 추적 — 잔여(예상-누적) 표시는 디바운스/저장 전에도 즉시 반영되어야 한다.
-   * 초기값은 props 로 받은 incentiveAccrualByMonth, 이후 onUserChange 로 키 입력마다 갱신.
+   * 저장된 값(=세후 변환 후) 기준으로 누적·잔여를 계산하므로 valueByCell 도 변환 후 값을 보관한다.
+   * 초기값은 props 로 받은 incentiveAccrualByMonth(이미 DB 에 저장된 변환 후 값).
    */
   const [valueByCell, setValueByCell] = useState<Map<CellKey, number>>(() => {
     const m = new Map<CellKey, number>();
@@ -70,23 +109,136 @@ export function MonthlyIncentiveAccrualGrid({
   });
   const [, startTransition] = useTransition();
 
-  const onCellLiveChange = useCallback((employeeId: string, month: number, value: number) => {
-    const k = cellKey(employeeId, month);
-    setValueByCell((prev) => {
-      const m = new Map(prev);
-      if (value > 0) m.set(k, Math.round(value));
-      else m.delete(k);
-      return m;
-    });
+  /** 비율 입력 — 1~100 정수 문자열. 빈 문자열 / 100 = 변환 비활성. */
+  const [ratioInput, setRatioInput] = useState<string>(() =>
+    netRatioPercent == null ? "" : String(netRatioPercent),
+  );
+  const [ratioStatus, setRatioStatus] = useState<RatioStatus>("idle");
+  const [ratioError, setRatioError] = useState<string | null>(null);
+  /**
+   * 잠금 토글 — 기본은 readonly. "수정하기" 버튼을 눌러야만 편집 가능.
+   * 실수로 비율이 바뀌면 "다음 입력부터" 잘못 저장되는 큰 사고로 이어지므로 의도적인 락 UX.
+   */
+  const [ratioEditing, setRatioEditing] = useState(false);
+  const ratioInputRef = useRef<HTMLInputElement>(null);
+  const lastSavedRatioRef = useRef<number | null>(netRatioPercent ?? null);
+  const activeRatio = normalizeNetRatio(ratioInput);
+  const ratioActive = activeRatio != null && activeRatio !== 100;
+  /** 편집 중에 사용자가 새 값을 적었는지 — "완료" 버튼 활성/비활성 표기에 사용. */
+  const ratioDirty = (normalizeNetRatio(ratioInput) ?? null) !== (lastSavedRatioRef.current ?? null);
+
+  /** 부모에서 props 가 갱신되면(다른 곳에서 비율을 바꾼 경우) 입력 칸을 따라가게 한다. */
+  useEffect(() => {
+    setRatioInput(netRatioPercent == null ? "" : String(netRatioPercent));
+    lastSavedRatioRef.current = netRatioPercent ?? null;
+    /** 외부에서 값이 바뀌면 편집 중이던 상태도 안전하게 닫는다(서로 다른 화면이 동시 편집 사고 방지). */
+    setRatioEditing(false);
+  }, [netRatioPercent]);
+
+  /** 편집 모드 진입 시 자동 포커스 + 전체 선택 — 사용자가 바로 새 값을 적을 수 있게. */
+  useEffect(() => {
+    if (ratioEditing) {
+      const el = ratioInputRef.current;
+      if (el) {
+        el.focus();
+        el.select();
+      }
+    }
+  }, [ratioEditing]);
+
+  const flushRatioSave = useCallback(
+    (rawNext: number | null) => {
+      if (!canEdit) return;
+      if (rawNext === lastSavedRatioRef.current) return;
+      lastSavedRatioRef.current = rawNext;
+      setRatioStatus("pending");
+      setRatioError(null);
+      startTransition(async () => {
+        const res = await setNetRatio(rawNext);
+        if (res.ok) {
+          setRatioStatus("saved");
+          window.setTimeout(() => {
+            setRatioStatus((s) => (s === "saved" ? "idle" : s));
+          }, 1500);
+        } else {
+          setRatioStatus("error");
+          setRatioError(res.오류);
+        }
+      });
+    },
+    [canEdit, setNetRatio],
+  );
+
+  /** 편집 모드에서만 사용 — 자동 디바운스 저장은 의도적으로 빼고 "완료" 버튼/Enter 로만 저장. */
+  const onRatioInputChange = useCallback((next: string) => {
+    const cleaned = next.replace(/[^\d]/g, "").slice(0, 3);
+    setRatioInput(cleaned);
   }, []);
 
+  /** "수정하기" 클릭 → 편집 모드 진입. 권한 없으면 무시. */
+  const onRatioEditEnter = useCallback(() => {
+    if (!canEdit) return;
+    setRatioEditing(true);
+    setRatioError(null);
+    if (ratioStatus === "error") setRatioStatus("idle");
+  }, [canEdit, ratioStatus]);
+
+  /** "취소" → 마지막 저장값으로 되돌리고 잠금. */
+  const onRatioEditCancel = useCallback(() => {
+    const restored = lastSavedRatioRef.current;
+    setRatioInput(restored == null ? "" : String(restored));
+    setRatioEditing(false);
+    setRatioError(null);
+    if (ratioStatus === "error") setRatioStatus("idle");
+  }, [ratioStatus]);
+
+  /** "완료" → 정규화된 값으로 즉시 저장하고 잠금 상태로 복귀. */
+  const onRatioEditCommit = useCallback(() => {
+    const norm = normalizeNetRatio(ratioInput);
+    /** 표시 정규화 — 사용자가 "080" 적어도 잠금 상태에서는 "80" 으로 깔끔히. */
+    setRatioInput(norm == null ? "" : String(norm));
+    flushRatioSave(norm);
+    setRatioEditing(false);
+  }, [flushRatioSave, ratioInput]);
+
+  /** Enter / Escape 단축키로 빠르게 마무리. */
+  const onRatioInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (!ratioEditing) return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onRatioEditCommit();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onRatioEditCancel();
+      }
+    },
+    [ratioEditing, onRatioEditCommit, onRatioEditCancel],
+  );
+
+  const onCellLiveChange = useCallback(
+    (employeeId: string, month: number, rawValue: number) => {
+      /** 라이브 누적 표시는 "변환 후" 값으로 — 사용자가 보는 잔여(예상−누적)도 실제 사복 한도와 비교되는 값으로. */
+      const converted = applyNetRatio(rawValue, activeRatio);
+      const k = cellKey(employeeId, month);
+      setValueByCell((prev) => {
+        const m = new Map(prev);
+        if (converted > 0) m.set(k, converted);
+        else m.delete(k);
+        return m;
+      });
+    },
+    [activeRatio],
+  );
+
   const onCellCommit = useCallback(
-    (employeeId: string, month: number, value: number) => {
+    (employeeId: string, month: number, rawValue: number) => {
+      const converted = applyNetRatio(rawValue, activeRatio);
       const k = cellKey(employeeId, month);
       /** commit 도 동일하게 라이브 맵을 한 번 더 정리(blur 만 한 케이스에서 필요). */
       setValueByCell((prev) => {
         const m = new Map(prev);
-        if (value > 0) m.set(k, Math.round(value));
+        if (converted > 0) m.set(k, converted);
         else m.delete(k);
         return m;
       });
@@ -101,7 +253,7 @@ export function MonthlyIncentiveAccrualGrid({
         return m;
       });
       startTransition(async () => {
-        const res = await setCell(employeeId, year, month, value > 0 ? value : null);
+        const res = await setCell(employeeId, year, month, converted > 0 ? converted : null);
         if (res.ok) {
           setStatusByCell((prev) => {
             const m = new Map(prev);
@@ -130,7 +282,7 @@ export function MonthlyIncentiveAccrualGrid({
         }
       });
     },
-    [setCell, year],
+    [activeRatio, setCell, year],
   );
 
   /** 한 행에서 “가장 우선순위 높은” 상태 — error > pending > saved > idle. */
@@ -179,6 +331,118 @@ export function MonthlyIncentiveAccrualGrid({
         <strong className="text-[var(--text)]">잔여(예상−누적)</strong>가 음수면 발생 인센이 ‘예상 인센’ 한도를
         넘은 것이라, 초과분은 사복으로 다 줄 수 없으므로 <strong className="text-[var(--text)]">급여에 얹어 신고</strong>해야 합니다.
       </p>
+
+      <div className="rounded-md border border-[var(--border)] bg-[var(--surface-hover)] p-3 text-xs leading-relaxed text-[var(--muted)]">
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor="incentiveNetRatioPercent" className="font-semibold text-[var(--text)]">
+            세후 자동 변환 비율(%)
+          </label>
+          <input
+            id="incentiveNetRatioPercent"
+            name="incentiveNetRatioPercent"
+            ref={ratioInputRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            className={
+              "input w-20 px-2 py-1 text-center text-sm tabular-nums " +
+              (ratioEditing
+                ? "border-[var(--accent)]/60 ring-1 ring-[var(--accent)]/30"
+                : "cursor-not-allowed border-dashed bg-[var(--surface)]/60 text-[var(--muted)]")
+            }
+            disabled={!canEdit}
+            readOnly={!ratioEditing}
+            placeholder="예: 80"
+            value={ratioInput}
+            onChange={(e) => onRatioInputChange(e.target.value)}
+            onKeyDown={onRatioInputKeyDown}
+            aria-readonly={!ratioEditing}
+            title={ratioEditing ? "편집 모드 — Enter 로 저장, Esc 로 취소" : "잠금 — 수정하려면 ‘수정하기’를 누르세요"}
+          />
+          <span
+            className={
+              "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold " +
+              (ratioActive
+                ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent)]"
+                : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]")
+            }
+          >
+            {ratioActive ? `자동 변환 ON · ${activeRatio}%` : "자동 변환 OFF"}
+          </span>
+
+          {canEdit ? (
+            ratioEditing ? (
+              <span className="ml-auto flex items-center gap-1.5">
+                <button
+                  type="button"
+                  className={
+                    "rounded-md border px-2.5 py-1 text-[0.7rem] font-semibold " +
+                    (ratioDirty
+                      ? "border-[var(--accent)]/60 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90"
+                      : "cursor-not-allowed border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]")
+                  }
+                  onClick={onRatioEditCommit}
+                  disabled={!ratioDirty}
+                  title={ratioDirty ? "Enter 로도 저장됩니다" : "변경 사항이 없습니다"}
+                >
+                  완료(저장)
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[0.7rem] font-semibold text-[var(--text)] hover:bg-[var(--surface-hover)]"
+                  onClick={onRatioEditCancel}
+                  title="Esc 로도 취소됩니다"
+                >
+                  취소
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="ml-auto rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[0.7rem] font-semibold text-[var(--text)] hover:bg-[var(--surface-hover)]"
+                onClick={onRatioEditEnter}
+                title="비율을 수정하려면 누르세요. 변경은 새 입력부터 적용됩니다."
+              >
+                수정하기
+              </button>
+            )
+          ) : null}
+
+          <span className="basis-full text-[0.7rem] text-[var(--muted)]">
+            {ratioStatus === "pending"
+              ? "비율 저장 중…"
+              : ratioStatus === "saved"
+                ? "저장됨 ✓"
+                : ratioStatus === "error"
+                  ? `저장 실패: ${ratioError ?? ""}`
+                  : ratioEditing
+                    ? "Enter = 저장 · Esc = 취소"
+                    : canEdit
+                      ? "잠금 상태 — 실수로 바뀌지 않도록 보호 중. 바꾸려면 ‘수정하기’를 누르세요."
+                      : ""}
+          </span>
+        </div>
+        <p className="mt-2">
+          {ratioActive ? (
+            <>
+              아래 셀에 <strong className="text-[var(--text)]">세전 인센 금액</strong>을 입력하면 자동으로{" "}
+              <strong className="text-[var(--text)]">{activeRatio}%</strong> 만 적용된 세후 금액으로 저장됩니다. 예:{" "}
+              <strong className="text-[var(--text)]">1,000,000원</strong> 입력 →{" "}
+              <strong className="text-[var(--text)]">{(1_000_000 * (activeRatio ?? 0) / 100).toLocaleString("ko-KR")}원</strong> 저장.
+              비율 변경은 <strong className="text-[var(--text)]">새 입력부터</strong> 적용되며, 이미 저장된 셀은 자동
+              재계산되지 않습니다(필요하면 그 셀을 다시 입력해 주세요).
+            </>
+          ) : (
+            <>
+              비율을 비워 두거나 100 으로 두면 자동 변환이 <strong className="text-[var(--text)]">비활성</strong> —
+              아래 셀에 적은 금액이 그대로 저장됩니다. 1~99 사이 정수를 적으면{" "}
+              <strong className="text-[var(--text)]">세전 → 세후 자동 변환</strong>이 켜집니다(예: 80 입력 시 80% 만
+              저장).
+            </>
+          )}
+        </p>
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
         <div className="min-w-[110rem] bg-[var(--surface)]">
           <div
@@ -238,11 +502,24 @@ export function MonthlyIncentiveAccrualGrid({
                   const k = cellKey(r.employeeId, m);
                   const cellState = statusByCell.get(k);
                   const cellHasError = cellState === "error";
+                  /**
+                   * 셀에 보이는 값은 "변환 후" 값. valueByCell(라이브) 가 있으면 그것을, 없으면 props 의 저장값을 쓴다.
+                   * CommaWonInput 은 포커스 외에서만 defaultValue 변경을 input 에 반영하므로,
+                   * 입력 중인 셀은 사용자의 raw 입력이 그대로 보이고 blur/디바운스 후 변환값으로 갱신된다.
+                   */
+                  const liveCellValue = valueByCell.get(k);
+                  const propsCellValue = r.incentiveAccrualByMonth[m];
+                  const cellDefault =
+                    liveCellValue != null
+                      ? liveCellValue
+                      : propsCellValue != null && Number.isFinite(Number(propsCellValue))
+                        ? Math.round(Number(propsCellValue))
+                        : null;
                   return (
                     <div key={m} className="px-1 py-1">
                       <CommaWonInput
                         name={`incentiveAccrual_${m}`}
-                        defaultValue={r.incentiveAccrualByMonth[m] ?? null}
+                        defaultValue={cellDefault}
                         disabled={!canEdit}
                         readOnly={!canEdit}
                         className={
@@ -253,7 +530,7 @@ export function MonthlyIncentiveAccrualGrid({
                               ? "border-[var(--success)]/40"
                               : "")
                         }
-                        placeholder="—"
+                        placeholder={ratioActive ? `세전(자동 ${activeRatio}%)` : "—"}
                         onUserChange={(v) => onCellLiveChange(r.employeeId, m, v)}
                         onCommitValue={
                           canEdit

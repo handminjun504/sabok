@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import {
+  companySettingsUpdateIncentiveNetRatio,
   companySettingsUpdateItemPayMonths,
   employeeFindFirst,
   monthlyNoteListByEmployeeYear,
@@ -184,6 +185,53 @@ export async function setMonthlyIncentiveAccrualCellAction(
     return { ok: false, 오류: "저장에 실패했습니다." };
   }
 
+  revalidateScheduleArtifacts();
+  return { ok: true };
+}
+
+export type IncentiveNetRatioResult = { ok: true } | { ok: false; 오류: string };
+
+/**
+ * 월별 발생 인센 자동 변환 비율(%) — 그리드 상단 인라인 자동 저장.
+ *
+ * - 권한: `canEditEmployees` (그리드를 수정할 권한과 동일).
+ * - percent === null/0/빈값 또는 100 이상은 "변환 비활성"(저장은 null) 의미로 처리.
+ *   사용자가 일부러 100 을 적은 경우는 그대로 100 으로 저장해서 의도가 보이도록 둠.
+ * - 0 / 음수 / 100 초과 / NaN → null 로 정리.
+ * - 저장 후 스케줄 캐시 무효화 — 그리드와 같은 페이지가 즉시 새 비율을 반영하도록.
+ */
+export async function setCompanyIncentiveNetRatioAction(
+  percent: number | null,
+): Promise<IncentiveNetRatioResult> {
+  const ctx = await resolveActionTenant();
+  if (!ctx.ok) return { ok: false, 오류: ctx.message };
+  if (!canEditEmployees(ctx.role)) {
+    return { ok: false, 오류: "수정 권한이 없습니다." };
+  }
+
+  let norm: number | null;
+  if (percent == null) {
+    norm = null;
+  } else {
+    const n = Number(percent);
+    if (!Number.isFinite(n) || n <= 0 || n > 100) norm = null;
+    else norm = Math.round(n);
+  }
+
+  try {
+    await companySettingsUpdateIncentiveNetRatio(ctx.tenantId, norm);
+  } catch (e) {
+    console.error(e);
+    return { ok: false, 오류: "비율 저장에 실패했습니다." };
+  }
+
+  await writeAudit({
+    userId: ctx.userId,
+    tenantId: ctx.tenantId,
+    action: "UPDATE",
+    entity: "CompanySettings",
+    entityId: `incentiveNetRatioPercent=${norm == null ? "null" : norm}`,
+  });
   revalidateScheduleArtifacts();
   return { ok: true };
 }

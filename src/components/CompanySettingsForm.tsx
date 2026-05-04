@@ -40,6 +40,8 @@ type Props = {
   repReturnSchedule?: Record<string, Partial<Record<string, number>>> | null;
   /** 대표반환 대상 직원 목록(flagRepReturn=true 인 직원). 비어 있으면 안내 메시지 표시. */
   repReturnEmployees?: { id: string; employeeCode: string; name: string }[];
+  /** 월별 발생 인센 자동 변환 비율(세후 비율, %) — 1~100, null=비활성. */
+  incentiveNetRatioPercent?: number | null;
 };
 
 const FIXED_EVENT_FIELDS: { key: "NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV"; label: string; defaultMonth: number }[] = [
@@ -66,6 +68,7 @@ export function CompanySettingsForm({
   quarterlyPayMonths,
   repReturnSchedule,
   repReturnEmployees = [],
+  incentiveNetRatioPercent = null,
 }: Props) {
   const router = useRouter();
   const [state, formAction] = useActionState<SettingsState, FormData>(saveCompanySettingsAction, null);
@@ -98,6 +101,7 @@ export function CompanySettingsForm({
           fixedEventMonths?.YEAR_END_NOV ?? "",
           JSON.stringify(quarterlyPayMonths ?? {}),
           JSON.stringify(repReturnSchedule ?? {}),
+          incentiveNetRatioPercent ?? "",
         ].join("|")}
         action={formAction}
         className="space-y-3"
@@ -169,6 +173,29 @@ export function CompanySettingsForm({
               </span>
             </span>
           </label>
+        </div>
+      </fieldset>
+
+      <fieldset className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
+        <legend className="dash-field-label px-1">월별 발생 인센 — 세후 자동 변환 비율 (%)</legend>
+        <p className="mb-2 text-xs leading-relaxed text-[var(--muted)]">
+          월별 스케줄 → <strong className="text-[var(--text)]">월별 발생 인센</strong> 그리드에서 셀에 적은 금액을 자동으로
+          이 비율만큼만 적용해 저장합니다. 예: <strong className="text-[var(--text)]">80</strong> 입력 시{" "}
+          <strong className="text-[var(--text)]">1,000,000원 → 800,000원</strong>으로 저장. 비워 두거나 100 이면 변환 OFF.
+          비율 변경은 <strong className="text-[var(--text)]">새 입력부터</strong> 적용되며, 이미 저장된 셀은 그대로 유지됩니다.
+        </p>
+        <div className="flex items-baseline gap-1">
+          <input
+            name="incentiveNetRatioPercent"
+            type="number"
+            min={1}
+            max={100}
+            step={1}
+            placeholder="비활성"
+            defaultValue={incentiveNetRatioPercent ?? ""}
+            className="input w-[6rem] text-xs"
+          />
+          <span className="text-[0.7rem] text-[var(--muted)]">% (1~100, 비워 두면 변환 OFF)</span>
         </div>
       </fieldset>
 

@@ -36,6 +36,11 @@ const schema = z.object({
   repReturnSchedule: z
     .record(z.string(), z.record(z.string(), z.number().int().min(0)))
     .nullable(),
+  /**
+   * 월별 발생 인센 자동 변환 비율(세후 비율, %). 빈값/0/100 초과/유한수 아님 → null(변환 비활성).
+   * 폼에서 비워 두면 null 로 저장되어 그리드는 사용자가 적은 값을 그대로 보존한다.
+   */
+  incentiveNetRatioPercent: z.number().int().min(1).max(100).nullable(),
 });
 
 const QUARTERLY_ITEM_KEYS = [
@@ -100,6 +105,20 @@ const FIXED_EVENT_DEFAULTS: Record<"NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG"
  * 폼에서 4개 월 입력을 읽어 1~12 범위 정수만 살리고, 기본값과 같은 키는 굳이 저장하지 않는다(공백 = 기본값 사용).
  * 결과가 비면 null 을 돌려 PB 에 빈 객체 대신 null 을 명시적으로 저장.
  */
+/**
+ * 월별 발생 인센 자동 변환 비율 폼 파싱. 빈값/유효 범위 외 → null.
+ * - 입력 name: `incentiveNetRatioPercent` (string, 1~100).
+ */
+function pickIncentiveNetRatioPercent(formData: FormData): number | null {
+  const raw = formData.get("incentiveNetRatioPercent");
+  if (raw == null) return null;
+  const t = String(raw).trim();
+  if (!t) return null;
+  const n = Math.round(Number(t));
+  if (!Number.isFinite(n) || n < 1 || n > 100) return null;
+  return n;
+}
+
 function pickFixedEventMonths(formData: FormData): Record<string, number> | null {
   const out: Record<string, number> = {};
   for (const k of Object.keys(FIXED_EVENT_DEFAULTS) as (keyof typeof FIXED_EVENT_DEFAULTS)[]) {
@@ -141,6 +160,7 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     fixedEventMonths,
     quarterlyPayMonths,
     repReturnSchedule,
+    incentiveNetRatioPercent: pickIncentiveNetRatioPercent(formData),
   });
   if (!parsed.success) {
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };
