@@ -58,7 +58,7 @@ export type ScheduleCardRow = {
    */
   salaryByMonth?: Record<number, number>;
   /**
-   * 급여분 복사 멘트 전용 — 길이 12 (인덱스 0 = 1월). RSC 직렬화 안정용 배열.
+   * 급여분 멘트 전용 — 조정연봉 연간의 월별 분할(길이 12). RSC 직렬화 안정용 배열.
    */
   announcementSalaryByMonthList?: readonly number[];
   /** 조사표·안내 멘트용 */

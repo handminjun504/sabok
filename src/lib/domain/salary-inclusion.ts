@@ -20,25 +20,29 @@ function toNum(v: number | null | undefined): number {
 /**
  * 급여분 안내 멘트 등 직원에게 전달하는 "월 환산"에 쓸 **연간 기준액(원)**.
  *
- * 우선순위:
- *  1) **`monthlyPayAmount`(월지급)** 이 있으면 `월지급 × 12` — 안내 문자에 쓸 실제 월 금액을 직접 둘 때.
- *  2) **기존연봉** — 비어 있지 않으면 그 연간액(조정연봉은 카드·급여포함용).
- *  3) 조정연봉만 있는 경우 조정 연간.
+ * 실무 안내는 **조정연봉을 연 단위로 두고 월별로 나눈 금액**과 맞춘다.
+ * (`schedule/page` 에서 `resolveEffectiveAdjustedSalaryForMonth` 로 분할하면 매월 `floor(연간÷12)`·마지막 활성월 잔차와 동일 패턴.)
  *
- * 월별 `adjustedSalaryOverrideAmount` 는 멘트 월분에 쓰지 않는다(`schedule/page` 에서 노트 없이 분배).
+ * 우선순위:
+ *  1) **조정연봉**이 양수이면 조정 연간.
+ *  2) 없으면 **기존연봉**.
+ *  3) 둘 다 없으면 **월지급 × 12** (있을 때만).
+ *
+ * 월별 `adjustedSalaryOverrideAmount` 는 멘트에는 넣지 않고 노트 없이 위 연간만 나눈다.
  */
 export function announcementSalaryAnnualWon(
   employee: Pick<Employee, "adjustedSalary" | "baseSalary" | "monthlyPayAmount">,
 ): number {
+  const adj = Math.round(toNum(employee.adjustedSalary));
+  if (adj > 0) return adj;
+  const base = Math.round(toNum(employee.baseSalary));
+  if (base > 0) return base;
   const mpRaw = employee.monthlyPayAmount;
   if (mpRaw != null && Number.isFinite(Number(mpRaw))) {
     const mp = Math.round(Number(mpRaw));
     if (mp > 0) return mp * 12;
   }
-  const base = Math.round(toNum(employee.baseSalary));
-  if (base > 0) return base;
-  const adj = Math.round(toNum(employee.adjustedSalary));
-  return adj > 0 ? adj : 0;
+  return 0;
 }
 
 /**

@@ -147,8 +147,8 @@ export default async function SchedulePage() {
     /** 월별 조정급여 — 중도 재분배로 월별 오버라이드가 있으면 월별로 다를 수 있음 */
     salaryByMonth: Record<number, number>;
     /**
-     * 급여분 복사 멘트 전용 월별 급여 — 길이 12, 인덱스 0 = 1월.
-     * RSC→클라이언트 직렬화에서 `Record<number,_>` 키가 빠져 조정 월별값으로 폴백되는 것을 피하기 위해 배열로 둔다.
+     * 급여분 멘트용 12개월 금액 — 조정연봉 연간 월분(인덱스 0 = 1월).
+     * RSC→클라이언트 직렬화에서 `Record<number,_>` 키가 빠지는 것을 피하기 위해 배열로 둔다.
      */
     announcementSalaryByMonthList: readonly number[];
     hasSalaryOverride: boolean;
@@ -290,7 +290,7 @@ export default async function SchedulePage() {
       }
     }
 
-    /** 급여분 복사 멘트 — 계약(기존) 연봉 월분만. 중도 재분배 `adjustedSalaryOverrideAmount` 는 표·신고용이라 멘트에서는 쓰지 않는다. */
+    /** 급여분 멘트 — 조정연봉 연간을 월별 분할(재분배 노트 미반영). 조정 없으면 기존연봉·월지급 순. */
     const ann = announcementSalaryAnnualWon(emp);
     const annPseudo: Employee = { ...emp, adjustedSalary: ann, baseSalary: ann };
     const announcementSalaryByMonthList: readonly number[] = Array.from({ length: 12 }, (_, i) => {

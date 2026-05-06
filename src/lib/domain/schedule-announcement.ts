@@ -149,7 +149,7 @@ export function showSalaryPortionNoticeMode(mode: TenantOperationMode): boolean 
 }
 
 /**
- * 급여(월) = `salaryNotice12` 파싱 결과의 해당 월(재분배·조정 월별값과 무관). 배열이 깨지면 `salaryMonth` 바닥만 사용.
+ * 급여(월) = `salaryNotice12`: 조정연봉 연간을 나눈 월분(조정 없으면 기존·월지급 보조). 재분배 월별 필드 미반영.
  * 급여낮추기·복합 모드: 월 환산 급여가 있는 직원은 해당 월 기금 유무와 관계없이 포함(실무 안내 양식).
  */
 export function buildSalaryPortionNotice(
