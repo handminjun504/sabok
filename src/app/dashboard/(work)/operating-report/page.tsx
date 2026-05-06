@@ -31,6 +31,7 @@ import {
   estimateOptionalRecipientsByNotes,
   firstCeoNameFromEmployees,
 } from "@/lib/domain/operating-report";
+import { welfareEligibleEmployees } from "@/lib/domain/schedule";
 import { Tabs } from "@/components/Tabs";
 import { OperatingReportPreviewClient } from "@/components/OperatingReportPreviewClient";
 import { industryLabelOf } from "@/lib/domain/industry-categories";
@@ -85,7 +86,11 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
   const foundingMonth = settings?.foundingMonth ?? 1;
   const accrual = settings?.accrualCurrentMonthPayNext ?? false;
 
-  const employees = await employeeListByTenantCodeAsc(tenantId);
+  /**
+   * 운영 보고는 사복 대상 직원만 — `flagWelfareIneligible` 직원은 ⑫~◯70 의 모든 인원·금액 집계에서 제외.
+   * 그래야 기금 통계가 사복 미적용자를 섞어 보고하는 사고를 막을 수 있다.
+   */
+  const employees = welfareEligibleEmployees(await employeeListByTenantCodeAsc(tenantId));
   const ids = employees.map((e) => e.id);
 
   const [rules, overrides, quarterly, notes, targets] = await Promise.all([

@@ -208,7 +208,19 @@ export function EmployeeDirectoryTable({
                     <td className="px-2 py-2.5 font-mono text-xs tabular-nums text-[var(--muted)]">
                       {e.employeeCode}
                     </td>
-                    <td className="px-2 py-2.5 text-sm font-bold text-[var(--text)]">{e.name}</td>
+                    <td className="px-2 py-2.5 text-sm font-bold text-[var(--text)]">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span>{e.name}</span>
+                        {e.flagWelfareIneligible ? (
+                          <span
+                            className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-hover)] px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted)]"
+                            title="사내근로복지기금 미대상 — 사복 계산·운영 보고·안내문에서 제외, 인센 기록만 가능"
+                          >
+                            사복 미대상
+                          </span>
+                        ) : null}
+                      </span>
+                    </td>
                     <td className="px-2 py-2.5 text-xs text-[var(--muted)]">{e.position || EM}</td>
                     <td className="px-2 py-2.5 text-center text-xs font-semibold tabular-nums text-[var(--muted)]">
                       Lv.{e.level}

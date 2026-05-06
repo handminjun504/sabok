@@ -5,6 +5,7 @@ import { CommaWonInput } from "@/components/CommaWonInput";
 import type {
   setCompanyIncentiveNetRatioAction,
   setMonthlyIncentiveAccrualCellAction,
+  setMonthlyOptionalWelfareTextAction,
 } from "@/app/actions/quarterly";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
@@ -55,8 +56,18 @@ export type MonthlyIncentiveAccrualGridRow = {
   name: string;
   /** 지급월 1~12 — 그 달 노트에 적힌 발생(귀속) 인센 */
   incentiveAccrualByMonth: Record<number, number | null>;
+  /**
+   * 같은 노트의 `optionalWelfareText` — 직원·월 단위로 짧게 적어 두는 메모.
+   * 셀 우상단 메모 토글로 편집·표시. 길이 상한은 서버 액션에서 가드.
+   */
+  optionalWelfareTextByMonth: Record<number, string | null>;
   /** 직원 마스터 ‘예상 인센’ — 사복으로 지급 가능한 한도. null/0 이면 한도 없음(잔여 비교 생략). */
   incentiveAmount: number | null;
+  /**
+   * 사복(사내근로복지기금) 미대상 — 사복 화면에서는 행이 빠지지만 이 그리드에서는 인센 기록을 위해 유지.
+   * 코드 옆에 작은 ‘사복 미대상’ 배지 + 행 전체를 살짝 dim 으로 시각 구분.
+   */
+  welfareIneligible: boolean;
 };
 
 type CellKey = `${string}:${number}`;
@@ -64,7 +75,10 @@ function cellKey(employeeId: string, month: number): CellKey {
   return `${employeeId}:${month}`;
 }
 
+const MEMO_MAX_LEN = 500;
+
 type CellStatus = "idle" | "pending" | "saved" | "error";
+type MemoStatus = "idle" | "pending" | "saved" | "error";
 type RatioStatus = "idle" | "pending" | "saved" | "error";
 
 export function MonthlyIncentiveAccrualGrid({
@@ -74,6 +88,7 @@ export function MonthlyIncentiveAccrualGrid({
   setCell,
   netRatioPercent,
   setNetRatio,
+  setOptionalWelfareText,
 }: {
   year: number;
   rows: MonthlyIncentiveAccrualGridRow[];
@@ -87,9 +102,34 @@ export function MonthlyIncentiveAccrualGrid({
   netRatioPercent: number | null;
   /** 비율을 자동 저장하는 서버 액션. 권한이 없으면 그리드 상단에서 readonly 로만 보여준다. */
   setNetRatio: typeof setCompanyIncentiveNetRatioAction;
+  /** 셀 메모(`optionalWelfareText`) 를 자동 저장하는 서버 액션. */
+  setOptionalWelfareText: typeof setMonthlyOptionalWelfareTextAction;
 }) {
   const [statusByCell, setStatusByCell] = useState<Map<CellKey, CellStatus>>(() => new Map());
   const [errorByCell, setErrorByCell] = useState<Map<CellKey, string>>(() => new Map());
+  /**
+   * 메모 라이브 캐시 — props 의 `optionalWelfareTextByMonth` 를 출발점으로 두고, 사용자가 저장한 뒤
+   * 그 셀의 메모 표시(아이콘 진하기·툴팁)에 즉시 반영되도록 한다. null = 메모 없음.
+   */
+  const [memoByCell, setMemoByCell] = useState<Map<CellKey, string | null>>(() => {
+    const m = new Map<CellKey, string | null>();
+    for (const r of rows) {
+      for (let mn = 1; mn <= 12; mn++) {
+        const v = r.optionalWelfareTextByMonth?.[mn];
+        if (typeof v === "string" && v.trim().length > 0) {
+          m.set(cellKey(r.employeeId, mn), v);
+        }
+      }
+    }
+    return m;
+  });
+  const [memoStatusByCell, setMemoStatusByCell] = useState<Map<CellKey, MemoStatus>>(() => new Map());
+  const [memoErrorByCell, setMemoErrorByCell] = useState<Map<CellKey, string>>(() => new Map());
+  /** 현재 popover 가 열려 있는 셀 — 한 번에 하나만 열리도록 단일 키로 관리. */
+  const [memoOpenCell, setMemoOpenCell] = useState<CellKey | null>(null);
+  /** popover 안에서 사용자가 편집 중인 텍스트(저장 전 라이브). */
+  const [memoDraft, setMemoDraft] = useState<string>("");
+  const memoTextareaRef = useRef<HTMLTextAreaElement>(null);
   /**
    * 12개월 입력값을 라이브로 추적 — 잔여(예상-누적) 표시는 디바운스/저장 전에도 즉시 반영되어야 한다.
    * 저장된 값(=세후 변환 후) 기준으로 누적·잔여를 계산하므로 valueByCell 도 변환 후 값을 보관한다.
@@ -145,6 +185,42 @@ export function MonthlyIncentiveAccrualGrid({
       }
     }
   }, [ratioEditing]);
+
+  /** 메모 popover 가 새로 열리면 textarea 에 포커스 + 끝 커서. */
+  useEffect(() => {
+    if (memoOpenCell == null) return;
+    const el = memoTextareaRef.current;
+    if (!el) return;
+    el.focus();
+    const len = el.value.length;
+    el.setSelectionRange(len, len);
+  }, [memoOpenCell]);
+
+  /**
+   * props.rows 가 갱신되면(서버에서 다시 받아온 경우) 라이브 메모 캐시도 따라 동기화.
+   * 사용자가 다른 셀에서 입력 중이라면 그 셀만은 라이브 값이 보존되도록 prev 와 병합한다.
+   */
+  useEffect(() => {
+    setMemoByCell((prev) => {
+      const next = new Map<CellKey, string | null>();
+      for (const r of rows) {
+        for (let mn = 1; mn <= 12; mn++) {
+          const k = cellKey(r.employeeId, mn);
+          /** popover 가 열려 있는 셀은 사용자가 편집 중일 수 있으니 prev 그대로. */
+          if (memoOpenCell === k) {
+            const cur = prev.get(k);
+            if (cur != null) next.set(k, cur);
+            continue;
+          }
+          const v = r.optionalWelfareTextByMonth?.[mn];
+          if (typeof v === "string" && v.trim().length > 0) {
+            next.set(k, v);
+          }
+        }
+      }
+      return next;
+    });
+  }, [rows, memoOpenCell]);
 
   const flushRatioSave = useCallback(
     (rawNext: number | null) => {
@@ -283,6 +359,128 @@ export function MonthlyIncentiveAccrualGrid({
       });
     },
     [activeRatio, setCell, year],
+  );
+
+  /** popover 토글 — 같은 셀을 다시 누르면 닫힌다. */
+  const onMemoOpen = useCallback(
+    (employeeId: string, month: number) => {
+      const k = cellKey(employeeId, month);
+      if (memoOpenCell === k) {
+        setMemoOpenCell(null);
+        setMemoDraft("");
+        return;
+      }
+      const current = memoByCell.get(k) ?? "";
+      setMemoDraft(current);
+      setMemoOpenCell(k);
+      /** 같은 셀 메모 오류는 새로 열 때 초기화 — 이전 사용자에게만 보였던 메시지를 고정 노출하지 않음. */
+      setMemoErrorByCell((prev) => {
+        const m = new Map(prev);
+        m.delete(k);
+        return m;
+      });
+    },
+    [memoByCell, memoOpenCell],
+  );
+
+  const onMemoCancel = useCallback(() => {
+    setMemoOpenCell(null);
+    setMemoDraft("");
+  }, []);
+
+  /** 라이브 입력 — 길이 상한을 넘어가지 않도록 즉시 자른다. */
+  const onMemoChange = useCallback((next: string) => {
+    if (next.length > MEMO_MAX_LEN) {
+      setMemoDraft(next.slice(0, MEMO_MAX_LEN));
+    } else {
+      setMemoDraft(next);
+    }
+  }, []);
+
+  const onMemoCommit = useCallback(() => {
+    if (!canEdit) return;
+    if (memoOpenCell == null) return;
+    const k = memoOpenCell;
+    const [employeeId, monthStr] = k.split(":") as [string, string];
+    const month = Number(monthStr);
+    const trimmed = memoDraft.trim();
+    const normalized = trimmed.length > 0 ? trimmed : null;
+    const prevValue = memoByCell.get(k) ?? null;
+    /** 변경이 없으면 서버 호출 생략 — 노이즈 줄이기. */
+    if ((prevValue ?? null) === (normalized ?? null)) {
+      setMemoOpenCell(null);
+      setMemoDraft("");
+      return;
+    }
+    setMemoByCell((prev) => {
+      const m = new Map(prev);
+      if (normalized == null) m.delete(k);
+      else m.set(k, normalized);
+      return m;
+    });
+    setMemoStatusByCell((prev) => {
+      const m = new Map(prev);
+      m.set(k, "pending");
+      return m;
+    });
+    setMemoErrorByCell((prev) => {
+      const m = new Map(prev);
+      m.delete(k);
+      return m;
+    });
+    setMemoOpenCell(null);
+    setMemoDraft("");
+    startTransition(async () => {
+      const res = await setOptionalWelfareText(employeeId, year, month, normalized);
+      if (res.ok) {
+        setMemoStatusByCell((prev) => {
+          const m = new Map(prev);
+          m.set(k, "saved");
+          return m;
+        });
+        window.setTimeout(() => {
+          setMemoStatusByCell((prev) => {
+            const m = new Map(prev);
+            if (m.get(k) === "saved") m.delete(k);
+            return m;
+          });
+        }, 1500);
+      } else {
+        /** 실패 시 라이브 캐시는 이전 값으로 롤백 — 사용자 시각 표시가 거짓으로 남지 않도록. */
+        setMemoByCell((prev) => {
+          const m = new Map(prev);
+          if (prevValue == null) m.delete(k);
+          else m.set(k, prevValue);
+          return m;
+        });
+        setMemoStatusByCell((prev) => {
+          const m = new Map(prev);
+          m.set(k, "error");
+          return m;
+        });
+        setMemoErrorByCell((prev) => {
+          const m = new Map(prev);
+          m.set(k, res.오류);
+          return m;
+        });
+      }
+    });
+  }, [canEdit, memoByCell, memoDraft, memoOpenCell, setOptionalWelfareText, year]);
+
+  const onMemoKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onMemoCancel();
+        return;
+      }
+      /** Enter = 저장 / Shift+Enter = 줄바꿈. 사내 단축키 관습에 맞춤. */
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        onMemoCommit();
+      }
+    },
+    [onMemoCancel, onMemoCommit],
   );
 
   /** 한 행에서 “가장 우선순위 높은” 상태 — error > pending > saved > idle. */
@@ -486,16 +684,33 @@ export function MonthlyIncentiveAccrualGrid({
             const hasCap = expected > 0;
             const remaining = expected - accrued;
             const overflow = hasCap && remaining < 0;
+            const ineligible = r.welfareIneligible;
+            const stickyBg = ineligible
+              ? "bg-[var(--surface-hover)]/40"
+              : "bg-[var(--surface)]";
             return (
               <div
                 key={r.employeeId}
-                className="grid border-b border-[var(--border)] last:border-b-0"
+                className={
+                  "grid border-b border-[var(--border)] last:border-b-0 " +
+                  (ineligible ? "opacity-90" : "")
+                }
                 style={{ gridTemplateColumns: ROW_GRID }}
               >
-                <div className="sticky left-0 z-[1] bg-[var(--surface)] px-2 py-1.5 font-mono text-xs font-semibold tabular-nums text-[var(--text)]">
-                  {r.employeeCode}
+                <div className={`sticky left-0 z-[1] ${stickyBg} px-2 py-1.5 font-mono text-xs font-semibold tabular-nums text-[var(--text)]`}>
+                  <span className="inline-flex items-center gap-1">
+                    <span>{r.employeeCode}</span>
+                    {ineligible ? (
+                      <span
+                        className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-1 py-0 text-[0.6rem] font-bold uppercase tracking-wide text-[var(--muted)]"
+                        title="사내근로복지기금 미대상 — 사복 화면에서는 빠지지만 인센 기록은 가능"
+                      >
+                        미대상
+                      </span>
+                    ) : null}
+                  </span>
                 </div>
-                <div className="sticky left-[5.5rem] z-[1] bg-[var(--surface)] px-2 py-1.5 text-sm font-medium text-[var(--text)]">
+                <div className={`sticky left-[5.5rem] z-[1] ${stickyBg} px-2 py-1.5 text-sm font-medium text-[var(--text)]`}>
                   {r.name}
                 </div>
                 {MONTHS.map((m) => {
@@ -515,15 +730,48 @@ export function MonthlyIncentiveAccrualGrid({
                       : propsCellValue != null && Number.isFinite(Number(propsCellValue))
                         ? Math.round(Number(propsCellValue))
                         : null;
+                  const memoText = memoByCell.get(k) ?? null;
+                  const hasMemo = memoText != null && memoText.trim().length > 0;
+                  const memoState = memoStatusByCell.get(k);
+                  const memoErr = memoErrorByCell.get(k) ?? null;
+                  const memoOpen = memoOpenCell === k;
                   return (
-                    <div key={m} className="px-1 py-1">
+                    <div key={m} className="relative px-1 py-1">
+                      <button
+                        type="button"
+                        onClick={() => onMemoOpen(r.employeeId, m)}
+                        disabled={!canEdit && !hasMemo}
+                        className={
+                          "absolute right-1.5 top-1.5 z-[2] inline-flex h-4 w-4 items-center justify-center rounded-full border text-[0.6rem] leading-none transition-colors " +
+                          (memoState === "error"
+                            ? "border-[var(--danger)]/60 bg-[var(--danger)]/10 text-[var(--danger)]"
+                            : hasMemo
+                              ? "border-[var(--accent)]/60 bg-[var(--accent)]/15 text-[var(--accent)]"
+                              : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] opacity-60 hover:opacity-100") +
+                          (canEdit ? " cursor-pointer" : hasMemo ? " cursor-help" : " cursor-not-allowed")
+                        }
+                        title={
+                          memoState === "pending"
+                            ? "메모 저장 중…"
+                            : memoState === "error"
+                              ? `메모 저장 실패: ${memoErr ?? ""}`
+                              : hasMemo
+                                ? `메모: ${memoText}`
+                                : canEdit
+                                  ? "이 달에 짧은 메모를 남깁니다 (Enter 저장 / Esc 취소)"
+                                  : "메모 없음"
+                        }
+                        aria-label={hasMemo ? "메모 보기·편집" : "메모 추가"}
+                      >
+                        {hasMemo ? "•" : "+"}
+                      </button>
                       <CommaWonInput
                         name={`incentiveAccrual_${m}`}
                         defaultValue={cellDefault}
                         disabled={!canEdit}
                         readOnly={!canEdit}
                         className={
-                          "input w-full min-w-0 px-2 py-1 text-sm tabular-nums " +
+                          "input w-full min-w-0 px-2 py-1 pr-6 text-sm tabular-nums " +
                           (cellHasError
                             ? "border-[var(--danger)]/60 ring-1 ring-[var(--danger)]/30"
                             : cellState === "saved"
@@ -538,6 +786,56 @@ export function MonthlyIncentiveAccrualGrid({
                             : undefined
                         }
                       />
+                      {memoOpen ? (
+                        <div
+                          className="absolute right-0 top-full z-[20] mt-1 w-72 rounded-md border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-card-hover)]"
+                          role="dialog"
+                          aria-label={`${m}월 메모`}
+                        >
+                          <div className="mb-1 flex items-center justify-between text-[0.7rem] text-[var(--muted)]">
+                            <span>
+                              <strong className="text-[var(--text)]">{r.name}</strong>{" "}
+                              <span className="tabular-nums">· {year}.{m}월 메모</span>
+                            </span>
+                            <span className="tabular-nums">{memoDraft.length}/{MEMO_MAX_LEN}</span>
+                          </div>
+                          <textarea
+                            ref={memoTextareaRef}
+                            value={memoDraft}
+                            onChange={(e) => onMemoChange(e.target.value)}
+                            onKeyDown={onMemoKeyDown}
+                            disabled={!canEdit}
+                            readOnly={!canEdit}
+                            rows={3}
+                            maxLength={MEMO_MAX_LEN}
+                            className="input w-full resize-y px-2 py-1 text-sm leading-snug"
+                            placeholder="짧은 메모(예: 인센 사유, 정산 여부 등)"
+                          />
+                          <div className="mt-2 flex items-center justify-between gap-2">
+                            <span className="text-[0.65rem] text-[var(--muted)]">
+                              Enter = 저장 · Shift+Enter = 줄바꿈 · Esc = 취소
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={onMemoCancel}
+                                className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[0.7rem] font-semibold text-[var(--text)] hover:bg-[var(--surface-hover)]"
+                              >
+                                취소
+                              </button>
+                              {canEdit ? (
+                                <button
+                                  type="button"
+                                  onClick={onMemoCommit}
+                                  className="rounded-md border border-[var(--accent)]/60 bg-[var(--accent)] px-2 py-1 text-[0.7rem] font-semibold text-white hover:bg-[var(--accent)]/90"
+                                >
+                                  저장
+                                </button>
+                              ) : null}
+                            </span>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}

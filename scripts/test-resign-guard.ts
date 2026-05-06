@@ -46,6 +46,12 @@ function makeEmployee(overrides: Partial<Employee> = {}): Employee {
     parentsCount: 0,
     parentsInLawCount: 0,
     flagRepReturn: false,
+    /**
+     * 이 회귀 테스트의 가정은 "5월 퇴사인 경우 5월 자체는 활성, 6월부터 비활성".
+     * → `flagPayWelfareOnResignMonth: true` 로 명시해 기존 시나리오 그대로 유지.
+     * OFF(=신규 기본값) 케이스는 별도 회귀(`test-resign-month-pay-toggle.ts`) 에서 검증.
+     */
+    flagPayWelfareOnResignMonth: true,
     rank: null,
     payDay: null,
     loanPrincipal: null,
@@ -55,7 +61,7 @@ function makeEmployee(overrides: Partial<Employee> = {}): Employee {
     updatedAt: null,
     salaryInclusionVarianceMode: null,
     ...overrides,
-  } as Employee;
+  } as unknown as Employee;
 }
 
 function rule(level: number, eventKey: string, amount: number): LevelPaymentRule {
@@ -84,7 +90,8 @@ let failed = 0;
 let passed = 0;
 function check(label: string, actual: unknown, expected: unknown): void {
   const ok = JSON.stringify(actual) === JSON.stringify(expected);
-  (ok ? passed++ : failed++);
+  if (ok) passed++;
+  else failed++;
   const mark = ok ? "✓" : "✗";
   console.log(`  ${mark} ${label}  expected=${JSON.stringify(expected)} actual=${JSON.stringify(actual)}`);
 }

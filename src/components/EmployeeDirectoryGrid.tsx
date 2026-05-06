@@ -134,7 +134,17 @@ export function EmployeeDirectoryGrid({
                 <p className="font-mono text-xs font-semibold tabular-nums text-[var(--muted)]">{e.employeeCode}</p>
                 <p className="text-lg font-bold leading-tight tracking-tight text-[var(--text)]">{e.name}</p>
                 {e.position ? <p className="text-xs text-[var(--muted)]">{e.position}</p> : null}
-                {statusBadge ? <div className="mt-1.5">{statusBadge}</div> : null}
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {statusBadge}
+                  {e.flagWelfareIneligible ? (
+                    <span
+                      className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted)]"
+                      title="사내근로복지기금 미대상 — 사복 계산·운영 보고·안내문에서 제외, 인센 기록만 가능"
+                    >
+                      사복 미대상
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <Link
                 href={`/dashboard/employees/${e.id}`}

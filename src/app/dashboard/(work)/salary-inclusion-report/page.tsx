@@ -20,6 +20,7 @@ import {
   computeActualWelfareThroughPaidMonth,
   computeIncentiveWelfareSalaryInclusionYtd,
   computeSalaryInclusionCapBlocks,
+  welfareEligibleEmployees,
 } from "@/lib/domain/schedule";
 import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 
@@ -57,7 +58,8 @@ export default async function SalaryInclusionReportPage({
   const tenantVarianceLabel =
     SALARY_INCLUSION_VARIANCE_MODES.find((x) => x.value === tenantVarianceMode)?.label ?? tenantVarianceMode;
 
-  const employees = await employeeListByTenantCodeAsc(tenantId);
+  /** 급여포함신고는 사복 대상자만 — 미대상은 사복 한도 자체가 없으므로 보고에서 제외. */
+  const employees = welfareEligibleEmployees(await employeeListByTenantCodeAsc(tenantId));
   const ids = employees.map((e) => e.id);
 
   const [rules, overrides, quarterly, notes] = await Promise.all([

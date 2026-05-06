@@ -80,6 +80,14 @@ export function mapEmployee(r: Record<string, unknown>): Employee {
   flagRepReturn: bool(r.flagRepReturn),
   flagSpouseReceipt: bool(r.flagSpouseReceipt),
   flagWorkerNet: bool(r.flagWorkerNet),
+  /** PB 컬럼이 없거나 빈 값이면 false — 기존 데이터 모두 ‘사복 대상’ 으로 안전 fallback. */
+  flagWelfareIneligible: bool(r.flagWelfareIneligible),
+  /**
+   * 퇴사월 사복 지급 토글 — PB 컬럼이 없거나 빈 값이면 false.
+   * 기본 false 라 기존 퇴사 직원도 ‘퇴사월 사복 지급 안 함’ 으로 자동 정렬되며,
+   * 필요한 직원만 사용자가 직접 체크해 사복을 지급한다.
+   */
+  flagPayWelfareOnResignMonth: bool(r.flagPayWelfareOnResignMonth),
   salaryInclusionVarianceMode: parseSalaryInclusionVarianceModeOrNull(r.salaryInclusionVarianceMode),
   };
 }

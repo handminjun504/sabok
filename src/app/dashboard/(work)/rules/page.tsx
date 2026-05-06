@@ -16,6 +16,7 @@ import {
   quarterlyEmployeeConfigListByTenantYear,
   quarterlyRateList,
 } from "@/lib/pb/repository";
+import { welfareEligibleEmployees } from "@/lib/domain/schedule";
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { QUARTERLY_ITEM, QUARTERLY_ITEM_LABELS, type QuarterlyItemKey } from "@/lib/business-rules";
@@ -60,11 +61,13 @@ export default async function PaymentRulesPage() {
   const settings = await companySettingsByTenant(tenantId);
   const year = settings?.activeYear ?? new Date().getFullYear();
 
-  const [rules, rates, employees] = await Promise.all([
+  const [rules, rates, allEmployees] = await Promise.all([
     levelPaymentRuleList(tenantId, year),
     quarterlyRateList(tenantId, year),
     employeeListByTenantCodeAsc(tenantId),
   ]);
+  /** 레벨 규칙·분기 화면도 사복 계산 화면이라 미대상자는 노출하지 않는다(직원 명부에서만 보임). */
+  const employees = welfareEligibleEmployees(allEmployees);
   const ids = employees.map((e) => e.id);
   const configs = await quarterlyEmployeeConfigListByTenantYear(tenantId, year, ids);
 

@@ -31,6 +31,7 @@ import {
   regularAnnualTotalsByLevel,
   resolveEventAmount,
   welfareByScheduleDisplayMonth,
+  welfareEligibleEmployees,
   welfareScheduleLinesByMonth,
 } from "@/lib/domain/schedule";
 import { PAYMENT_EVENT, PAYMENT_EVENT_LABELS, QUARTERLY_ITEM_LABELS } from "@/lib/business-rules";
@@ -47,6 +48,7 @@ import {
   setCompanyIncentiveNetRatioAction,
   setMonthPaidConfirmedAction,
   setMonthlyIncentiveAccrualCellAction,
+  setMonthlyOptionalWelfareTextAction,
 } from "@/app/actions/quarterly";
 import {
   effectiveSalaryInclusionVarianceMode,
@@ -82,8 +84,18 @@ export default async function SchedulePage() {
   const accrual = settings?.accrualCurrentMonthPayNext ?? false;
   const tenantVarianceMode = settings?.salaryInclusionVarianceMode ?? "BOTH";
 
-  const employees = await employeeListByTenantCodeAsc(tenantId);
+  const allEmployees = await employeeListByTenantCodeAsc(tenantId);
+  /**
+   * 사복 대상 직원만 — 스케줄·운영 보고·안내문 등 사복 화면은 모두 이 리스트로 동작.
+   * `flagWelfareIneligible` 직원은 ‘월별 발생 인센’ 그리드(=allEmployees)와 직원 명부에만 보인다.
+   */
+  const employees = welfareEligibleEmployees(allEmployees);
   const ids = employees.map((e) => e.id);
+  /**
+   * `notes` 조회는 미대상자 인센·메모도 포함해야 그리드에 인센 기록을 쓸 수 있다.
+   * 그 외 사복 계산은 위의 `employees` / `ids` 로 진행되므로 미대상자가 섞여도 영향 없음.
+   */
+  const allIds = allEmployees.map((e) => e.id);
 
   const vendors = await vendorListByTenant(tenantId);
   const reserveSummary =
@@ -105,7 +117,8 @@ export default async function SchedulePage() {
     levelPaymentRuleList(tenantId, year),
     level5OverrideListByEmployeeIdsYear(ids, year),
     quarterlyEmployeeConfigListByTenantYear(tenantId, year, ids),
-    monthlyNoteListByTenantYear(tenantId, year, ids),
+    /** 미대상 직원도 ‘월별 발생 인센’ 그리드를 통해 노트를 쓸 수 있어야 하므로 allIds 로 조회. */
+    monthlyNoteListByTenantYear(tenantId, year, allIds),
     monthlyPaymentStatusListByTenantYear(tenantId, year),
   ]);
   /** 1~12 → 해당 월이 ‘지급완료’ 표시되었는지(테넌트·연 단위). 누락된 월은 false. */
@@ -405,20 +418,32 @@ export default async function SchedulePage() {
     return { ...card, status: tableStatus };
   });
 
-  const incentiveAccrualRows = employees.map((emp) => {
+  /**
+   * 월별 발생 인센 그리드는 사복 대상·미대상 모두 노출. 미대상은 시각적 구분을 위해 행 끝으로 모은다.
+   * 같은 그룹 내에서는 기존 employeeCode 순서를 유지(allEmployees 가 이미 코드 오름차순).
+   */
+  const incentiveAccrualRows = [
+    ...allEmployees.filter((e) => !e.flagWelfareIneligible),
+    ...allEmployees.filter((e) => e.flagWelfareIneligible),
+  ].map((emp) => {
     const empNotes = notes.filter((n) => n.employeeId === emp.id);
     const incentiveAccrualByMonth: Record<number, number | null> = {};
+    const optionalWelfareTextByMonth: Record<number, string | null> = {};
     for (let m = 1; m <= 12; m++) {
       const hit = empNotes.find((x) => x.month === m);
       incentiveAccrualByMonth[m] = hit?.incentiveAccrualAmount ?? null;
+      optionalWelfareTextByMonth[m] = hit?.optionalWelfareText ?? null;
     }
     return {
       employeeId: emp.id,
       employeeCode: emp.employeeCode,
       name: emp.name,
       incentiveAccrualByMonth,
+      optionalWelfareTextByMonth,
       /** 직원 마스터의 ‘예상 인센’ — 행 끝 ‘잔여(예상−누적)’ 비교에 사용 */
       incentiveAmount: emp.incentiveAmount,
+      /** 사복 미대상 — 행 끝 정렬·배지 표시에만 사용. 인센 기록 자체에는 영향 없음. */
+      welfareIneligible: emp.flagWelfareIneligible,
     };
   });
 
@@ -499,6 +524,7 @@ export default async function SchedulePage() {
           setCell={setMonthlyIncentiveAccrualCellAction}
           netRatioPercent={settings?.incentiveNetRatioPercent ?? null}
           setNetRatio={setCompanyIncentiveNetRatioAction}
+          setOptionalWelfareText={setMonthlyOptionalWelfareTextAction}
         />
       </div>
 

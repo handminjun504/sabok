@@ -25,6 +25,14 @@ const ALIASES: Record<string, string> = {
   "근로자 실질 수령": "flagWorkerNet",
   "근로자 실질 수령(반환분 제외)": "flagWorkerNet",
   근로자실질수령반환분제외: "flagWorkerNet",
+  /** 사복 미대상 — 체크 시 사복 계산·운영 보고·안내문에서 자동 제외, 인센만 기록 가능. */
+  사복미대상: "flagWelfareIneligible",
+  "사복 미대상": "flagWelfareIneligible",
+  "사내근로복지기금 미대상": "flagWelfareIneligible",
+  /** 퇴사월 사복 지급 토글 — 체크 시 퇴사월에도 사복 표시. 미체크 시 퇴사월 직전까지만 활성. */
+  퇴사월사복지급: "flagPayWelfareOnResignMonth",
+  "퇴사월 사복 지급": "flagPayWelfareOnResignMonth",
+  "퇴사월 사복지급 완료": "flagPayWelfareOnResignMonth",
   "입사 월": "hireMonth",
   입사월: "hireMonth",
   "퇴사 월": "resignMonth",
@@ -187,6 +195,8 @@ export function parseEmployeeCsv(text: string): CsvRowResult[] {
       flagRepReturn: parseBool(String(get("flagRepReturn") || "")),
       flagSpouseReceipt: parseBool(String(get("flagSpouseReceipt") || "")),
       flagWorkerNet: parseBool(String(get("flagWorkerNet") || "")),
+      flagWelfareIneligible: parseBool(String(get("flagWelfareIneligible") || "")),
+      flagPayWelfareOnResignMonth: parseBool(String(get("flagPayWelfareOnResignMonth") || "")),
     };
 
     let 오류: string | undefined;
@@ -227,6 +237,8 @@ const SHEET_EMPLOYEE_EXPORT_HEADERS_TAIL = [
   "급여일",
   "레벨",
   "예상 인센",
+  "사복 미대상",
+  "퇴사월 사복 지급",
 ] as const;
 
 const SURVEY_HEADER_REP = "대표반환";
@@ -298,6 +310,8 @@ export function employeeToSheetCsvCells(e: Employee, settings: CompanySettings |
     e.payDay != null ? String(e.payDay) : "",
     String(e.level),
     e.incentiveAmount != null && Number(e.incentiveAmount) > 0 ? wonCell(e.incentiveAmount) : "",
+    ynCell(e.flagWelfareIneligible),
+    ynCell(e.flagPayWelfareOnResignMonth),
   ];
 }
 

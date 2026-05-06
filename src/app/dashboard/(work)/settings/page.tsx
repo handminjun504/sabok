@@ -60,9 +60,12 @@ export default async function SettingsPage() {
     | Partial<Record<string, number[]>>
     | null;
   const repReturnSchedule = s?.repReturnSchedule ?? null;
-  /** 대표반환 대상 직원 (flagRepReturn=true 인 직원만). 폼에서 입력 행 구성에 사용. */
+  /**
+   * 대표반환 입력 행 — `flagRepReturn` 이 켜진 직원이지만, 사복 미대상자는 사복 화면 자체에서 빠지므로
+   * 여기서도 함께 제외해 양식 일관성을 유지한다.
+   */
   const repReturnEmployees = allEmployees
-    .filter((e) => e.flagRepReturn)
+    .filter((e) => e.flagRepReturn && !e.flagWelfareIneligible)
     .map((e) => ({ id: e.id, employeeCode: e.employeeCode, name: e.name }));
 
   const companySettingsTab = (

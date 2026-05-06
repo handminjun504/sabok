@@ -53,6 +53,20 @@ export type Employee = {
   flagRepReturn: boolean;
   flagSpouseReceipt: boolean;
   flagWorkerNet: boolean;
+  /**
+   * 사내근로복지기금 미대상 표시 — true 면 사복 계산·운영 보고·안내문에서 행 자체가 빠진다.
+   * 단 직원 명부와 ‘월별 발생 인센’ 그리드에는 그대로 보이며 인센 기록(`incentiveAccrualAmount`) 만 가능.
+   * PB `flagWelfareIneligible` 컬럼이 없으면 `false` 로 매핑.
+   */
+  flagWelfareIneligible: boolean;
+  /**
+   * 퇴사월에 사복(사내근로복지기금) 지급을 그대로 진행할지.
+   * - `true`  → 퇴사월 까지 활성(=그 달 정기·분기 사복 표시).
+   * - `false` → 퇴사월 직전 달까지 활성(=퇴사월 자체가 비활성, 사복 0 원).
+   * 기본 `false` — 사용자 의도에 따라 “체크해야 그 달 표시” 가 안전한 기본.
+   * `resignMonth` / `resignYear` 가 비어 있으면 의미 없음(전체 연도 활성). PB 컬럼 누락 시 false 로 매핑.
+   */
+  flagPayWelfareOnResignMonth: boolean;
   /** 급여포함신고·스케줄 상한 초과/미달 열 표시. null 이면 전사 `CompanySettings.salaryInclusionVarianceMode` */
   salaryInclusionVarianceMode: SalaryInclusionVarianceMode | null;
 };

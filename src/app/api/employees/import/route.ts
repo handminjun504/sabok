@@ -62,6 +62,8 @@ export async function POST(req: Request) {
       flagRepReturn: Boolean(f.flagRepReturn),
       flagSpouseReceipt: Boolean(f.flagSpouseReceipt),
       flagWorkerNet: Boolean(f.flagWorkerNet),
+      flagWelfareIneligible: Boolean(f.flagWelfareIneligible),
+      flagPayWelfareOnResignMonth: Boolean(f.flagPayWelfareOnResignMonth),
       salaryInclusionVarianceMode: null,
     };
     try {

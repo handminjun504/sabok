@@ -713,6 +713,25 @@ export function EmployeeForm({
                 </label>
               ) : null}
             </div>
+            <div className="rounded-md border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3 text-[0.8125rem] leading-normal">
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  name="flagWelfareIneligible"
+                  defaultChecked={employee?.flagWelfareIneligible ?? false}
+                  className="mt-0.5"
+                />
+                <span className="min-w-0">
+                  <span className="font-medium text-[var(--text)]">사내근로복지기금 미대상</span>
+                  <span className="mt-0.5 block text-[11px] leading-4 text-[var(--muted)]">
+                    체크 시 월별 스케줄·운영 보고·안내문에서 행 자체가 빠집니다.
+                    그래도 인센티브 기록이 필요한 경우{" "}
+                    <strong className="text-[var(--text)]">‘월별 발생 인센’</strong> 그리드에는 그대로 보이고 입력만
+                    가능합니다.
+                  </span>
+                </span>
+              </label>
+            </div>
             {!surveyShowRepReturn && !surveyShowSpouseReceipt && !surveyShowWorkerNet ? (
               <p className="mt-2 text-xs text-[var(--muted)]">
                 조사표 플래그는 <strong className="text-[var(--text)]">전사 설정</strong>에서 켠 뒤 여기서 표시됩니다.
@@ -754,6 +773,7 @@ export function EmployeeForm({
             <p className="text-xs leading-snug text-[var(--muted)]">
               퇴사 처리는 <strong className="text-[var(--text)]">‘퇴사 월’</strong> 만 입력해도 활성 연도(
               <span className="font-mono tabular-nums text-[var(--text)]">{activeYear}</span>)로 자동 처리됩니다. 다른 연도라면 ‘퇴사 연도’를 함께 입력하세요.
+              {" "}퇴사월 사복은 기본 <strong className="text-[var(--text)]">지급하지 않음</strong>입니다 — 그 달 사복을 지급해야 하면 아래 체크박스를 켜 주세요.
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             <Cell label="입사 월" name="hireMonth" type="number" defaultValue={employee?.hireMonth ?? ""} />
@@ -801,6 +821,29 @@ export function EmployeeForm({
               defaultValue={employee?.monthlyRentAmount ?? undefined}
               optional
             />
+            </div>
+            <div className="rounded-md border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3 text-[0.8125rem] leading-normal">
+              <label className="flex cursor-pointer items-start gap-2">
+                {/*
+                  서버 액션은 "체크 안 됨" = formData.get("flagPayWelfareOnResignMonth") == null 으로 판정하므로,
+                  hidden input 등 추가 가드는 두지 않는다. 기본값은 false.
+                */}
+                <input
+                  type="checkbox"
+                  name="flagPayWelfareOnResignMonth"
+                  defaultChecked={employee?.flagPayWelfareOnResignMonth ?? false}
+                  className="mt-0.5"
+                />
+                <span className="min-w-0">
+                  <span className="font-medium text-[var(--text)]">퇴사월에 사내근로복지기금 지급 완료</span>
+                  <span className="mt-0.5 block text-[11px] leading-4 text-[var(--muted)]">
+                    체크 시 위에 적은 <strong className="text-[var(--text)]">퇴사 월</strong> 의 정기·분기 사복이 월별
+                    스케줄에 그대로 표시됩니다.{" "}
+                    <strong className="text-[var(--text)]">미체크</strong> 시 그 달은 비활성으로 간주되어 0 원으로
+                    표시됩니다(기본값).
+                  </span>
+                </span>
+              </label>
             </div>
           </section>
         </div>

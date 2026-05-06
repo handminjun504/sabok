@@ -915,10 +915,57 @@ export async function employeeFindFirst(id: string, tenantId: string): Promise<E
   return r ? mapEmployee(r) : null;
 }
 
+/**
+ * 신규 컬럼이 추가됐으나 PB 스키마에 아직 반영되지 않은 환경에서, payload 의 해당 키만 빼서
+ * 다른 정상 필드 저장이 깨지지 않도록 한 번 재시도한다.
+ * - 현재 대상: `flagWelfareIneligible` (사복 미대상), `flagPayWelfareOnResignMonth` (퇴사월 사복 지급 토글).
+ *   새 필드가 더 생기면 동일 패턴으로 확장.
+ */
+function stripUnknownEmployeeFields(
+  payload: Record<string, unknown>,
+  detailLower: string,
+): Record<string, unknown> | null {
+  const cleaned: Record<string, unknown> = { ...payload };
+  let changed = false;
+  const looksLikeUnknownField =
+    detailLower.includes("unknown") ||
+    detailLower.includes("invalid") ||
+    detailLower.includes("not found") ||
+    detailLower.includes("no such") ||
+    detailLower.includes("missing");
+  if (detailLower.includes("flagwelfareineligible") && looksLikeUnknownField) {
+    delete cleaned.flagWelfareIneligible;
+    changed = true;
+  }
+  if (detailLower.includes("flagpaywelfareonresignmonth") && looksLikeUnknownField) {
+    delete cleaned.flagPayWelfareOnResignMonth;
+    changed = true;
+  }
+  return changed ? cleaned : null;
+}
+
 export async function employeeCreate(data: Record<string, unknown>): Promise<Employee> {
   const pb = await getAdminPb();
-  const created = asRecord(await pb.collection(C.employees).create(data));
-  return mapEmployee(created);
+  try {
+    const created = asRecord(await pb.collection(C.employees).create(data));
+    return mapEmployee(created);
+  } catch (e) {
+    if (!(e instanceof ClientResponseError)) {
+      logPbClientError("employeeCreate", e);
+      throw e;
+    }
+    const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
+    const cleaned = stripUnknownEmployeeFields(data, detailLower);
+    if (!cleaned) {
+      logPbClientError("employeeCreate", e);
+      throw e;
+    }
+    console.warn(
+      "[pb] employeeCreate: 미지원 컬럼 감지로 제거 후 재시도. PB Admin → sabok_employees 에 해당 필드를 추가하세요.",
+    );
+    const created = asRecord(await pb.collection(C.employees).create(cleaned));
+    return mapEmployee(created);
+  }
 }
 
 /**
@@ -931,7 +978,24 @@ export async function employeeUpdate(id: string, tenantId: string, data: Record<
   if (!owned?.id) {
     throw new Error(`employeeUpdate: 직원(id=${id})이 현재 업체(${tenantId})에 속하지 않습니다.`);
   }
-  await pb.collection(C.employees).update(id, data);
+  try {
+    await pb.collection(C.employees).update(id, data);
+  } catch (e) {
+    if (!(e instanceof ClientResponseError)) {
+      logPbClientError("employeeUpdate", e);
+      throw e;
+    }
+    const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
+    const cleaned = stripUnknownEmployeeFields(data, detailLower);
+    if (!cleaned) {
+      logPbClientError("employeeUpdate", e);
+      throw e;
+    }
+    console.warn(
+      "[pb] employeeUpdate: 미지원 컬럼 감지로 제거 후 재시도. PB Admin → sabok_employees 에 해당 필드를 추가하세요.",
+    );
+    await pb.collection(C.employees).update(id, cleaned);
+  }
 }
 
 export async function employeeDelete(id: string, tenantId: string): Promise<void> {

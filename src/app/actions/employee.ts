@@ -148,6 +148,22 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     flagRepReturn,
     flagSpouseReceipt,
     flagWorkerNet,
+    /**
+     * ‘사복 미대상’ 토글 — 폼에 체크박스로 노출. 신규 폼이라 항상 받지만 상위 화면에서
+     * disabled 로 가려진 경우 기존값을 그대로 유지하도록 fallback.
+     */
+    flagWelfareIneligible:
+      formData.get("flagWelfareIneligible") != null
+        ? chk(formData, "flagWelfareIneligible")
+        : (existingEmp?.flagWelfareIneligible ?? false),
+    /**
+     * ‘퇴사월에 사복 지급 완료’ — 폼 체크박스. 미체크면 퇴사월 자체가 비활성(=그 달 사복 0).
+     * 폼이 없는 경로(과거 호출부)에서 들어와도 기존값을 보존하도록 fallback.
+     */
+    flagPayWelfareOnResignMonth:
+      formData.get("flagPayWelfareOnResignMonth") != null
+        ? chk(formData, "flagPayWelfareOnResignMonth")
+        : (existingEmp?.flagPayWelfareOnResignMonth ?? false),
     salaryInclusionVarianceMode: parseSalaryInclusionVarianceModeOrNull(formData.get("salaryInclusionVarianceMode")),
   };
 
@@ -176,9 +192,21 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     return o;
   }
 
+  /**
+   * 편집(update) 흐름에서는 사용자가 칸을 ‘비웠다’ 의도까지 PB 에 그대로 전달해야
+   * "한 번 채운 값이 영영 안 지워지는" 사고가 안 난다.
+   * → 이전에는 이 목록 키들을 null 일 때 drop 해서, 퇴사월/연도 등을 비워 저장해도
+   *   PB 에 reset 이 가지 않아 “저장이 안 된 것처럼” 보였다.
+   *
+   * PocketBase 의 `number` 컬럼은 명시적 `null` 보다 빈 문자열(`""`) 로 reset 하는 패턴이 더 호환성이 좋다.
+   * 따라서 nullable number 필드는 null 을 "" 로 변환해 보내되, 키 자체는 그대로 두어 PB 가 컬럼 default 로 reset 하게 한다.
+   *
+   * - 신규 생성(`bodyForCreate`) 은 PB 의 빈 값 검증을 회피하려 여전히 null 키를 drop.
+   * - 편집은 빈 문자열 reset 을 통해 “지우기” 가 동작.
+   */
   function bodyForUpdate(employeeCode: string): Record<string, unknown> {
     const o: Record<string, unknown> = { ...data, employeeCode };
-    const dropIfNull = [
+    const resetIfNull = [
       "incentiveAmount",
       "discretionaryAmount",
       "monthlyPayAmount",
@@ -193,8 +221,8 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
       "weddingMonth",
       "payDay",
     ] as const;
-    for (const k of dropIfNull) {
-      if (o[k] === null) delete o[k];
+    for (const k of resetIfNull) {
+      if (o[k] === null) o[k] = "";
     }
     return o;
   }

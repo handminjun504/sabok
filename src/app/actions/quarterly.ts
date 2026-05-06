@@ -189,6 +189,78 @@ export async function setMonthlyIncentiveAccrualCellAction(
   return { ok: true };
 }
 
+export type MonthlyOptionalWelfareTextResult = { ok: true } | { ok: false; 오류: string };
+
+/**
+ * 월별 발생 인센 그리드 — 한 직원·한 월 셀에 짧은 메모(`optionalWelfareText`) 만 단건 자동 저장.
+ *
+ * - 권한: `canEditEmployees` (인센 셀 저장과 동일).
+ * - 보안: employeeId → tenantId 검증으로 IDOR 방지.
+ * - 빈 문자열 / 공백만 있으면 null 로 정리해 다른 필드를 건드리지 않고 저장.
+ * - 길이 상한 500 자 — 안내문에 우연히 거대한 텍스트가 들어가는 사고 방지.
+ * - month 는 1~12 만 허용.
+ */
+export async function setMonthlyOptionalWelfareTextAction(
+  employeeId: string,
+  year: number,
+  month: number,
+  text: string | null,
+): Promise<MonthlyOptionalWelfareTextResult> {
+  const ctx = await resolveActionTenant();
+  if (!ctx.ok) return { ok: false, 오류: ctx.message };
+  if (!canEditEmployees(ctx.role)) {
+    return { ok: false, 오류: "수정 권한이 없습니다." };
+  }
+
+  const yearN = Math.round(Number(year));
+  if (!Number.isFinite(yearN) || yearN < 2000 || yearN > 2100) {
+    return { ok: false, 오류: "연도가 올바르지 않습니다." };
+  }
+  const monthN = Math.round(Number(month));
+  if (!Number.isFinite(monthN) || monthN < 1 || monthN > 12) {
+    return { ok: false, 오류: "월(1~12)이 올바르지 않습니다." };
+  }
+  const empId = String(employeeId ?? "").trim();
+  if (!empId) return { ok: false, 오류: "직원 ID 가 없습니다." };
+
+  const emp = await employeeFindFirst(empId, ctx.tenantId);
+  if (!emp) return { ok: false, 오류: "직원을 찾을 수 없습니다." };
+
+  /** 빈/공백 → null. 그 외엔 trim 후 길이 상한 500 자 까지만 저장. */
+  let normalized: string | null = null;
+  if (text != null) {
+    const t = String(text).trim();
+    if (t.length > 0) {
+      normalized = t.length > 500 ? t.slice(0, 500) : t;
+    }
+  }
+
+  const existingList = await monthlyNoteListByEmployeeYear(emp.id, yearN);
+  const prev = existingList.find((n) => n.month === monthN);
+  if (!prev && normalized == null) {
+    /** 빈 노트에 또 빈 메모 — no-op. */
+    return { ok: true };
+  }
+
+  try {
+    await monthlyNoteUpsert({
+      employeeId: emp.id,
+      year: yearN,
+      month: monthN,
+      optionalWelfareText: normalized,
+      optionalExtraAmount: prev?.optionalExtraAmount ?? null,
+      incentiveAccrualAmount: prev?.incentiveAccrualAmount ?? null,
+      incentiveWelfarePaymentAmount: prev?.incentiveWelfarePaymentAmount ?? null,
+    });
+  } catch (e) {
+    console.error(e);
+    return { ok: false, 오류: "메모 저장에 실패했습니다." };
+  }
+
+  revalidateScheduleArtifacts();
+  return { ok: true };
+}
+
 export type IncentiveNetRatioResult = { ok: true } | { ok: false; 오류: string };
 
 /**

@@ -89,11 +89,18 @@ export type EmployeeStatusForYear =
  * 규칙(하위 호환):
  *   - resignYear 가 없으면 → 전체 연도 활성(입사 시점은 매년 hireMonth 에 입사축하 발생만 사용, 활성 범위와는 무관)
  *   - 활성 연도 > resignYear → 퇴사 후(AFTER_RESIGN), 스케줄 0
- *   - 활성 연도 == resignYear → resignMonth(있으면) 까지만 활성, 없으면 12월까지
+ *   - 활성 연도 == resignYear → resignMonth(있으면) 기준으로 toMonth 결정.
+ *     - `flagPayWelfareOnResignMonth === true`  → 퇴사월 까지 활성(toMonth = resignMonth).
+ *     - `flagPayWelfareOnResignMonth === false` → 퇴사월 직전 달까지(toMonth = resignMonth - 1).
+ *       resignMonth = 1 이면 활성 범위가 비어 그 해 전체 비활성(AFTER_RESIGN 과 동치).
  *   - resignMonth 만 있고 resignYear 가 없으면 → 무시(연도가 명시되어야 적용. 옛 데이터의 단일 월 입력이 영원히 잘리는 사고 방지)
+ *
+ * `flagPayWelfareOnResignMonth` 가 누락된 객체(테스트 등)는 false 로 간주.
  */
 export function employeeStatusForYear(
-  employee: Pick<Employee, "resignYear" | "resignMonth">,
+  employee: Pick<Employee, "resignYear" | "resignMonth"> & {
+    flagPayWelfareOnResignMonth?: boolean | null;
+  },
   year: number,
 ): EmployeeStatusForYear {
   const resignY = employee.resignYear ?? null;
@@ -102,18 +109,23 @@ export function employeeStatusForYear(
     return { kind: "AFTER_RESIGN", resignYear: resignY, resignMonth: employee.resignMonth ?? null };
   }
 
-  let to = 12;
-  let partial = false;
-
   if (resignY != null && year === resignY && employee.resignMonth != null) {
     const m = Math.round(Number(employee.resignMonth));
-    if (Number.isFinite(m) && m >= 1 && m <= 12 && m < 12) {
-      to = m;
-      partial = true;
+    if (Number.isFinite(m) && m >= 1 && m <= 12) {
+      const includeResignMonth = employee.flagPayWelfareOnResignMonth === true;
+      const to = includeResignMonth ? m : m - 1;
+      if (to < 1) {
+        /** 1월 퇴사이면서 ‘퇴사월 사복 지급’ 미체크 → 그 해 전체 비활성. AFTER_RESIGN 과 동치. */
+        return { kind: "AFTER_RESIGN", resignYear: resignY, resignMonth: m };
+      }
+      if (to < 12) {
+        return { kind: "ACTIVE_PARTIAL", range: { fromMonth: 1, toMonth: to } };
+      }
+      /** to === 12 인 경우(예: 12월 퇴사 + 체크) → FULL_YEAR. */
     }
   }
 
-  return partial ? { kind: "ACTIVE_PARTIAL", range: { fromMonth: 1, toMonth: to } } : { kind: "ACTIVE_FULL_YEAR" };
+  return { kind: "ACTIVE_FULL_YEAR" };
 }
 
 /** 활성 연도에 직원이 “전혀 활성이 아니다(0원)”인지 한 줄로 확인 */
@@ -132,6 +144,21 @@ export function monthIsActive(status: EmployeeStatusForYear, month: number): boo
     return month >= status.range.fromMonth && month <= status.range.toMonth;
   }
   return false;
+}
+
+/**
+ * 사복(사내근로복지기금) 계산·표시 대상 직원만 추리는 헬퍼.
+ *
+ * `flagWelfareIneligible === true` 인 직원은:
+ *   - 월별 스케줄, 운영 보고서, 급여포함신고, 안내문, 적립·환류 합산 등 사복 관련 모든 화면·계산에서 제외.
+ *   - 단 직원 명부와 ‘월별 발생 인센’ 그리드는 별도 호출로 전체 직원을 그대로 사용 — 미대상자도 인센 기록만 가능하도록.
+ *
+ * 한 군데에서 정의한 뒤 호출부에서 일관 사용해, 한 화면에서만 빠뜨리는 사고를 방지한다.
+ */
+export function welfareEligibleEmployees<T extends Pick<Employee, "flagWelfareIneligible">>(
+  employees: readonly T[],
+): T[] {
+  return employees.filter((e) => !e.flagWelfareIneligible);
 }
 
 /** 해당 연도·레벨의 정기(레벨/행사) 규칙 금액 합 — 모든 행사가 한 번씩 발생한다고 가정한 표준 연간 합 */
