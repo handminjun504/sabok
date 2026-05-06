@@ -150,7 +150,7 @@ export function showSalaryPortionNoticeMode(mode: TenantOperationMode): boolean 
 
 /**
  * 급여(월) = 급여분 멘트 전용 `announcementSalaryByMonth[month]`(우선) 또는 조정 월분.
- * 급여인하(조정연봉이 기존연보보다 낮음)인데 월별 재분배 오버라이드가 없으면 기존연봉 연간액으로 월 분배한다.
+ * 멘트 연간 기준은 **기존연봉**이며, 월별 재분배 오버라이드가 있으면 그 월별 조정값을 쓴다.
  * 급여낮추기·복합 모드: 월 환산 급여가 있는 직원은 해당 월 기금 유무와 관계없이 포함(실무 안내 양식).
  */
 export function buildSalaryPortionNotice(

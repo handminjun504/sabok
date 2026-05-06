@@ -58,7 +58,7 @@ export type ScheduleCardRow = {
    */
   salaryByMonth?: Record<number, number>;
   /**
-   * 급여분 복사 멘트 전용 월별 급여 — 급여인하 시에는 기존연봉 월분, 재분배 오버라이드 시에는 조정 월별값(보정 lump 제외).
+   * 급여분 복사 멘트 전용 월별 급여 — 기존연봉 연간액 기준 월분(조정연봉과 무관). 재분배 오버라이드 시 해당 월별 조정값(보정 lump 제외).
    */
   announcementSalaryByMonth?: Record<number, number>;
   /** 조사표·안내 멘트용 */

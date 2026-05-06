@@ -146,7 +146,7 @@ export default async function SchedulePage() {
     salaryMonth: number;
     /** 월별 조정급여 — 중도 재분배로 월별 오버라이드가 있으면 월별로 다를 수 있음 */
     salaryByMonth: Record<number, number>;
-    /** 급여분 복사 멘트 전용 월별 급여 — 급여인하 시 기존연봉 월분, 재분배 오버라이드 시 salaryByMonth 와 동일 */
+    /** 급여분 복사 멘트 전용 월별 급여 — 조정과 무관하게 기존연봉 월분, 재분배 오버라이드 시 해당 월별값(salary에서 보정 lump 제외) */
     announcementSalaryByMonth: Record<number, number>;
     hasSalaryOverride: boolean;
     capBlocks: ReturnType<typeof computeSalaryInclusionCapBlocks>;

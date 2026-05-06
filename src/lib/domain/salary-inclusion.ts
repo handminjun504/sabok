@@ -19,16 +19,17 @@ function toNum(v: number | null | undefined): number {
 
 /**
  * 급여분 안내 멘트 등 직원에게 전달하는 "월 환산"에 쓸 **연간 기준액(원)**.
- * 조정연봉이 기존연보보다 낮은(급여낮추기) 경우에도 안내 문구는 실무상 **기존연봉**을 12로 나눈 월액을 쓴다.
+ * 조정연봉은 카드·급여포함 계산용이고, **복사 멘트는 실무상 계약 연봉(기존연봉)** 을 12로 나눈 월분을 안내한다.
+ * `baseSalary` 가 없을 때만 조정연봉을 연간 기준으로 쓴다.
  * 월별 `adjustedSalaryOverrideAmount` 가 있는 해에는 호출부에서 조정 월별 값을 그대로 쓴다.
  */
 export function announcementSalaryAnnualWon(
   employee: Pick<Employee, "adjustedSalary" | "baseSalary">,
 ): number {
   const base = Math.round(toNum(employee.baseSalary));
+  if (base > 0) return base;
   const adj = Math.round(toNum(employee.adjustedSalary));
-  if (adj > 0 && adj < base) return base;
-  return adj > 0 ? adj : base;
+  return adj > 0 ? adj : 0;
 }
 
 /**
