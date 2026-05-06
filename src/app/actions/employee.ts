@@ -115,7 +115,6 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
       `‘퇴사 월’만 입력되어 있어 활성 연도(${payYear})로 자동 보정합니다. 다른 연도라면 ‘퇴사 연도’를 함께 입력하세요.`,
     );
   }
-  const 경고 = warnings.length > 0 ? warnings.join("\n") : undefined;
 
   const data: Record<string, unknown> = {
     name,
@@ -224,11 +223,13 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
   }
 
   let employeeDetailPath: string | undefined;
+  let savedEmployeeId: string | undefined;
   try {
     if (id && existingEmp) {
       const emp = existingEmp;
       await employeeUpdate(emp.id, ctx.tenantId, bodyForUpdate(emp.employeeCode));
       employeeDetailPath = `/dashboard/employees/${id}`;
+      savedEmployeeId = emp.id;
       await writeAudit({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
@@ -246,6 +247,7 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
         employeeCode,
       });
       employeeDetailPath = `/dashboard/employees/${created.id}`;
+      savedEmployeeId = created.id;
       await writeAudit({
         userId: ctx.userId,
         tenantId: ctx.tenantId,
@@ -271,8 +273,46 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     return { 오류: "저장에 실패했습니다. 서버 로그를 확인하세요." };
   }
 
+  /**
+   * 저장 직후 PB 가 실제로 어떤 값을 보존했는지 다시 읽어 검증한다.
+   * - PocketBase 가 응답을 200 으로 주고도 컬럼이 없거나 silent ignore 되어
+   *   "입력한 값이 영영 안 들어가는" 사고가 발생할 수 있어, 사용자에게 mismatch 를 즉시 노출.
+   * - 비교 대상은 폼에서 손이 닿는 nullable 키 위주(현 단계 사고 다발 지점).
+   */
+  if (savedEmployeeId) {
+    try {
+      const verify = await employeeFindFirst(savedEmployeeId, ctx.tenantId);
+      if (verify) {
+        const expected = data;
+        const checks: { key: string; label: string; expected: unknown; actual: unknown }[] = [
+          { key: "resignMonth", label: "퇴사 월", expected: expected.resignMonth ?? null, actual: verify.resignMonth ?? null },
+          { key: "resignYear", label: "퇴사 연도", expected: expected.resignYear ?? null, actual: verify.resignYear ?? null },
+          { key: "flagPayWelfareOnResignMonth", label: "퇴사월 사복 지급 토글", expected: expected.flagPayWelfareOnResignMonth, actual: verify.flagPayWelfareOnResignMonth },
+          { key: "flagWelfareIneligible", label: "사복 미대상", expected: expected.flagWelfareIneligible, actual: verify.flagWelfareIneligible },
+          { key: "birthMonth", label: "생일 월", expected: expected.birthMonth ?? null, actual: verify.birthMonth ?? null },
+          { key: "hireMonth", label: "입사 월", expected: expected.hireMonth ?? null, actual: verify.hireMonth ?? null },
+        ];
+        const mismatches = checks.filter((c) => {
+          const a = c.expected === undefined ? null : c.expected;
+          const b = c.actual === undefined ? null : c.actual;
+          return a !== b;
+        });
+        if (mismatches.length > 0) {
+          warnings.push(
+            `저장 검증: PocketBase 가 일부 값을 보존하지 않았습니다 — ${mismatches
+              .map((m) => `${m.label}(${m.key}): 입력=${String(m.expected ?? "비움")} → 저장=${String(m.actual ?? "비움")}`)
+              .join(" · ")}. PB Admin 에서 sabok_employees 컬렉션의 해당 컬럼이 number/bool 타입으로 추가돼 있는지(또는 Nonempty 옵션이 꺼져 있는지) 확인하세요.`,
+          );
+        }
+      }
+    } catch (e) {
+      console.warn("[employee] post-save verify 실패", e);
+    }
+  }
+
+  const finalWarning = warnings.length > 0 ? warnings.join("\n") : undefined;
   revalidateEmployeeArtifacts({ detailPath: employeeDetailPath, includeNew: true });
-  return 경고 ? { 성공: true, 경고 } : { 성공: true };
+  return finalWarning ? { 성공: true, 경고: finalWarning } : { 성공: true };
 }
 
 export async function deleteEmployeeAction(employeeId: string): Promise<EmployeeActionState> {
