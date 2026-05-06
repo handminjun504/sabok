@@ -742,14 +742,23 @@ export function yearlyWelfareTotal(rows: MonthBreakdown[]): number {
 /**
  * 급여분 안내용 — 활성 **귀속월**만 합산한 **정기**(스케줄) 사복 연합계(원).
  * 분기·선택 복지(노트)·중도 재분배 오버라이드 합계는 포함하지 않는다.
+ *
+ * `notesByAccrualMonth` 가 주어지면, 해당 귀속월에 `welfareOverrideAmount`(월 총액 고정)가 있는 달은
+ * **`regularEvents` 가 디버깅용 원 라인으로만 남고 실제 지급 합은 override 이므로** 정기 연합에 넣지 않는다.
+ * 넣으면 정기분이 과대 집계되어 급여분 멘트 월액이 비정상적으로 작아진다.
  */
 export function yearlyRegularScheduledWelfareTotal(
   br: MonthBreakdown[],
   isAccrualMonthActive: (month: number) => boolean,
+  notesByAccrualMonth?: ReadonlyMap<number, MonthlyOverrideEntry>,
 ): number {
   let s = 0;
   for (const row of br) {
     if (!isAccrualMonthActive(row.accrualMonth)) continue;
+    const note = notesByAccrualMonth?.get(row.accrualMonth);
+    if (pickWelfareOverride(note?.welfareOverrideAmount) != null) {
+      continue;
+    }
     for (const ev of row.regularEvents) {
       s += ev.amount;
     }

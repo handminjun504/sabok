@@ -293,7 +293,7 @@ export default async function SchedulePage() {
     }
 
     /** 급여분 멘트 — 실효 사복지급분−정기연합을 연간 급여로 두고 매월 floor(÷12). 폴백 시 조정·기존연봉 등. */
-    const yearlyRegularSched = yearlyRegularScheduledWelfareTotal(br, (m) => monthIsActive(empStatus, m));
+    const yearlyRegularSched = yearlyRegularScheduledWelfareTotal(br, (m) => monthIsActive(empStatus, m), overrideMap);
     const ann = announcementSalaryAnnualWon(emp, yearlyRegularSched);
     const monthlyTrunc = announcementSalaryMonthlyTruncatedFromAnnualWon(ann);
     const announcementSalaryByMonthList: readonly number[] = Array.from({ length: 12 }, (_, i) => {
