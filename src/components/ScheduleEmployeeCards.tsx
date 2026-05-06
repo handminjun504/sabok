@@ -126,6 +126,20 @@ export function ScheduleEmployeeCards({
     );
   };
 
+  /**
+   * activeRange 가 있으면 그 범위 밖의 월(=퇴사 후 / 입사 전) 셀은 “—” 로 가린다.
+   * `activeRange` 가 `undefined` 면 전체 활성으로 간주(이전 호출부 호환).
+   * `null` 은 ‘재직 구간 전혀 없음(퇴사 후 다음 연도)’ → 1~12 모두 비활성.
+   */
+  function monthIsActiveForRange(
+    range: { fromMonth: number; toMonth: number } | null | undefined,
+    month: number,
+  ): boolean {
+    if (range === undefined) return true;
+    if (range === null) return false;
+    return month >= range.fromMonth && month <= range.toMonth;
+  }
+
   return (
     <div className="space-y-4">
       {/* 월 필터 */}
@@ -197,8 +211,10 @@ export function ScheduleEmployeeCards({
                           {rowMonths.map((m) => {
                             const v = r.welfareByMonth[m] ?? 0;
                             const lines = r.linesByMonth[m] ?? [];
-                            const empty = v === 0;
-                            const modified = modifiedSet.has(m);
+                            const active = monthIsActiveForRange(r.activeRange, m);
+                            /** 비활성 월(퇴사 후·입사 전)은 항상 "—" 로 가린다 — 데이터 단계에서도 0/빈배열이지만 안전망. */
+                            const empty = !active || v === 0;
+                            const modified = active && modifiedSet.has(m);
                             return (
                               <td
                                 key={m}

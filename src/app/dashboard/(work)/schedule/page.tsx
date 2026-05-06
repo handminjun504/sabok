@@ -26,6 +26,7 @@ import {
   computeActualYearlyWelfareForEmployee,
   computeSalaryInclusionCapBlocks,
   employeeStatusForYear,
+  monthIsActive,
   monthlyOverrideMapFromNotes,
   monthlySalaryPortion,
   regularAnnualTotalsByLevel,
@@ -174,15 +175,24 @@ export default async function SchedulePage() {
       fixedEventMonths,
       overrideMap,
     );
+    /**
+     * 사복 표시 가드 — `flagPayWelfareOnResignMonth` 까지 반영해 비활성 월(퇴사 후 / 부분 재직 외)에는
+     * 어떤 라인도 노출되지 않도록 한다. 이 한 곳에서 막아야 카드/테이블/펼침/안내문 어디서도 새지 않는다.
+     */
+    const empStatus = employeeStatusForYear(emp, year);
+
     const noteByMonth = new Map<number, number>();
     for (const n of empNotes) {
       const extra = n.optionalExtraAmount != null ? Number(n.optionalExtraAmount) : 0;
       if (extra === 0) continue;
+      /** 퇴사월 이후 임의로 남아 있는 노트가 있어도 표시·합산에서 제외. */
+      if (!monthIsActive(empStatus, n.month)) continue;
       noteByMonth.set(n.month, (noteByMonth.get(n.month) ?? 0) + extra);
     }
     const welfareOverrideByAccrualMonth = new Map<number, number>();
     for (const [m, entry] of overrideMap) {
       if (entry.welfareOverrideAmount != null) {
+        if (!monthIsActive(empStatus, m)) continue;
         welfareOverrideByAccrualMonth.set(m, entry.welfareOverrideAmount);
       }
     }
@@ -197,6 +207,15 @@ export default async function SchedulePage() {
       customDefs,
       welfareOverrideByAccrualMonth,
     );
+    /**
+     * 마지막 안전망 — buildMonthlyBreakdown 가드를 우회하는 경로(예: 미래에 추가될 데이터 채널)가 생겨도
+     * 비활성 월 키는 여기서 일괄 제거한다.
+     */
+    for (let m = 1; m <= 12; m++) {
+      if (monthIsActive(empStatus, m)) continue;
+      welfareByMonth.delete(m);
+      welfareLinesByMonth.delete(m);
+    }
 
     const yearlyWelfare = computeActualYearlyWelfareForEmployee(
       emp,
@@ -222,7 +241,10 @@ export default async function SchedulePage() {
     const salaryByMonth: Record<number, number> = {};
     let hasSalaryOverride = false;
     for (let m = 1; m <= 12; m++) {
-      const v = resolveEffectiveAdjustedSalaryForMonth(emp, year, m, empNotes);
+      /** 비활성(퇴사 후) 월은 급여 라인도 0 — 표/카드 모두 ‘—’ 로 가려진다. */
+      const v = monthIsActive(empStatus, m)
+        ? resolveEffectiveAdjustedSalaryForMonth(emp, year, m, empNotes)
+        : 0;
       salaryByMonth[m] = v;
       const note = empNotes.find((n) => n.year === year && n.month === m);
       if (note?.adjustedSalaryOverrideAmount != null) hasSalaryOverride = true;
@@ -332,8 +354,7 @@ export default async function SchedulePage() {
       });
     }
 
-    /** 활성 월 범위 — 퇴사자/신규입사자는 부분 범위만 모달에 노출. */
-    const empStatus = employeeStatusForYear(emp, year);
+    /** 활성 월 범위 — 위에서 만든 empStatus 를 그대로 재사용해 “부분 재직” 모달 노출 범위 계산. */
     const activeRange: { fromMonth: number; toMonth: number } | null =
       empStatus.kind === "ACTIVE_FULL_YEAR"
         ? { fromMonth: 1, toMonth: 12 }
