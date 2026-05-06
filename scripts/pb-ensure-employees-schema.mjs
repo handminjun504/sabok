@@ -1,27 +1,30 @@
 #!/usr/bin/env node
 /**
- * PocketBase 컬렉션 `sabok_employees` 가 우리 앱 코드에서 기대하는 number/bool 필드를
- * 모두 갖고 있는지 보장하는 스크립트.
+ * PocketBase 컬렉션이 우리 앱 코드에서 기대하는 number/bool 필드를 모두 갖고 있는지
+ * 보장하는 스크립트(컬렉션별 카탈로그 내장).
  *
  * 배경: PB 가 200 응답을 주면서도 입력값이 영영 안 들어가는("silent ignore") 사고는,
  *       대부분 해당 컬렉션에 컬럼이 없거나 required(Nonempty) 가 켜져 있어 발생한다.
  *       앱 단계에서는 응답을 정상 처리해 사용자가 원인 파악이 어려워진다.
  *
  * 동작:
- *  1) 컬렉션을 가져와 기대 필드(EXPECTED) 와 비교.
+ *  1) 컬렉션을 가져와 기대 필드(CATALOG[컬렉션]) 와 비교.
  *  2) 누락된 필드는 추가 (required=false, system=false).
  *  3) 존재하지만 required=true 인 number/bool 필드는 required=false 로 변경.
  *  4) DRY_RUN=1 이면 변경 사항만 출력하고 적용하지 않음.
  *
  * 사용:
- *   npm run pb:ensure-employees-schema
- *   DRY_RUN=1 npm run pb:ensure-employees-schema   # 미리보기
+ *   npm run pb:ensure-employees-schema           # sabok_employees
+ *   npm run pb:ensure-company-settings-schema    # sabok_company_settings
+ *   DRY_RUN=1 npm run pb:ensure-employees-schema # 미리보기
+ *
+ * 직접 컬렉션 지정:
+ *   PB_FIX_COLLECTION=sabok_company_settings node scripts/pb-ensure-employees-schema.mjs
  *
  * 환경변수:
  *   POCKETBASE_URL / PB_URL
  *   POCKETBASE_ADMIN_EMAIL / PB_ADMIN_EMAIL
  *   POCKETBASE_ADMIN_PASSWORD / PB_ADMIN_PASSWORD
- *   PB_FIX_COLLECTION (기본 sabok_employees)
  */
 
 import "dotenv/config";
@@ -47,49 +50,64 @@ const COLLECTION = (process.env.PB_FIX_COLLECTION || "sabok_employees").trim();
 const DRY = envTruthy("DRY_RUN");
 
 /**
- * 앱이 기대하는 필드 카탈로그.
- * `mappers.ts` 의 mapEmployee 와 actions/employee.ts 의 data 객체를 기준으로 작성.
- * - 모든 number 필드는 required=false (입력이 비어 있을 수 있음)
- * - 모든 bool 필드는 required=false (체크 안 한 상태가 정상값)
+ * 컬렉션별 기대 필드 카탈로그.
+ * - 모든 number/bool 필드는 required=false (입력이 비어 있을 수 있음)
  */
-const EXPECTED = [
-  // 식별/문자열은 별도(이미 컬렉션 스키마에 있다고 가정). 여기서는 nullable number / bool 만 보장.
-  // 급여/금액
-  { name: "baseSalary", type: "number" },
-  { name: "adjustedSalary", type: "number" },
-  { name: "welfareAllocation", type: "number" },
-  { name: "priorOverpaidWelfareWon", type: "number" },
-  { name: "incentiveAmount", type: "number" },
-  { name: "discretionaryAmount", type: "number" },
-  { name: "monthlyPayAmount", type: "number" },
-  { name: "quarterlyPayAmount", type: "number" },
-  { name: "expectedYearlyWelfare", type: "number" },
-  { name: "monthlyRentAmount", type: "number" },
-  { name: "insurancePremium", type: "number" },
-  { name: "loanInterest", type: "number" },
-  // 일정 (월/연도)
-  { name: "birthMonth", type: "number" },
-  { name: "hireMonth", type: "number" },
-  { name: "resignMonth", type: "number" },
-  { name: "resignYear", type: "number" },
-  { name: "weddingMonth", type: "number" },
-  { name: "payDay", type: "number" },
-  // 가족 수
-  { name: "childrenInfant", type: "number" },
-  { name: "childrenPreschool", type: "number" },
-  { name: "childrenTeen", type: "number" },
-  { name: "parentsCount", type: "number" },
-  { name: "parentsInLawCount", type: "number" },
-  // 레벨
-  { name: "level", type: "number" },
-  // 플래그
-  { name: "flagAutoAmount", type: "bool" },
-  { name: "flagRepReturn", type: "bool" },
-  { name: "flagSpouseReceipt", type: "bool" },
-  { name: "flagWorkerNet", type: "bool" },
-  { name: "flagWelfareIneligible", type: "bool" },
-  { name: "flagPayWelfareOnResignMonth", type: "bool" },
-];
+const CATALOG = {
+  sabok_employees: [
+    // 급여/금액
+    { name: "baseSalary", type: "number" },
+    { name: "adjustedSalary", type: "number" },
+    { name: "welfareAllocation", type: "number" },
+    { name: "priorOverpaidWelfareWon", type: "number" },
+    { name: "incentiveAmount", type: "number" },
+    { name: "discretionaryAmount", type: "number" },
+    { name: "monthlyPayAmount", type: "number" },
+    { name: "quarterlyPayAmount", type: "number" },
+    { name: "expectedYearlyWelfare", type: "number" },
+    { name: "monthlyRentAmount", type: "number" },
+    { name: "insurancePremium", type: "number" },
+    { name: "loanInterest", type: "number" },
+    // 일정 (월/연도)
+    { name: "birthMonth", type: "number" },
+    { name: "hireMonth", type: "number" },
+    { name: "resignMonth", type: "number" },
+    { name: "resignYear", type: "number" },
+    { name: "weddingMonth", type: "number" },
+    { name: "payDay", type: "number" },
+    // 가족 수
+    { name: "childrenInfant", type: "number" },
+    { name: "childrenPreschool", type: "number" },
+    { name: "childrenTeen", type: "number" },
+    { name: "parentsCount", type: "number" },
+    { name: "parentsInLawCount", type: "number" },
+    // 레벨
+    { name: "level", type: "number" },
+    // 플래그
+    { name: "flagAutoAmount", type: "bool" },
+    { name: "flagRepReturn", type: "bool" },
+    { name: "flagSpouseReceipt", type: "bool" },
+    { name: "flagWorkerNet", type: "bool" },
+    { name: "flagWelfareIneligible", type: "bool" },
+    { name: "flagPayWelfareOnResignMonth", type: "bool" },
+  ],
+  sabok_company_settings: [
+    // 활성/회계 연도
+    { name: "activeYear", type: "number" },
+    { name: "foundingMonth", type: "number" },
+    // 인센티브 자동 세후 변환 비율(1~100). 핵심 사고 지점.
+    { name: "incentiveNetRatioPercent", type: "number" },
+    // 본사 자본금
+    { name: "headOfficeCapital", type: "number" },
+    // 부속 표시 토글류 (mapCompanySettings 가 읽는 bool 들)
+    { name: "surveyShowRepReturn", type: "bool" },
+    { name: "surveyShowSpouseReceipt", type: "bool" },
+    { name: "surveyShowWorkerNet", type: "bool" },
+    { name: "accrualCurrentMonthPayNext", type: "bool" },
+  ],
+};
+
+const EXPECTED = CATALOG[(process.env.PB_FIX_COLLECTION || "sabok_employees").trim()] || [];
 
 function clonePlain(obj) {
   return JSON.parse(JSON.stringify(obj));
@@ -129,6 +147,14 @@ async function main() {
   if (!url || !email || !password) {
     console.error(
       "환경변수가 필요합니다: POCKETBASE_URL(또는 PB_URL), POCKETBASE_ADMIN_EMAIL(또는 PB_ADMIN_EMAIL), POCKETBASE_ADMIN_PASSWORD(또는 PB_ADMIN_PASSWORD)",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  if (EXPECTED.length === 0) {
+    console.error(
+      `[${COLLECTION}] 카탈로그가 정의되지 않은 컬렉션입니다. CATALOG 에 항목을 추가하거나 다른 컬렉션을 지정하세요.`,
     );
     process.exitCode = 1;
     return;

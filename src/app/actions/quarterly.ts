@@ -3,6 +3,7 @@
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 import {
+  companySettingsByTenant,
   companySettingsUpdateIncentiveNetRatio,
   companySettingsUpdateItemPayMonths,
   employeeFindFirst,
@@ -300,6 +301,26 @@ export async function setCompanyIncentiveNetRatioAction(
   } catch (e) {
     console.error(e);
     return { ok: false, 오류: "비율 저장에 실패했습니다." };
+  }
+
+  /**
+   * PocketBase 가 200 응답을 주면서도 컬럼이 없거나 silent ignore 되어 값이 보존되지 않는 사고 방지.
+   * 저장 직후 다시 읽어 norm 과 다르면 사용자에게 정확한 원인을 알린다.
+   */
+  try {
+    const verify = await companySettingsByTenant(ctx.tenantId);
+    const actual = verify?.incentiveNetRatioPercent ?? null;
+    if (actual !== norm) {
+      return {
+        ok: false,
+        오류:
+          `세후 비율 저장 검증 실패 — 입력=${norm == null ? "비움" : norm} → 저장=${actual == null ? "비움" : actual}. ` +
+          `PocketBase 의 sabok_company_settings 컬렉션에 incentiveNetRatioPercent 컬럼이 number 타입으로 추가돼 있는지 확인하세요. ` +
+          `자동 추가: \`npm run pb:ensure-company-settings-schema\`.`,
+      };
+    }
+  } catch (e) {
+    console.warn("[quarterly] setCompanyIncentiveNetRatio verify 실패", e);
   }
 
   await writeAudit({

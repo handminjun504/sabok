@@ -21,6 +21,8 @@
     "pb:fix-employees-schema:dry": "cross-env DRY_RUN=1 node scripts/pb-fix-employees-schema.mjs",
     "pb:ensure-employees-schema": "node scripts/pb-ensure-employees-schema.mjs",
     "pb:ensure-employees-schema:dry": "cross-env DRY_RUN=1 node scripts/pb-ensure-employees-schema.mjs",
+    "pb:ensure-company-settings-schema": "cross-env PB_FIX_COLLECTION=sabok_company_settings node scripts/pb-ensure-employees-schema.mjs",
+    "pb:ensure-company-settings-schema:dry": "cross-env PB_FIX_COLLECTION=sabok_company_settings DRY_RUN=1 node scripts/pb-ensure-employees-schema.mjs",
     "pb:fix-quarterly-schema": "cross-env PB_FIX_COLLECTION=sabok_quarterly_employee_configs node scripts/pb-fix-employees-schema.mjs",
     "pb:fix-level-rules-schema": "cross-env PB_FIX_COLLECTION=sabok_level_payment_rules node scripts/pb-fix-employees-schema.mjs",
     "pb:fix-level5-schema": "cross-env PB_FIX_COLLECTION=sabok_level5_overrides node scripts/pb-fix-employees-schema.mjs",
