@@ -1,5 +1,6 @@
 "use server";
 
+import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 import {
   companySettingsUpdateIncentiveNetRatio,
@@ -14,6 +15,10 @@ import {
   quarterlyRateList,
   quarterlyRateUpsert,
 } from "@/lib/pb/repository";
+import {
+  pocketBaseNonemptyBlankHint,
+  pocketBaseRecordErrorMessage,
+} from "@/lib/pb/client-error-log";
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
 import { QUARTERLY_ITEM, type QuarterlyItemKey } from "@/lib/business-rules";
@@ -344,8 +349,23 @@ export async function saveQuarterlyRatesAction(_: QState, formData: FormData): P
           percentLoanInterest: toNumOrNull(formData.get(`${itemKey}_ploan${suffix}`)),
         });
       } catch (e) {
-        const detail =
-          e instanceof Error ? `${e.name}: ${e.message}` : typeof e === "string" ? e : "unknown error";
+        /**
+         * PB ClientResponseError 는 top-level message 가 "Failed to create record." 만 들고 있고,
+         * 실제 필드별 검증 사유는 response.data.{필드}.message 에 있다.
+         * → pocketBaseRecordErrorMessage 로 필드 detail 까지 합쳐 사용자 화면에 노출.
+         */
+        let detail: string;
+        if (e instanceof ClientResponseError) {
+          const fieldDetail = pocketBaseRecordErrorMessage(e);
+          const hint = pocketBaseNonemptyBlankHint(fieldDetail);
+          detail = `PB ${e.status} ${fieldDetail}${hint}`;
+        } else if (e instanceof Error) {
+          detail = `${e.name}: ${e.message}`;
+        } else if (typeof e === "string") {
+          detail = e;
+        } else {
+          detail = "unknown error";
+        }
         console.error("[quarterly] saveQuarterlyRates", { year, itemKey, level, error: e });
         failed = { itemKey, level, cause: detail };
         break;
