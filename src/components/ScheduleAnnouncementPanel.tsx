@@ -134,7 +134,7 @@ export function ScheduleAnnouncementPanel({
       name: r.name,
       welfareMonth: r.welfareByMonth[focusMonth] ?? 0,
       /**
-       * `announcementSalaryByMonthList`: 기존연봉 월분 12칸 배열(RSC 직렬화 안정). 길이가 맞지 않으면 조정 월별·평균 폴백.
+       * `announcementSalaryByMonthList`: 조정연봉 연간을 나눈 12칸 월분. 길이가 맞지 않으면 `salaryMonth` 바닥 폴백.
        */
       salaryMonth: (() => {
         const idx = focusMonth - 1;
