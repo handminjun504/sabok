@@ -13,7 +13,6 @@ const schema = z.object({
   foundingMonth: z.coerce.number().min(1).max(12),
   defaultPayDay: z.coerce.number().min(1).max(31),
   activeYear: z.coerce.number().min(2000).max(2100),
-  accrualCurrentMonthPayNext: z.coerce.boolean(),
   salaryInclusionVarianceMode: z.enum(["BOTH", "OVER_ONLY", "UNDER_ONLY"]),
   surveyShowRepReturn: z.boolean(),
   surveyShowSpouseReceipt: z.boolean(),
@@ -146,13 +145,6 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     foundingMonth: formData.get("foundingMonth"),
     defaultPayDay: formData.get("defaultPayDay"),
     activeYear: formData.get("activeYear"),
-    /**
-     * UI 가 라디오(`payTimingMode` = "NEXT" | "SAME") 로 보내지만 구버전 체크박스(`accrualCurrentMonthPayNext`=on)도 호환.
-     * 신규 키가 우선이고 그 외에는 기존 동작과 동일.
-     */
-    accrualCurrentMonthPayNext:
-      formData.get("payTimingMode") === "NEXT" ||
-      (formData.get("payTimingMode") == null && formData.get("accrualCurrentMonthPayNext") === "on"),
     salaryInclusionVarianceMode: formData.get("salaryInclusionVarianceMode"),
     surveyShowRepReturn: formData.get("surveyShowRepReturn") === "on",
     surveyShowSpouseReceipt: formData.get("surveyShowSpouseReceipt") === "on",
@@ -177,7 +169,7 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
           ? e.message
           : String(e);
     const schemaHint =
-      /accrualcurrentmonthpaynext|surveyshow|nonempty|cannot be blank|missing required/i.test(detail)
+      /surveyshow|nonempty|cannot be blank|missing required/i.test(detail)
         ? " sabok_company_settings 의 bool·number에 Nonempty가 켜져 있으면 false·0이 거절됩니다. `npm run pb:fix-company-settings-schema` 실행 후 다시 저장하세요."
         : " salaryInclusionVarianceMode 값(BOTH/OVER_ONLY/UNDER_ONLY)·필드 타입·PB 훅을 확인하세요.";
     return { 오류: `${detail} ·${schemaHint}` };

@@ -24,7 +24,6 @@ export default async function EmployeesPage() {
   ]);
   const activeYear = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
-  const accrual = settings?.accrualCurrentMonthPayNext ?? false;
   const ids = list.map((e) => e.id);
   const [rules, overrides, quarterly, notes] = await Promise.all([
     levelPaymentRuleList(tenantId, activeYear),
@@ -89,7 +88,6 @@ export default async function EmployeesPage() {
             payrollYearContext={{
               activeYear,
               foundingMonth,
-              accrualCurrentMonthPayNext: accrual,
               rules,
               overrides,
               quarterly,

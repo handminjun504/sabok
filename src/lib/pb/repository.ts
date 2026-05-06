@@ -618,50 +618,63 @@ export async function companySettingsUpdateIncentiveNetRatio(
   }
 }
 
-function companySettingsAccrualNonemptyIssue(detailLower: string): boolean {
+/**
+ * 사용 중단된 「당월 귀속·차월 지급」 토글의 PB 컬럼(`accrualCurrentMonthPayNext`) 호환 처리.
+ *
+ * 모델·UI·도메인에서는 모두 제거되었지만 기존 PB 컬렉션에는 여전히 컬럼이 남아 있고
+ * `Nonempty` 가 켜져 있으면 누락된 페이로드가 거절될 수 있다. 따라서 저장 시에는
+ * 호환을 위해 항상 `false` 를 함께 보내고, 컬럼이 이미 제거된 환경에서 unknown 으로
+ * 거절될 경우엔 그 키만 제거해 한 번 더 시도한다.
+ */
+const LEGACY_ACCRUAL_KEY = "accrualCurrentMonthPayNext" as const;
+
+function withLegacyAccrual<T extends Record<string, unknown>>(payload: T): T & { accrualCurrentMonthPayNext: false } {
+  return { ...payload, accrualCurrentMonthPayNext: false };
+}
+
+function legacyAccrualUnknownColumnIssue(detailLower: string): boolean {
   return (
     detailLower.includes("accrualcurrentmonthpaynext") &&
-    (detailLower.includes("blank") ||
-      detailLower.includes("missing required") ||
-      detailLower.includes("nonempty") ||
-      detailLower.includes("cannot be blank"))
+    (detailLower.includes("unknown") ||
+      detailLower.includes("invalid") ||
+      detailLower.includes("not found"))
   );
+}
+
+function stripLegacyAccrual<T extends Record<string, unknown>>(payload: T): Omit<T, typeof LEGACY_ACCRUAL_KEY> {
+  const { [LEGACY_ACCRUAL_KEY]: _omit, ...rest } = payload;
+  void _omit;
+  return rest;
 }
 
 export async function companySettingsCreateForTenant(tenantId: string): Promise<void> {
   const pb = await getAdminPb();
   const activeYear = new Date().getFullYear();
-  const payload = (accrualCurrentMonthPayNext: boolean) => ({
+  const payload = withLegacyAccrual({
     tenantId,
     foundingMonth: 1,
     defaultPayDay: 25,
     activeYear,
-    accrualCurrentMonthPayNext,
     paymentEventDefs: {} as Record<string, unknown>,
   });
 
   try {
-    await pb.collection(C.companySettings).create(payload(false));
+    await pb.collection(C.companySettings).create(payload);
     return;
   } catch (e) {
     if (!(e instanceof ClientResponseError)) {
       logPbClientError("companySettingsCreateForTenant", e);
       throw e;
     }
-    const detail = pocketBaseRecordErrorMessage(e);
-    const detailLower = detail.toLowerCase();
-    if (!companySettingsAccrualNonemptyIssue(detailLower)) {
+    const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
+    if (!legacyAccrualUnknownColumnIssue(detailLower)) {
       logPbClientError("companySettingsCreateForTenant", e);
       throw e;
     }
     try {
-      await pb.collection(C.companySettings).create(payload(true));
-      console.warn(
-        "[pb] companySettingsCreateForTenant: accrualCurrentMonthPayNext=false 가 PocketBase Nonempty 등으로 거절되어 true 로 생성했습니다. " +
-          "Admin에서 해당 bool 필드의 Nonempty를 끄면 false 로도 저장할 수 있습니다. 필요하면 전사 설정에서 귀속·지급 옵션을 바꾸세요.",
-      );
+      await pb.collection(C.companySettings).create(stripLegacyAccrual(payload));
     } catch (e2) {
-      logPbClientError("companySettingsCreateForTenant (retry with accrual=true)", e2);
+      logPbClientError("companySettingsCreateForTenant (retry without legacy accrual)", e2);
       throw e2;
     }
   }
@@ -673,7 +686,6 @@ export async function companySettingsUpsert(
     foundingMonth: number;
     defaultPayDay: number;
     activeYear: number;
-    accrualCurrentMonthPayNext: boolean;
     salaryInclusionVarianceMode: SalaryInclusionVarianceMode;
     surveyShowRepReturn: boolean;
     surveyShowSpouseReceipt: boolean;
@@ -699,18 +711,20 @@ export async function companySettingsUpsert(
     void _omit;
     return rest;
   };
+  /**
+   * 사용 중단된 `accrualCurrentMonthPayNext` PB 컬럼이 남아 있는 환경 호환을 위해 false 를 항상 동봉.
+   * 이미 컬럼이 삭제된 환경에서는 unknown 컬럼 응답을 받아 자동으로 키를 빼고 다시 시도한다.
+   */
+  const dataWithLegacy = withLegacyAccrual(data as Record<string, unknown>);
   if (existing) {
     try {
-      await pb.collection(C.companySettings).update(existing.id, data);
+      await pb.collection(C.companySettings).update(existing.id, dataWithLegacy);
     } catch (e) {
       if (!(e instanceof ClientResponseError)) throw e;
       const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
-      if (companySettingsAccrualNonemptyIssue(detailLower)) {
-        throw new Error(
-          "accrualCurrentMonthPayNext=false 가 PocketBase에서 거절되었습니다(보통 bool 필드에 Nonempty·required 조합). " +
-            "PocketBase Admin에서 해당 필드의 Nonempty를 끄거나, 서버에서 `npm run pb:fix-company-settings-schema` 를 실행한 뒤 다시 저장하세요. " +
-            "(surveyShow* 등 다른 bool도 동일할 수 있습니다.)",
-        );
+      if (legacyAccrualUnknownColumnIssue(detailLower)) {
+        await pb.collection(C.companySettings).update(existing.id, stripLegacyAccrual(dataWithLegacy));
+        return;
       }
       if (
         detailLower.includes("incentivenetratiopercent") &&
@@ -718,7 +732,7 @@ export async function companySettingsUpsert(
           detailLower.includes("invalid") ||
           detailLower.includes("not found"))
       ) {
-        await pb.collection(C.companySettings).update(existing.id, stripIncentiveRatio(data));
+        await pb.collection(C.companySettings).update(existing.id, stripIncentiveRatio(dataWithLegacy));
         console.warn(
           "[pb] companySettingsUpsert(update): incentiveNetRatioPercent 컬럼 누락으로 해당 필드를 빼고 저장했습니다. " +
             "Admin → company_settings 에 number(min=1,max=100) 필드를 추가하세요.",
@@ -730,36 +744,28 @@ export async function companySettingsUpsert(
     return;
   }
 
+  const createPayload = { tenantId, ...dataWithLegacy, paymentEventDefs: {} };
   try {
-    await pb.collection(C.companySettings).create({ tenantId, ...data, paymentEventDefs: {} });
+    await pb.collection(C.companySettings).create(createPayload);
   } catch (e) {
     if (!(e instanceof ClientResponseError)) {
       logPbClientError("companySettingsUpsert(create)", e);
       throw e;
     }
     const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
-    const accrualIssue = companySettingsAccrualNonemptyIssue(detailLower);
+    const legacyAccrualMissing = legacyAccrualUnknownColumnIssue(detailLower);
     const incentiveColMissing =
       detailLower.includes("incentivenetratiopercent") &&
       (detailLower.includes("unknown") || detailLower.includes("invalid") || detailLower.includes("not found"));
-    if (!accrualIssue && !incentiveColMissing) {
+    if (!legacyAccrualMissing && !incentiveColMissing) {
       logPbClientError("companySettingsUpsert(create)", e);
       throw e;
     }
     try {
-      const payload: Record<string, unknown> = {
-        tenantId,
-        ...(incentiveColMissing ? stripIncentiveRatio(data) : data),
-        ...(accrualIssue ? { accrualCurrentMonthPayNext: true } : {}),
-        paymentEventDefs: {},
-      };
-      await pb.collection(C.companySettings).create(payload);
-      if (accrualIssue) {
-        console.warn(
-          "[pb] companySettingsUpsert(create): accrualCurrentMonthPayNext=false 가 Nonempty 등으로 거절되어 true 로 생성했습니다. " +
-            "`npm run pb:fix-company-settings-schema` 로 스키마를 고치면 false 로도 저장할 수 있습니다.",
-        );
-      }
+      let retryPayload: Record<string, unknown> = createPayload;
+      if (legacyAccrualMissing) retryPayload = stripLegacyAccrual(retryPayload);
+      if (incentiveColMissing) retryPayload = stripIncentiveRatio(retryPayload);
+      await pb.collection(C.companySettings).create(retryPayload);
       if (incentiveColMissing) {
         console.warn(
           "[pb] companySettingsUpsert(create): incentiveNetRatioPercent 컬럼 누락으로 해당 필드를 빼고 생성했습니다. " +

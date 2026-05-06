@@ -103,6 +103,11 @@ const CATALOG = {
     { name: "surveyShowRepReturn", type: "bool" },
     { name: "surveyShowSpouseReceipt", type: "bool" },
     { name: "surveyShowWorkerNet", type: "bool" },
+    /**
+     * 사용 중단된 「당월 귀속·차월 지급」 토글. 모델·UI 에서는 제거되었지만, 기존 컬렉션과
+     * 호환되도록 컬럼이 존재하는 경우 required(Nonempty)만 끄도록 catalog 에는 남겨 둔다.
+     * 새 PB 환경에서 컬럼이 없다면 graceful skip(이 catalog 는 누락된 컬럼만 추가).
+     */
     { name: "accrualCurrentMonthPayNext", type: "bool" },
   ],
 };

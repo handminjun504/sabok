@@ -49,7 +49,6 @@ export default async function SettingsPage() {
   const foundingMonth = s?.foundingMonth ?? 1;
   const defaultPayDay = s?.defaultPayDay ?? 25;
   const activeYear = s?.activeYear ?? new Date().getFullYear();
-  const accrualNext = s?.accrualCurrentMonthPayNext ?? false;
   const surveyRep = s?.surveyShowRepReturn ?? false;
   const surveySpouse = s?.surveyShowSpouseReceipt ?? false;
   const surveyWorker = s?.surveyShowWorkerNet ?? false;
@@ -76,14 +75,13 @@ export default async function SettingsPage() {
       {canEdit ? (
         <CollapsibleEditorPanel
           title="전사 설정"
-          description="창립월·급여일·기준 연도·정기 지급(귀속·지급)·급여포함신고 표시"
+          description="창립월·급여일·기준 연도·정기 지급 월·급여포함신고 표시"
           triggerLabel="설정 수정하기"
           defaultOpen={false}
           summary={
             <p className="text-sm text-[var(--text)]">
               창립 <strong>{foundingMonth}</strong>월 · 기본 급여일 <strong>{defaultPayDay}</strong>일 · 기준 연도{" "}
               <strong>{activeYear}</strong>년
-              {accrualNext ? " · 당월 귀속·차월 지급" : ""}
               <span className="mt-1 block text-xs text-[var(--muted)]">급여포함 초과·미달: {varianceSummary}</span>
               <span className="mt-1 block text-xs text-[var(--muted)]">
                 조사표 항목: 대표반환 {surveyRep ? "ON" : "OFF"} · 배우자수령 {surveySpouse ? "ON" : "OFF"} · 근로자 실질{" "}
@@ -96,7 +94,6 @@ export default async function SettingsPage() {
             foundingMonth={foundingMonth}
             defaultPayDay={defaultPayDay}
             activeYear={activeYear}
-            accrualCurrentMonthPayNext={accrualNext}
             varianceMode={varianceMode}
             surveyShowRepReturn={surveyRep}
             surveyShowSpouseReceipt={surveySpouse}
@@ -113,9 +110,6 @@ export default async function SettingsPage() {
           <p>
             창립 <strong>{foundingMonth}</strong>월 · 기본 급여일 <strong>{defaultPayDay}</strong>일 · 기준 연도{" "}
             <strong>{activeYear}</strong>년
-          </p>
-          <p className="text-[var(--muted)]">
-            {accrualNext ? "당월 귀속·차월 지급 사용 중" : "귀속·지급 동월"}
           </p>
           <p className="text-[var(--muted)]">급여포함 초과·미달 표시: {varianceSummary}</p>
           <p className="text-[var(--muted)]">

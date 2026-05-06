@@ -19,7 +19,6 @@ export type LevelWelfareAggregate = {
 export type TenantOperatingSummary = {
   year: number;
   foundingMonth: number;
-  accrualCurrentMonthPayNext: boolean;
   /** 해당 연도에 활성(재직)이었던 직원 수 */
   employeeCount: number;
   /** 등록은 되어 있지만 해당 연도에는 비활성(입사 전·퇴사 후)인 직원 수 */
@@ -44,7 +43,6 @@ export function computeTenantOperatingSummary(
   employees: Employee[],
   year: number,
   foundingMonth: number,
-  accrualCurrentMonthPayNext: boolean,
   rules: LevelPaymentRule[],
   overrides: Level5Override[],
   quarterly: QuarterlyEmployeeConfig[],
@@ -87,7 +85,6 @@ export function computeTenantOperatingSummary(
       emp,
       year,
       foundingMonth,
-      accrualCurrentMonthPayNext,
       rules,
       ovr,
       qcfg,
@@ -112,7 +109,6 @@ export function computeTenantOperatingSummary(
   return {
     year,
     foundingMonth,
-    accrualCurrentMonthPayNext,
     employeeCount: activeCount,
     inactiveEmployeeCount: inactiveCount,
     byLevel,

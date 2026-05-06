@@ -135,7 +135,6 @@ function buildDisplay(
     RULES,
     overrides,
     quarterly,
-    /* accrualCurrentMonthPayNext */ false,
     [],
     {},
   );

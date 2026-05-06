@@ -84,7 +84,6 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
   const year = Number.isFinite(queryYear) && queryYear >= 2000 && queryYear <= 2100 ? queryYear : activeYear;
   const prevYear = year - 1;
   const foundingMonth = settings?.foundingMonth ?? 1;
-  const accrual = settings?.accrualCurrentMonthPayNext ?? false;
 
   /**
    * 운영 보고는 사복 대상 직원만 — `flagWelfareIneligible` 직원은 ⑫~◯70 의 모든 인원·금액 집계에서 제외.
@@ -107,7 +106,6 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
     employees,
     year,
     foundingMonth,
-    accrual,
     rules,
     overrides,
     quarterly,
@@ -120,7 +118,6 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
     employees,
     year,
     foundingMonth,
-    accrual,
     rules,
     overrides,
     quarterly,
@@ -438,9 +435,6 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
 
       <div className="surface overflow-x-auto dash-panel-pad">
         <h2 className="text-sm font-bold tracking-normal text-[var(--text)]">레벨별</h2>
-        <p className="mt-1 text-xs text-[var(--muted)]">
-          귀속·지급: {summary.accrualCurrentMonthPayNext ? "당월 귀속·익월 지급" : "귀속·지급 동월"}
-        </p>
         <table className="mt-4 w-full min-w-[520px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--border)]">

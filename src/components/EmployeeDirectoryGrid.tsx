@@ -20,7 +20,6 @@ import { formatWon, yn } from "@/lib/spreadsheet-format";
 export type EmployeeDirectoryPayrollYearContext = {
   activeYear: number;
   foundingMonth: number;
-  accrualCurrentMonthPayNext: boolean;
   rules: LevelPaymentRule[];
   overrides: Level5Override[];
   quarterly: QuarterlyEmployeeConfig[];
@@ -88,7 +87,6 @@ export function EmployeeDirectoryGrid({
                 e,
                 payrollYearContext.activeYear,
                 payrollYearContext.foundingMonth,
-                payrollYearContext.accrualCurrentMonthPayNext,
                 payrollYearContext.rules,
                 ovr,
                 q,

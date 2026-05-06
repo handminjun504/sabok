@@ -82,7 +82,6 @@ export default async function SchedulePage() {
   const tenantOperationMode = parseTenantOperationMode(tenantRow?.operationMode);
   const year = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
-  const accrual = settings?.accrualCurrentMonthPayNext ?? false;
   const tenantVarianceMode = settings?.salaryInclusionVarianceMode ?? "BOTH";
 
   const allEmployees = await employeeListByTenantCodeAsc(tenantId);
@@ -170,7 +169,6 @@ export default async function SchedulePage() {
       rules,
       ovr,
       qcfg,
-      accrual,
       customSchedule,
       fixedEventMonths,
       overrideMap,
@@ -221,7 +219,6 @@ export default async function SchedulePage() {
       emp,
       year,
       foundingMonth,
-      accrual,
       rules,
       ovr,
       qcfg,
@@ -260,8 +257,8 @@ export default async function SchedulePage() {
     const modifiedMonths = new Set<number>();
     const overridesByAccrualMonth = new Map<number, Record<string, number>>();
     /**
-     * note.month 는 귀속월 기준이지만, 표시는 paidMonth 칼럼 통일(차월지급 모드에서 1월 귀속 → 2월 칼럼)이므로
-     * 셀 강조도 paidMonth 로 변환해서 표시·강조가 같은 칸에서 일어나도록 한다.
+     * note.month 는 귀속월 기준이며, 「당월 귀속·차월 지급」 옵션 제거 후 paidMonth=accrualMonth 이므로
+     * 강조 칼럼도 동일 월이다. 일관성을 위해 paidMonth lookup 경로는 그대로 유지한다.
      */
     const paidMonthByAccrual = new Map<number, number>(br.map((r) => [r.accrualMonth, r.paidMonth]));
     for (const n of empNotes) {

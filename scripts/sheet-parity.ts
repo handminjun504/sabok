@@ -87,13 +87,13 @@ const cap2 = resolveSalaryInclusionCap(minimalEmployee({ incentiveAmount: null, 
 assert.equal(cap2.source, "welfare");
 assert.equal(cap2.cap, 3_000_000);
 
-const emptySummary = computeTenantOperatingSummary([], 2026, 1, false, [], [], [], [], []);
+const emptySummary = computeTenantOperatingSummary([], 2026, 1, [], [], [], [], []);
 assert.equal(emptySummary.employeeCount, 0);
 assert.equal(emptySummary.totalYearlyWelfare, 0);
 assert.equal(emptySummary.byLevel.length, 5);
 
 const one = minimalEmployee({ level: 2 });
-const oneSummary = computeTenantOperatingSummary([one], 2026, 1, false, [], [], [], [], []);
+const oneSummary = computeTenantOperatingSummary([one], 2026, 1, [], [], [], [], []);
 assert.equal(oneSummary.employeeCount, 1);
 assert.equal(oneSummary.byLevel[0].level, 1);
 assert.equal(oneSummary.byLevel[0].count, 0);
@@ -118,7 +118,7 @@ const qRow: QuarterlyEmployeeConfig = {
   paymentMonths: [6],
   amount: 30_000,
 };
-const brGrid = buildMonthlyBreakdown(empGrid, 2026, 1, [febRule], [], [qRow], true, []);
+const brGrid = buildMonthlyBreakdown(empGrid, 2026, 1, [febRule], [], [qRow], []);
 const noteMap = new Map<number, number>([[4, 7_000]]);
 const grid = welfareByScheduleDisplayMonth(brGrid, noteMap);
 let sumCols = 0;
@@ -132,7 +132,7 @@ const totalsSuggest = { 1: 100_000, 2: 250_000, 3: 400_000, 4: 550_000, 5: 700_0
 assert.equal(suggestLevelByExpectedRegular(260_000, totalsSuggest), 2);
 assert.equal(suggestLevelByExpectedRegular(null, totalsSuggest), null);
 
-const spend0 = aggregateWelfareSpendBySource([], 2026, 1, false, [], [], [], [], []);
+const spend0 = aggregateWelfareSpendBySource([], 2026, 1, [], [], [], [], []);
 const legal0 = allocateYearlyWelfareToLegalCategories(spend0, 0);
 assert.equal([...legal0.values()].reduce((a, b) => a + b, 0), 0);
 
@@ -146,7 +146,6 @@ if (fs.existsSync(snapPath)) {
     foundingMonth: 1,
     defaultPayDay: 25,
     activeYear: 2026,
-    accrualCurrentMonthPayNext: false,
     salaryInclusionVarianceMode: "BOTH",
     surveyShowRepReturn: true,
     surveyShowSpouseReceipt: true,

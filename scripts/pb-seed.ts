@@ -166,7 +166,6 @@ async function main() {
         foundingMonth: 1,
         defaultPayDay: 25,
         activeYear: new Date().getFullYear(),
-        accrualCurrentMonthPayNext: false,
         paymentEventDefs: {},
       });
     }

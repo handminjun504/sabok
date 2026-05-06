@@ -42,7 +42,10 @@ export type CustomPaymentScheduleDef = { eventKey: string; accrualMonth: number 
 export type MonthBreakdown = {
   /** 귀속(이벤트 발생) 기준 월 */
   accrualMonth: number;
-  /** 실제 지급 표시 월 (당월귀속·차월지급 시 익월) */
+  /**
+   * 실제 지급 표시 월. 「당월 귀속·차월 지급」 옵션이 제거되었으므로 항상 `accrualMonth` 와 동일하다.
+   * 분기 항목은 사용자가 지정한 paymentMonths 에 직접 매핑되어 들어오므로 그 자체가 paidMonth 이다.
+   */
   paidMonth: number;
   regularEvents: { eventKey: string; amount: number }[];
   quarterly: { itemKey: string; amount: number }[];
@@ -310,7 +313,6 @@ export function buildMonthlyBreakdown(
   rules: LevelPaymentRule[],
   overrides: Level5Override[],
   quarterly: QuarterlyEmployeeConfig[],
-  accrualCurrentMonthPayNext: boolean,
   customPaymentEvents: CustomPaymentScheduleDef[] = [],
   /** 내장 정기 4종 귀속월 업체 오버라이드. 미전달이면 코드 기본값(2/5/8/11). */
   fixedEventMonthsOverride: Partial<Record<PaymentEventKey, number>> = {},
@@ -338,21 +340,13 @@ export function buildMonthlyBreakdown(
 
   const months: MonthBreakdown[] = [];
   for (let accrualMonth = 1; accrualMonth <= 12; accrualMonth++) {
-    const paidMonth = accrualCurrentMonthPayNext
-      ? accrualMonth === 12
-        ? 1
-        : accrualMonth + 1
-      : accrualMonth;
-
     /**
-     * 정기 이벤트는 **귀속월·지급월이 모두 활성 범위 안**일 때만 발생한다.
-     *
-     * - “당월 귀속·익월 지급”(`accrualCurrentMonthPayNext=true`) 모드에서는 귀속이 활성 범위에 들어가도
-     *   지급월이 퇴사월 다음 달로 밀릴 수 있다. 이 경우 사내 규칙상 “퇴사월 당월까지만 지급, 그 이후
-     *   지급하지 않음”에 따라 **그 월의 정기 지급은 발생하지 않는다**.
-     * - 동월 귀속·동월 지급 모드에서는 두 값이 같아 기존 동작과 동일하다.
-     * - 12월 귀속·1월 지급(롤백) 케이스는 12월이 비활성이면 이미 귀속에서 걸러지므로 영향이 없다.
+     * 「당월 귀속·차월 지급」 옵션은 제거되어 paidMonth 는 항상 accrualMonth 와 동일하다.
+     * 분기 항목은 사용자가 지정한 paymentMonths(=paidMonth) 에 직접 매핑되므로 별도 시프트는 없다.
      */
+    const paidMonth = accrualMonth;
+
+    /** 정기 이벤트는 **귀속월·지급월이 모두 활성 범위 안**일 때만 발생한다. paidMonth=accrualMonth 이므로 두 가드는 동일. */
     const accrualActive = monthIsActive(status, accrualMonth);
     const paidActive = monthIsActive(status, paidMonth);
 
@@ -622,13 +616,11 @@ export function sumByPaidMonth(all: MonthBreakdown[]): Map<number, number> {
 /**
  * 월별 스케줄 표(1~12월 열)용 금액 — **모든 항목을 지급월(paidMonth) 기준**으로 한 칸에 합산.
  *
- * - 「당월 귀속 · 당월 지급」(`accrualCurrentMonthPayNext=false`) 모드: paidMonth = accrualMonth → N월 칸에 N월 귀속분.
- * - 「당월 귀속 · 차월 지급」(`accrualCurrentMonthPayNext=true`) 모드: paidMonth = accrualMonth + 1 → 2월 칸에 1월 귀속분이 보인다.
+ * 「당월 귀속·차월 지급」 옵션이 제거되어 paidMonth 는 항상 accrualMonth 이다(N월 칸 = N월 귀속분).
+ * 분기는 사용자가 지정한 paymentMonths(=paidMonth) 에 그대로 매핑된다.
  *
  * 정기·분기·선택 복지(노트)·중도 재분배 오버라이드 모두 paidMonth 칼럼에 모이도록 통일하므로
- * 사용자가 보는 “2월 칸”은 “2월에 실제 지급되는 금액”으로 일관되게 해석된다.
- *
- * `welfareOverrideByAccrualMonth` 의 키는 (저장 형식상) 귀속월이지만 표시는 매칭 row 의 paidMonth 칼럼에 둔다.
+ * 사용자가 보는 “N월 칸”은 “N월에 발생·지급되는 금액”으로 일관되게 해석된다.
  */
 export function welfareByScheduleDisplayMonth(
   br: MonthBreakdown[],
@@ -765,7 +757,6 @@ export function computeActualYearlyWelfareForEmployee(
   employee: Employee,
   year: number,
   foundingMonth: number,
-  accrualCurrentMonthPayNext: boolean,
   rules: LevelPaymentRule[],
   overridesForEmployee: Level5Override[],
   quarterlyForEmployee: QuarterlyEmployeeConfig[],
@@ -791,7 +782,6 @@ export function computeActualYearlyWelfareForEmployee(
     rules,
     overridesForEmployee,
     quarterlyForEmployee,
-    accrualCurrentMonthPayNext,
     customPaymentEvents,
     fixedEventMonthsOverride,
     overrideMap,
@@ -835,7 +825,6 @@ export function computeActualWelfareThroughPaidMonth(
   employee: Employee,
   year: number,
   foundingMonth: number,
-  accrualCurrentMonthPayNext: boolean,
   rules: LevelPaymentRule[],
   overridesForEmployee: Level5Override[],
   quarterlyForEmployee: QuarterlyEmployeeConfig[],
@@ -858,7 +847,6 @@ export function computeActualWelfareThroughPaidMonth(
     rules,
     overridesForEmployee,
     quarterlyForEmployee,
-    accrualCurrentMonthPayNext,
     customPaymentEvents,
     fixedEventMonthsOverride,
     overrideMap,

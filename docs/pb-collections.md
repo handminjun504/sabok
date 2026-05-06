@@ -75,7 +75,7 @@ Unique: `(userId, tenantId)`
 | foundingMonth              | number | yes | default 1 |
 | defaultPayDay              | number | yes | default 25 |
 | activeYear                 | number | yes | |
-| accrualCurrentMonthPayNext | bool | yes | default false |
+| ~~accrualCurrentMonthPayNext~~ | ~~bool~~ | ~~yes~~ | **사용 중단(deprecated)** — 「당월 귀속·차월 지급」 토글이 제거되었습니다. 기존 컬럼은 호환을 위해 항상 `false` 로 저장되며, PocketBase Admin 에서 컬럼을 제거해도 앱은 정상 동작합니다. |
 | salaryInclusionVarianceMode | text | no | `BOTH` \| `OVER_ONLY` \| `UNDER_ONLY` — 급여포함신고·월별 스케줄에서 상한 대비 **초과·미달 열** 표시 방식. 없으면 앱에서 `BOTH`로 취급 |
 | surveyShowRepReturn | bool | no | 조사표·직원 목록·CSV·직원 폼에 **대표반환** 표시. 없으면 `false` |
 | surveyShowSpouseReceipt | bool | no | **배우자수령** 표시. 없으면 `false` |
@@ -83,8 +83,8 @@ Unique: `(userId, tenantId)`
 | paymentEventDefs           | json | no  | 연도 문자열 키 → `{ eventKey, label, accrualMonth }[]` 배열. 추가 정기 지급 행사(레벨 금액·스케줄). 없으면 `{}` 또는 생략 |
 | reserveProgressNote        | text | no  | 월별 스케줄 **적립금** 탭에서 저장하는 자유 메모(남은 적립 한도 등). 없으면 앱에서 `null` |
 
-> **Nonempty:** `accrualCurrentMonthPayNext`·`surveyShow*` 등 bool 에 Nonempty를 켜면 `false` 가 거절됩니다. **Nonempty 끄기** 권장.  
-> 일괄 보정: `npm run pb:fix-company-settings-schema` (`sabok_company_settings` 의 number/bool required 해제). 신규 생성만 `false` 거절 시 앱이 `true` 로 재시도하는 경로가 있습니다.
+> **Nonempty:** `surveyShow*` 등 bool 에 Nonempty를 켜면 `false` 가 거절됩니다. **Nonempty 끄기** 권장.  
+> 일괄 보정: `npm run pb:fix-company-settings-schema` (`sabok_company_settings` 의 number/bool required 해제).
 
 ## `sabok_employees`
 

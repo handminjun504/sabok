@@ -209,7 +209,7 @@ export async function createTenantAction(
     revalidatePath("/dashboard/select-tenant");
     return {
       성공: true,
-      경고: `거래처는 등록되었습니다. 다만 전사 기본 설정(sabok_company_settings) 생성에만 실패했습니다: ${detail} PocketBase에서 accrualCurrentMonthPayNext 등 스키마를 확인하세요. 해당 업체는 목록에 보이며, 설정이 없으면 앱 기본값으로 동작합니다.`,
+      경고: `거래처는 등록되었습니다. 다만 전사 기본 설정(sabok_company_settings) 생성에만 실패했습니다: ${detail} PocketBase 컬렉션 스키마(필수 컬럼 / Nonempty 등)를 확인하세요. 해당 업체는 목록에 보이며, 설정이 없으면 앱 기본값으로 동작합니다.`,
     };
   }
 

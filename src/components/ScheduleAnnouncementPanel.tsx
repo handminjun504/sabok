@@ -223,7 +223,7 @@ export function ScheduleAnnouncementPanel({
     <div className="space-y-4" id="announcement-copy">
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
         <p className="text-sm leading-relaxed text-[var(--muted)]">
-          월별 스케줄과 동일한 기준(정기=귀속월, 분기·선택 복지=지급월)으로 합계를 계산합니다. 아래에서 월을 바꾸면
+          월별 스케줄과 동일한 기준(N월 칸 = N월 귀속분, 분기는 지정한 지급 월)으로 합계를 계산합니다. 아래에서 월을 바꾸면
           멘트가 갱신됩니다.
         </p>
         <p

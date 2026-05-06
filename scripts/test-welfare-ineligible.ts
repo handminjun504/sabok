@@ -146,7 +146,6 @@ function main() {
     rules,
     overrides,
     quarterly,
-    false,
     [],
     {},
   );
@@ -162,7 +161,6 @@ function main() {
     welfareEligibleEmployees(all),
     YEAR,
     FOUNDING_MONTH,
-    false,
     rules,
     overrides,
     quarterly,
@@ -174,7 +172,6 @@ function main() {
     all,
     YEAR,
     FOUNDING_MONTH,
-    false,
     rules,
     overrides,
     quarterly,

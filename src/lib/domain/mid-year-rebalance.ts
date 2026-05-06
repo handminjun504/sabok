@@ -90,7 +90,6 @@ export type MidYearRebalanceContext = {
   tenantId: string;
   year: number;
   foundingMonth: number;
-  accrualCurrentMonthPayNext: boolean;
   customPaymentEvents: CustomPaymentScheduleDef[];
   fixedEventMonthsOverride: Partial<Record<PaymentEventKey, number>>;
   employees: Employee[];
@@ -213,7 +212,6 @@ function monthlyWelfareTotals(
     rulesOverride,
     overridesOverride.filter((o) => o.employeeId === employee.id),
     ctx.quarterly.filter((q) => q.employeeId === employee.id),
-    ctx.accrualCurrentMonthPayNext,
     ctx.customPaymentEvents,
     ctx.fixedEventMonthsOverride,
     overrideMap,

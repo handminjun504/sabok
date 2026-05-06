@@ -53,7 +53,6 @@ export default async function SalaryInclusionReportPage({
   const tenantOperationMode = parseTenantOperationMode(tenantRow?.operationMode);
   const year = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
-  const accrual = settings?.accrualCurrentMonthPayNext ?? false;
   const tenantVarianceMode = settings?.salaryInclusionVarianceMode ?? "BOTH";
   const tenantVarianceLabel =
     SALARY_INCLUSION_VARIANCE_MODES.find((x) => x.value === tenantVarianceMode)?.label ?? tenantVarianceMode;
@@ -80,7 +79,6 @@ export default async function SalaryInclusionReportPage({
       emp,
       year,
       foundingMonth,
-      accrual,
       rules,
       ovr,
       qcfg,

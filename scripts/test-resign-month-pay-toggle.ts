@@ -121,7 +121,6 @@ function annualWelfare(emp: Employee): number {
     RULES,
     overrides,
     quarterly,
-    /* accrualCurrentMonthPayNext */ false,
     [],
     {},
   );
@@ -136,7 +135,6 @@ function welfareForAccrualMonth(emp: Employee, month: number): number {
     RULES,
     overrides,
     quarterly,
-    false,
     [],
     {},
   );
@@ -186,7 +184,6 @@ const spendOff = aggregateWelfareSpendBySource(
   [empOff],
   YEAR,
   FOUNDING_MONTH,
-  false,
   RULES,
   overrides,
   quarterly,
@@ -198,7 +195,6 @@ const spendOn = aggregateWelfareSpendBySource(
   [empOn],
   YEAR,
   FOUNDING_MONTH,
-  false,
   RULES,
   overrides,
   quarterly,

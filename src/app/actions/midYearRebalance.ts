@@ -102,7 +102,6 @@ async function loadContextAndPlan(
   }
   const year = settings.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings.foundingMonth ?? 1;
-  const accrual = settings.accrualCurrentMonthPayNext ?? false;
   const allowedEventKeys = new Set(allPaymentEventKeysForYear(settings, year));
 
   const sanitized = sanitizeAmountsMap(input.newAmountsByEventKey);
@@ -208,7 +207,6 @@ async function loadContextAndPlan(
     tenantId,
     year,
     foundingMonth,
-    accrualCurrentMonthPayNext: accrual,
     customPaymentEvents: customPaymentScheduleRows(settings, year),
     fixedEventMonthsOverride: effectiveFixedEventMonthMap(settings),
     employees,

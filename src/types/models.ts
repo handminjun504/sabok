@@ -191,7 +191,6 @@ export type CompanySettings = {
   foundingMonth: number;
   defaultPayDay: number;
   activeYear: number;
-  accrualCurrentMonthPayNext: boolean;
   /** 급여포함신고·스케줄의 상한 대비 초과/미달 열 표시. PB 필드 없으면 BOTH */
   salaryInclusionVarianceMode: SalaryInclusionVarianceMode;
   /** 조사표·직원 목록·CSV·직원 폼에 대표반환 표시. PB 필드 없으면 false */

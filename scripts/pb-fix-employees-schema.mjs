@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * PocketBase 컬렉션의 number / bool 필드에서 required(Nonempty)를 끄는 일회성·반복 실행 스크립트.
- * 기본은 sabok_employees — `amount`·`accrualCurrentMonthPayNext`(false)·`surveyShow*` 등은
- * 분기·레벨·`sabok_company_settings` 에서도 같은 증상이 날 수 있음. `PB_FIX_COLLECTION` 으로 컬렉션 지정.
+ * 기본은 sabok_employees — `amount`·`surveyShow*` 등 분기·레벨·`sabok_company_settings` 에서도 같은 증상이
+ * 날 수 있음. `PB_FIX_COLLECTION` 으로 컬렉션 지정.
  *
  * 미리보기 / verbose (macOS·Linux·Windows 공통, cross-env):
  *   npm run pb:fix-employees-schema:dry

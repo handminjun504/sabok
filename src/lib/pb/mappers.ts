@@ -333,7 +333,6 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     foundingMonth: num(r.foundingMonth, 1),
     defaultPayDay: num(r.defaultPayDay, 25),
     activeYear: num(r.activeYear, new Date().getFullYear()),
-    accrualCurrentMonthPayNext: bool(r.accrualCurrentMonthPayNext),
     salaryInclusionVarianceMode: parseSalaryInclusionVarianceMode(r.salaryInclusionVarianceMode),
     surveyShowRepReturn: bool(r.surveyShowRepReturn),
     surveyShowSpouseReceipt: bool(r.surveyShowSpouseReceipt),
