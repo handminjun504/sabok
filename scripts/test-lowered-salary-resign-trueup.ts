@@ -24,16 +24,17 @@ const bump = computeLoweredSalaryPartialYearTrueUpWon({
   hasAdjustedSalaryOverride: false,
 });
 assert.equal(bump, 1_166_667);
-ok("보정액 = 27,000,000 − 조정기간합(round) − 사복누적 = 1,166,667원");
+ok("보정액 = 27,000,000 − round(조정×5÷12) − 사복누적 = 1,166,667원");
 
 let sumPartial = 0;
 for (const m of activeJanMay) {
   sumPartial += resolveEffectiveAdjustedSalaryForMonth(empScenario, 2026, m, notes, activeJanMay);
 }
 assert.equal(sumPartial, 20_333_333);
-ok("부분 재직 5개월 조정연봉 월분 합 = round(48,800,000×5/12)");
+ok("부분 재직 5개월 조정연봉 월분 합 = round(48,800,000×5÷12)");
 
 const mayPortion = resolveEffectiveAdjustedSalaryForMonth(empScenario, 2026, 5, notes, activeJanMay);
+assert.equal(mayPortion, 4_066_669);
 assert.equal(mayPortion + bump, 5_233_336);
 ok("5월 표시 급여 = 마지막 달 월분 + 보정 = 5,233,336원");
 

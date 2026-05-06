@@ -110,8 +110,8 @@ export type MonthlyNoteAdjustedSalaryFields = Pick<
  *  1) 월별 노트의 `adjustedSalaryOverrideAmount` (중도 재분배로 분배된 값)
  *  2) 연간 조정·기준 연봉 분할:
  *     - 활성 월이 **12개월**(당해 만근에 가까운 경우): 매월 `floor(연봉/12)`, **마지막 활성 월**에 원 단위 잔차.
- *     - 활성 월이 **12개월 미만**(당해 퇴사 등): 그 연도 재직 월 수 `n`에 대해 기간 합계를 `round(연봉×n/12)`로 두고,
- *       각 활성 월에는 `floor(기간합/n)`, **마지막 활성 월**에 나머지를 더한다.
+ *     - 활성 월이 **12개월 미만**(당해 퇴사 등): 재직 월 중 **마지막 전까지**는 각각 `floor(연봉/12)`,
+ *       **마지막 활성 월**에는 그 해 재직분 합(`round(연봉×재직월수/12)`)에서 앞선 월 바닥합을 뺀 잔액을 둔다(만근 시 12월과 같은 패턴).
  *
  * `activeMonthsSorted` 는 해당 연도에 재직(표시)되는 월의 오름차순 목록(예: `activeMonthsSortedForYear`).
  * 목록에 없는 월은 0(비활성). 빈 목록이면 0.
@@ -136,22 +136,21 @@ export function resolveEffectiveAdjustedSalaryForMonth(
   if (n === 0) return 0;
   if (!activeMonthsSorted.includes(month)) return 0;
 
-  const floorFullYear = Math.floor(annualWon / 12);
+  const floorM = Math.floor(annualWon / 12);
   const lastActive = activeMonthsSorted[n - 1]!;
 
   if (n === 12) {
     if (month === lastActive) {
-      return annualWon - floorFullYear * 11;
+      return annualWon - floorM * 11;
     }
-    return floorFullYear;
+    return floorM;
   }
 
   const periodTotal = Math.round((annualWon * n) / 12);
-  const floorPartial = Math.floor(periodTotal / n);
   if (month === lastActive) {
-    return periodTotal - floorPartial * (n - 1);
+    return periodTotal - floorM * (n - 1);
   }
-  return floorPartial;
+  return floorM;
 }
 
 /**
@@ -193,7 +192,7 @@ export function computeLoweredSalaryPartialYearTrueUpWon(options: {
  * `adjustedSalary`(없으면 `baseSalary`)를 그대로 반환.
  *
  * 재분배가 적용된 월이 1개라도 있으면 "월별 합 방식"으로 1~12월을 더해 반환한다 —
- * 오버라이드가 없는 월은 `floor(연봉/12)` 및 마지막 활성 월 잔차 규칙을 따른다(`activeMonthsSorted` 필요).
+ * 오버라이드가 없는 월은 `floor(연봉/12)` 및 **마지막 활성 월 잔차** 규칙을 따른다(`activeMonthsSorted` 필요).
  */
 export function computeYearlyAdjustedSalaryFromNotes(
   employee: Pick<Employee, "adjustedSalary" | "baseSalary">,
