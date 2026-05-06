@@ -134,12 +134,16 @@ export function ScheduleAnnouncementPanel({
       name: r.name,
       welfareMonth: r.welfareByMonth[focusMonth] ?? 0,
       /**
-       * `announcementSalaryByMonth`: 계약 연봉 월분(재분배 월별값 미반영). 없으면 조정 월별 폴백.
+       * `announcementSalaryByMonthList`: 기존연봉 월분 12칸 배열(RSC 직렬화 안정). 길이가 맞지 않으면 조정 월별·평균 폴백.
        */
-      salaryMonth:
-        r.announcementSalaryByMonth?.[focusMonth] ??
-        r.salaryByMonth?.[focusMonth] ??
-        r.salaryMonth,
+      salaryMonth: (() => {
+        const idx = focusMonth - 1;
+        const list = r.announcementSalaryByMonthList;
+        if (list != null && list.length === 12 && idx >= 0 && idx < 12) {
+          return list[idx]!;
+        }
+        return r.salaryByMonth?.[focusMonth] ?? r.salaryMonth;
+      })(),
       flagRepReturn: r.flagRepReturn,
       discretionaryAmount: r.discretionaryAmount,
     }));

@@ -58,9 +58,9 @@ export type ScheduleCardRow = {
    */
   salaryByMonth?: Record<number, number>;
   /**
-   * 급여분 복사 멘트 전용 월별 급여 — 기존연봉 월분. 중도 재분배 월별 조정 필드는 멘트에 반영하지 않는다.
+   * 급여분 복사 멘트 전용 — 길이 12 (인덱스 0 = 1월). RSC 직렬화 안정용 배열.
    */
-  announcementSalaryByMonth?: Record<number, number>;
+  announcementSalaryByMonthList?: readonly number[];
   /** 조사표·안내 멘트용 */
   flagRepReturn: boolean;
   discretionaryAmount: number | null;

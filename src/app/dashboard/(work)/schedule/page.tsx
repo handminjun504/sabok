@@ -146,8 +146,11 @@ export default async function SchedulePage() {
     salaryMonth: number;
     /** 월별 조정급여 — 중도 재분배로 월별 오버라이드가 있으면 월별로 다를 수 있음 */
     salaryByMonth: Record<number, number>;
-    /** 급여분 복사 멘트 전용 월별 급여 — 기존연봉 월분(중도 재분배 월별 필드 무시). */
-    announcementSalaryByMonth: Record<number, number>;
+    /**
+     * 급여분 복사 멘트 전용 월별 급여 — 길이 12, 인덱스 0 = 1월.
+     * RSC→클라이언트 직렬화에서 `Record<number,_>` 키가 빠져 조정 월별값으로 폴백되는 것을 피하기 위해 배열로 둔다.
+     */
+    announcementSalaryByMonthList: readonly number[];
     hasSalaryOverride: boolean;
     capBlocks: ReturnType<typeof computeSalaryInclusionCapBlocks>;
     /** 이 직원의 월별 편집 가능한 이벤트 목록 (모달 prefill 용) */
@@ -288,14 +291,14 @@ export default async function SchedulePage() {
     }
 
     /** 급여분 복사 멘트 — 계약(기존) 연봉 월분만. 중도 재분배 `adjustedSalaryOverrideAmount` 는 표·신고용이라 멘트에서는 쓰지 않는다. */
-    const announcementSalaryByMonth: Record<number, number> = {};
     const ann = announcementSalaryAnnualWon(emp);
     const annPseudo: Employee = { ...emp, adjustedSalary: ann, baseSalary: ann };
-    for (let m = 1; m <= 12; m++) {
-      announcementSalaryByMonth[m] = monthIsActive(empStatus, m)
+    const announcementSalaryByMonthList: readonly number[] = Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      return monthIsActive(empStatus, m)
         ? resolveEffectiveAdjustedSalaryForMonth(annPseudo, year, m, [], salaryActiveMonths)
         : 0;
-    }
+    });
 
     /**
      * 월별 개별 수정 모달 prefill — 각 월에 실제 발생하는 이벤트/분기 목록과 기본 금액·기존 override.
@@ -416,7 +419,7 @@ export default async function SchedulePage() {
       yearlyWelfare,
       salaryMonth: monthlySalaryPortion(emp),
       salaryByMonth,
-      announcementSalaryByMonth,
+      announcementSalaryByMonthList,
       hasSalaryOverride,
       capBlocks,
       editableEventsByMonth,
@@ -450,7 +453,7 @@ export default async function SchedulePage() {
       yearlyWelfare: r.yearlyWelfare,
       salaryMonth: r.salaryMonth,
       salaryByMonth: r.salaryByMonth,
-      announcementSalaryByMonth: r.announcementSalaryByMonth,
+      announcementSalaryByMonthList: r.announcementSalaryByMonthList,
       flagRepReturn: r.emp.flagRepReturn,
       discretionaryAmount: r.emp.discretionaryAmount,
       showCapOver: salaryInclusionShowOverage(eff),
