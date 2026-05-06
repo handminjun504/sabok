@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * PocketBase 컬렉션이 우리 앱 코드에서 기대하는 number/bool 필드를 모두 갖고 있는지
+ * PocketBase 컬렉션이 우리 앱 코드에서 기대하는 필드(number/bool/text 등)를 갖고 있는지
  * 보장하는 스크립트(컬렉션별 카탈로그 내장).
  *
  * 배경: PB 가 200 응답을 주면서도 입력값이 영영 안 들어가는("silent ignore") 사고는,
@@ -10,7 +10,7 @@
  * 동작:
  *  1) 컬렉션을 가져와 기대 필드(CATALOG[컬렉션]) 와 비교.
  *  2) 누락된 필드는 추가 (required=false, system=false).
- *  3) 존재하지만 required=true 인 number/bool 필드는 required=false 로 변경.
+ *  3) 존재하지만 required=true 인 number/bool/text 필드는 required=false 로 변경.
  *  4) DRY_RUN=1 이면 변경 사항만 출력하고 적용하지 않음.
  *
  * 사용:
@@ -103,6 +103,8 @@ const CATALOG = {
     { name: "surveyShowRepReturn", type: "bool" },
     { name: "surveyShowSpouseReceipt", type: "bool" },
     { name: "surveyShowWorkerNet", type: "bool" },
+    /** 급여포함신고·스케줄 상한 초과/미달 표시 — BOTH | OVER_ONLY | UNDER_ONLY */
+    { name: "salaryInclusionVarianceMode", type: "text" },
     /**
      * 사용 중단된 「당월 귀속·차월 지급」 토글. 모델·UI 에서는 제거되었지만, 기존 컬렉션과
      * 호환되도록 컬럼이 존재하는 경우 required(Nonempty)만 끄도록 catalog 에는 남겨 둔다.
@@ -144,6 +146,9 @@ function makeNewField(spec) {
   };
   if (spec.type === "number") {
     return { ...base, min: null, max: null, onlyInt: false };
+  }
+  if (spec.type === "text") {
+    return { ...base, min: 0, max: 0, pattern: "", autogeneratePattern: "" };
   }
   return base;
 }
@@ -197,7 +202,7 @@ async function main() {
 
   console.log("");
   console.log(`→ 누락 필드: ${additions.length === 0 ? "없음" : additions.map((a) => `${a.name}(${a.type})`).join(", ")}`);
-  console.log(`→ required=true 인 number/bool: ${requiredFlips.length === 0 ? "없음" : requiredFlips.join(", ")}`);
+  console.log(`→ required=true 인 필드(number/bool/text): ${requiredFlips.length === 0 ? "없음" : requiredFlips.join(", ")}`);
   if (typeMismatches.length > 0) {
     console.log(`⚠ 타입 불일치(수동 확인 필요): ${typeMismatches.map((t) => `${t.name}: 예상=${t.expected} / 실제=${t.actual}`).join(" · ")}`);
   }
@@ -213,7 +218,7 @@ async function main() {
   }
 
   const newFields = col.fields.map((f) => {
-    if (requiredFlips.includes(f.name) && (f.type === "number" || f.type === "bool")) {
+    if (requiredFlips.includes(f.name) && (f.type === "number" || f.type === "bool" || f.type === "text")) {
       const next = clonePlain(f);
       next.required = false;
       return next;

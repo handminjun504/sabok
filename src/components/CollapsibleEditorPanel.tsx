@@ -53,8 +53,12 @@ export function CollapsibleEditorPanel({
       {!open && summary ? (
         <div className="dash-panel-pad border-b border-[var(--border)]">{summary}</div>
       ) : null}
-      <div id={panelId} hidden={!open} className={open ? "dash-panel-pad" : undefined}>
-        {open ? children : null}
+      {/**
+       * 접어도 자식(폼)을 언마운트하지 않는다 — PB 에 컬럼이 없어 저장이 무시된 것처럼 보이는 문제와 별개로,
+       * 펼침/접힘 사이에 입력값이 사라지거나 일부 브라우저에서 제출 필드가 빠지는 것을 막는다.
+       */}
+      <div id={panelId} className={open ? "dash-panel-pad" : "hidden"}>
+        {children}
       </div>
     </section>
   );

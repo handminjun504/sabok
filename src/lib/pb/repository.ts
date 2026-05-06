@@ -647,6 +647,21 @@ function stripLegacyAccrual<T extends Record<string, unknown>>(payload: T): Omit
   return rest;
 }
 
+function stripSalaryInclusionVarianceMode<T extends Record<string, unknown>>(
+  payload: T,
+): Omit<T, "salaryInclusionVarianceMode"> {
+  const { salaryInclusionVarianceMode: _omit, ...rest } = payload;
+  void _omit;
+  return rest;
+}
+
+function salaryVarianceUnknownColumnIssue(detailLower: string): boolean {
+  return (
+    detailLower.includes("salaryinclusionvariancemode") &&
+    (detailLower.includes("unknown") || detailLower.includes("invalid") || detailLower.includes("not found"))
+  );
+}
+
 export async function companySettingsCreateForTenant(tenantId: string): Promise<void> {
   const pb = await getAdminPb();
   const activeYear = new Date().getFullYear();
@@ -739,6 +754,17 @@ export async function companySettingsUpsert(
         );
         return;
       }
+      if (salaryVarianceUnknownColumnIssue(detailLower)) {
+        await pb.collection(C.companySettings).update(
+          existing.id,
+          stripSalaryInclusionVarianceMode(dataWithLegacy),
+        );
+        console.warn(
+          "[pb] companySettingsUpsert(update): salaryInclusionVarianceMode 컬럼 누락으로 해당 필드를 빼고 저장했습니다. " +
+            "`npm run pb:ensure-company-settings-schema` 로 text 필드를 추가하세요.",
+        );
+        return;
+      }
       throw e;
     }
     return;
@@ -757,7 +783,8 @@ export async function companySettingsUpsert(
     const incentiveColMissing =
       detailLower.includes("incentivenetratiopercent") &&
       (detailLower.includes("unknown") || detailLower.includes("invalid") || detailLower.includes("not found"));
-    if (!legacyAccrualMissing && !incentiveColMissing) {
+    const salaryVarianceMissing = salaryVarianceUnknownColumnIssue(detailLower);
+    if (!legacyAccrualMissing && !incentiveColMissing && !salaryVarianceMissing) {
       logPbClientError("companySettingsUpsert(create)", e);
       throw e;
     }
@@ -765,11 +792,18 @@ export async function companySettingsUpsert(
       let retryPayload: Record<string, unknown> = createPayload;
       if (legacyAccrualMissing) retryPayload = stripLegacyAccrual(retryPayload);
       if (incentiveColMissing) retryPayload = stripIncentiveRatio(retryPayload);
+      if (salaryVarianceMissing) retryPayload = stripSalaryInclusionVarianceMode(retryPayload);
       await pb.collection(C.companySettings).create(retryPayload);
       if (incentiveColMissing) {
         console.warn(
           "[pb] companySettingsUpsert(create): incentiveNetRatioPercent 컬럼 누락으로 해당 필드를 빼고 생성했습니다. " +
             "Admin → company_settings 에 number(min=1,max=100) 필드를 추가하세요.",
+        );
+      }
+      if (salaryVarianceMissing) {
+        console.warn(
+          "[pb] companySettingsUpsert(create): salaryInclusionVarianceMode 컬럼 누락으로 해당 필드를 빼고 생성했습니다. " +
+            "`npm run pb:ensure-company-settings-schema` 로 text 필드를 추가하세요.",
         );
       }
     } catch (e2) {
