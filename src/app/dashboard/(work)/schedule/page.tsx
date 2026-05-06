@@ -36,7 +36,6 @@ import {
   welfareByScheduleDisplayMonth,
   welfareEligibleEmployees,
   welfareScheduleLinesByMonth,
-  yearlyRegularScheduledWelfareTotal,
 } from "@/lib/domain/schedule";
 import { PAYMENT_EVENT, PAYMENT_EVENT_LABELS, QUARTERLY_ITEM_LABELS } from "@/lib/business-rules";
 import type { PaymentEventKey, QuarterlyItemKey } from "@/lib/business-rules";
@@ -45,8 +44,6 @@ import type {
   ScheduleEditMonthEvent,
 } from "@/components/ScheduleEmployeeEditModal";
 import {
-  announcementSalaryAnnualWon,
-  announcementSalaryMonthlyTruncatedFromAnnualWon,
   computeLoweredSalaryPartialYearTrueUpWon,
   resolveEffectiveAdjustedSalaryForMonth,
 } from "@/lib/domain/salary-inclusion";
@@ -292,13 +289,11 @@ export default async function SchedulePage() {
       }
     }
 
-    /** 급여분 멘트 — 실효 사복지급분−정기연합을 연간 급여로 두고 매월 floor(÷12). 폴백 시 조정·기존연봉 등. */
-    const yearlyRegularSched = yearlyRegularScheduledWelfareTotal(br, (m) => monthIsActive(empStatus, m), overrideMap);
-    const ann = announcementSalaryAnnualWon(emp, yearlyRegularSched);
-    const monthlyTrunc = announcementSalaryMonthlyTruncatedFromAnnualWon(ann);
+    /** 급여분 멘트 — floor(조정연봉÷12), 조정 없으면 기존연봉. 활성 월마다 동일 금액. */
+    const monthlyFloor = monthlySalaryPortion(emp);
     const announcementSalaryByMonthList: readonly number[] = Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
-      return monthIsActive(empStatus, m) ? monthlyTrunc : 0;
+      return monthIsActive(empStatus, m) ? monthlyFloor : 0;
     });
 
     /**
