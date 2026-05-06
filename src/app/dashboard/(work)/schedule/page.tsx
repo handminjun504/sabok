@@ -289,11 +289,18 @@ export default async function SchedulePage() {
       }
     }
 
-    /** 급여분 멘트 — floor(기존연봉÷12). 기존연봉 없으면 조정연봉. 활성 월마다 동일 금액. */
-    const baseWon = Math.round(Number(emp.baseSalary) || 0);
-    const adjWon = Math.round(Number(emp.adjustedSalary) || 0);
-    const annualForNotice = baseWon > 0 ? baseWon : adjWon;
-    const monthlyFloor = Math.floor(annualForNotice / 12);
+    /**
+     * 급여분 멘트 월액: floor((사복지급분 한도 − 연간 사복 실적) ÷ 12).
+     * 사용자 수식: 받아야 할 금액(welfareAllocation) − 정기분(yearlyWelfare) = 급여분 연간.
+     * welfareAllocation 이 없거나 결과가 0 이하이면 기존연봉 → 조정연봉 순으로 폴백.
+     */
+    const capWon = Math.max(0, Math.round(Number(emp.welfareAllocation) || 0) - Math.max(0, Math.round(Number(emp.priorOverpaidWelfareWon) || 0)));
+    const salaryAnnualForNotice = capWon > 0
+      ? Math.max(0, capWon - Math.round(yearlyWelfare))
+      : (Math.round(Number(emp.baseSalary) || 0) > 0
+          ? Math.round(Number(emp.baseSalary) || 0)
+          : Math.round(Number(emp.adjustedSalary) || 0));
+    const monthlyFloor = Math.floor(salaryAnnualForNotice / 12);
     const announcementSalaryByMonthList: readonly number[] = Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
       return monthIsActive(empStatus, m) ? monthlyFloor : 0;
