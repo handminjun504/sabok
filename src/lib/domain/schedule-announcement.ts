@@ -149,8 +149,8 @@ export function showSalaryPortionNoticeMode(mode: TenantOperationMode): boolean 
 }
 
 /**
- * 급여(월) = 급여분 멘트 전용 `announcementSalaryByMonth[month]`(우선) 또는 조정 월분.
- * 멘트 연간 기준은 **기존연봉**이며, 월별 재분배 오버라이드가 있으면 그 월별 조정값을 쓴다.
+ * 급여(월) = 급여분 멘트 전용 `announcementSalaryByMonth[month]`: 계약 연봉 월분(중도 재분배 오버라이드 반영 안 함).
+ * 우선 필드가 비었을 때만 조정 월분 폴백.
  * 급여낮추기·복합 모드: 월 환산 급여가 있는 직원은 해당 월 기금 유무와 관계없이 포함(실무 안내 양식).
  */
 export function buildSalaryPortionNotice(

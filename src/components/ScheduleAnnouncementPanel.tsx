@@ -134,8 +134,7 @@ export function ScheduleAnnouncementPanel({
       name: r.name,
       welfareMonth: r.welfareByMonth[focusMonth] ?? 0,
       /**
-       * 급여분 멘트는 실무 안내용으로 `announcementSalaryByMonth`(기존연봉 월분 등)를 우선한다.
-       * 없으면 카드·표와 동일하게 `salaryByMonth` → `salaryMonth`.
+       * `announcementSalaryByMonth`: 계약 연봉 월분(재분배 월별값 미반영). 없으면 조정 월별 폴백.
        */
       salaryMonth:
         r.announcementSalaryByMonth?.[focusMonth] ??

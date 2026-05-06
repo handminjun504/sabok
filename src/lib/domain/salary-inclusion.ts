@@ -21,7 +21,7 @@ function toNum(v: number | null | undefined): number {
  * 급여분 안내 멘트 등 직원에게 전달하는 "월 환산"에 쓸 **연간 기준액(원)**.
  * 조정연봉은 카드·급여포함 계산용이고, **복사 멘트는 실무상 계약 연봉(기존연봉)** 을 12로 나눈 월분을 안내한다.
  * `baseSalary` 가 없을 때만 조정연봉을 연간 기준으로 쓴다.
- * 월별 `adjustedSalaryOverrideAmount` 가 있는 해에는 호출부에서 조정 월별 값을 그대로 쓴다.
+ * 월별 `adjustedSalaryOverrideAmount` 는 표·급여포함 계산용이며, 안내 멘트 월분에는 적용하지 않는다(`schedule/page` 에서 노트 없이 분배).
  */
 export function announcementSalaryAnnualWon(
   employee: Pick<Employee, "adjustedSalary" | "baseSalary">,

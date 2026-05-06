@@ -146,7 +146,7 @@ export default async function SchedulePage() {
     salaryMonth: number;
     /** 월별 조정급여 — 중도 재분배로 월별 오버라이드가 있으면 월별로 다를 수 있음 */
     salaryByMonth: Record<number, number>;
-    /** 급여분 복사 멘트 전용 월별 급여 — 조정과 무관하게 기존연봉 월분, 재분배 오버라이드 시 해당 월별값(salary에서 보정 lump 제외) */
+    /** 급여분 복사 멘트 전용 월별 급여 — 기존연봉 월분(중도 재분배 월별 필드 무시). */
     announcementSalaryByMonth: Record<number, number>;
     hasSalaryOverride: boolean;
     capBlocks: ReturnType<typeof computeSalaryInclusionCapBlocks>;
@@ -287,24 +287,14 @@ export default async function SchedulePage() {
       }
     }
 
+    /** 급여분 복사 멘트 — 계약(기존) 연봉 월분만. 중도 재분배 `adjustedSalaryOverrideAmount` 는 표·신고용이라 멘트에서는 쓰지 않는다. */
     const announcementSalaryByMonth: Record<number, number> = {};
-    if (hasSalaryOverride) {
-      for (let m = 1; m <= 12; m++) {
-        announcementSalaryByMonth[m] = salaryByMonth[m] ?? 0;
-      }
-      /** 급여분 멘트에는 급여인하 퇴직 보정 lump 을 넣지 않는다. */
-      if (loweredTrueUpApplied > 0 && loweredTrueUpMonth != null) {
-        announcementSalaryByMonth[loweredTrueUpMonth] =
-          (announcementSalaryByMonth[loweredTrueUpMonth] ?? 0) - loweredTrueUpApplied;
-      }
-    } else {
-      const ann = announcementSalaryAnnualWon(emp);
-      const annPseudo: Employee = { ...emp, adjustedSalary: ann, baseSalary: ann };
-      for (let m = 1; m <= 12; m++) {
-        announcementSalaryByMonth[m] = monthIsActive(empStatus, m)
-          ? resolveEffectiveAdjustedSalaryForMonth(annPseudo, year, m, empNotes, salaryActiveMonths)
-          : 0;
-      }
+    const ann = announcementSalaryAnnualWon(emp);
+    const annPseudo: Employee = { ...emp, adjustedSalary: ann, baseSalary: ann };
+    for (let m = 1; m <= 12; m++) {
+      announcementSalaryByMonth[m] = monthIsActive(empStatus, m)
+        ? resolveEffectiveAdjustedSalaryForMonth(annPseudo, year, m, [], salaryActiveMonths)
+        : 0;
     }
 
     /**
