@@ -17,7 +17,7 @@ import {
   type AdditionalReserveStatus,
 } from "@/lib/domain/vendor-reserve";
 import type { AnnouncementMode } from "@/lib/domain/tenant-profile";
-import type { ScheduleCardRow } from "@/components/ScheduleEmployeeCards";
+import type { ScheduleAnnouncementPanelRow } from "@/lib/domain/schedule-announcement-payload";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
@@ -81,7 +81,7 @@ export function ScheduleAnnouncementPanel({
   defaultBatchToMonth,
 }: {
   year: number;
-  rows: ScheduleCardRow[];
+  rows: ScheduleAnnouncementPanelRow[];
   operationMode: TenantOperationMode;
   /**
    * 거래처 타입 + 자본금 50% 진행도로 산출된 “현재 +20% 적립 활성?” 결과.
@@ -139,10 +139,11 @@ export function ScheduleAnnouncementPanel({
       salaryMonth: (() => {
         const idx = focusMonth - 1;
         const list = r.announcementSalaryByMonthList;
-        if (list != null && list.length === 12 && idx >= 0 && idx < 12) {
+        /** 조정 월별 급여로 폴백하지 않음 — 직렬화 유실 시에만 바닥 월액 */
+        if (list.length === 12 && idx >= 0 && idx < 12) {
           return list[idx]!;
         }
-        return r.salaryByMonth?.[focusMonth] ?? r.salaryMonth;
+        return r.salaryMonth;
       })(),
       flagRepReturn: r.flagRepReturn,
       discretionaryAmount: r.discretionaryAmount,
