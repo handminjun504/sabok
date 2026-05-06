@@ -7,7 +7,7 @@ export type ScheduleAnnouncementWireRow = {
   name: string;
   /** 길이 12 — 인덱스 0 = 1월 사복 합계 */
   welfare12: number[];
-  /** 길이 12 — 인덱스 0 = 1월 급여분 멘트 금액(조정연봉 연간 분할) */
+  /** 길이 12 — 인덱스 0 = 1월, `floor(급여분 연간÷12)` 가 활성 월마다 동일 반복 */
   salaryNotice12: number[];
   /** 멘트 배열이 깨졌을 때만 쓰는 바닥 월액(연봉÷12 내림 등) */
   salaryMonthFloor: number;

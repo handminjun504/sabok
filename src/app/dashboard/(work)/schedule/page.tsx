@@ -36,6 +36,7 @@ import {
   welfareByScheduleDisplayMonth,
   welfareEligibleEmployees,
   welfareScheduleLinesByMonth,
+  yearlyRegularScheduledWelfareTotal,
 } from "@/lib/domain/schedule";
 import { PAYMENT_EVENT, PAYMENT_EVENT_LABELS, QUARTERLY_ITEM_LABELS } from "@/lib/business-rules";
 import type { PaymentEventKey, QuarterlyItemKey } from "@/lib/business-rules";
@@ -45,6 +46,7 @@ import type {
 } from "@/components/ScheduleEmployeeEditModal";
 import {
   announcementSalaryAnnualWon,
+  announcementSalaryMonthlyTruncatedFromAnnualWon,
   computeLoweredSalaryPartialYearTrueUpWon,
   resolveEffectiveAdjustedSalaryForMonth,
 } from "@/lib/domain/salary-inclusion";
@@ -147,7 +149,7 @@ export default async function SchedulePage() {
     /** 월별 조정급여 — 중도 재분배로 월별 오버라이드가 있으면 월별로 다를 수 있음 */
     salaryByMonth: Record<number, number>;
     /**
-     * 급여분 멘트용 12개월 금액 — 조정연봉 연간 월분(인덱스 0 = 1월).
+     * 급여분 멘트용 12개월 금액 — 연간 급여(상한−정기연합 등)에 대해 `floor(연간÷12)` 를 활성 월마다 동일 반복.
      * RSC→클라이언트 직렬화에서 `Record<number,_>` 키가 빠지는 것을 피하기 위해 배열로 둔다.
      */
     announcementSalaryByMonthList: readonly number[];
@@ -290,14 +292,13 @@ export default async function SchedulePage() {
       }
     }
 
-    /** 급여분 멘트 — 조정연봉 연간을 월별 분할(재분배 노트 미반영). 조정 없으면 기존연봉·월지급 순. */
-    const ann = announcementSalaryAnnualWon(emp);
-    const annPseudo: Employee = { ...emp, adjustedSalary: ann, baseSalary: ann };
+    /** 급여분 멘트 — 실효 사복지급분−정기연합을 연간 급여로 두고 매월 floor(÷12). 폴백 시 조정·기존연봉 등. */
+    const yearlyRegularSched = yearlyRegularScheduledWelfareTotal(br, (m) => monthIsActive(empStatus, m));
+    const ann = announcementSalaryAnnualWon(emp, yearlyRegularSched);
+    const monthlyTrunc = announcementSalaryMonthlyTruncatedFromAnnualWon(ann);
     const announcementSalaryByMonthList: readonly number[] = Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
-      return monthIsActive(empStatus, m)
-        ? resolveEffectiveAdjustedSalaryForMonth(annPseudo, year, m, [], salaryActiveMonths)
-        : 0;
+      return monthIsActive(empStatus, m) ? monthlyTrunc : 0;
     });
 
     /**

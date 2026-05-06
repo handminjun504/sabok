@@ -739,6 +739,25 @@ export function yearlyWelfareTotal(rows: MonthBreakdown[]): number {
   return rows.reduce((s, r) => s + r.totalWelfareMonth, 0);
 }
 
+/**
+ * 급여분 안내용 — 활성 **귀속월**만 합산한 **정기**(스케줄) 사복 연합계(원).
+ * 분기·선택 복지(노트)·중도 재분배 오버라이드 합계는 포함하지 않는다.
+ */
+export function yearlyRegularScheduledWelfareTotal(
+  br: MonthBreakdown[],
+  isAccrualMonthActive: (month: number) => boolean,
+): number {
+  let s = 0;
+  for (const row of br) {
+    if (!isAccrualMonthActive(row.accrualMonth)) continue;
+    for (const ev of row.regularEvents) {
+      s += ev.amount;
+    }
+  }
+  return Math.round(s);
+}
+
+
 /** 월별 노트에서 연간 추가액 (지급월 합산용과 동일하게 연도 필터) */
 export function sumMonthlyNoteExtrasForYear(
   notes: ReadonlyArray<{

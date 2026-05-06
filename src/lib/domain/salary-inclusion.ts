@@ -18,21 +18,34 @@ function toNum(v: number | null | undefined): number {
 }
 
 /**
- * 급여분 안내 멘트 등 직원에게 전달하는 "월 환산"에 쓸 **연간 기준액(원)**.
+ * 급여분 안내 멘트용 **연간 급여 상당액(원)**.
  *
- * 실무 안내는 **조정연봉을 연 단위로 두고 월별로 나눈 금액**과 맞춘다.
- * (`schedule/page` 에서 `resolveEffectiveAdjustedSalaryForMonth` 로 분할하면 매월 `floor(연간÷12)`·마지막 활성월 잔차와 동일 패턴.)
+ * 1) **급여포함 상한(예상 인센 또는 실효 사복지급분) − 해당 연 정기(스케줄) 사복 연합계** 가 양수이면 그 차액을 쓴다.
+ *    예: 받아야 할 64,800,000 − 정기분 16,000,000 = 급여 48,800,000.
+ * 2) 아니면 **조정연봉 → 기존연봉 → 월지급×12** 순으로 채운다.
  *
- * 우선순위:
- *  1) **조정연봉**이 양수이면 조정 연간.
- *  2) 없으면 **기존연봉**.
- *  3) 둘 다 없으면 **월지급 × 12** (있을 때만).
+ * 월별 멘트 표시는 호출부에서 `Math.floor(연간 ÷ 12)` 로 통일한다(소수 절사).
  *
- * 월별 `adjustedSalaryOverrideAmount` 는 멘트에는 넣지 않고 노트 없이 위 연간만 나눈다.
+ * @param yearlyRegularScheduledWelfareWon `yearlyRegularScheduledWelfareTotal` 결과
  */
 export function announcementSalaryAnnualWon(
-  employee: Pick<Employee, "adjustedSalary" | "baseSalary" | "monthlyPayAmount">,
+  employee: Pick<
+    Employee,
+    | "adjustedSalary"
+    | "baseSalary"
+    | "monthlyPayAmount"
+    | "welfareAllocation"
+    | "priorOverpaidWelfareWon"
+    | "incentiveAmount"
+  >,
+  yearlyRegularScheduledWelfareWon: number,
 ): number {
+  const { cap, hasCap } = resolveSalaryInclusionCap(employee);
+  const packageCap = hasCap ? Math.round(cap) : 0;
+  const reg = Math.max(0, Math.round(yearlyRegularScheduledWelfareWon));
+  const fromPackage = packageCap - reg;
+  if (fromPackage > 0) return Math.round(fromPackage);
+
   const adj = Math.round(toNum(employee.adjustedSalary));
   if (adj > 0) return adj;
   const base = Math.round(toNum(employee.baseSalary));
@@ -43,6 +56,12 @@ export function announcementSalaryAnnualWon(
     if (mp > 0) return mp * 12;
   }
   return 0;
+}
+
+/** 급여분 멘트 월액 — 연간을 12로 나눈 값의 소수 이하 절사(`floor`). */
+export function announcementSalaryMonthlyTruncatedFromAnnualWon(annualWon: number): number {
+  const a = Math.max(0, Math.round(Number(annualWon)));
+  return Math.floor(a / 12);
 }
 
 /**

@@ -134,7 +134,7 @@ export function ScheduleAnnouncementPanel({
       name: r.name,
       welfareMonth: r.welfareByMonth[focusMonth] ?? 0,
       /**
-       * `announcementSalaryByMonthList`: 조정연봉 연간을 나눈 12칸 월분. 길이가 맞지 않으면 `salaryMonth` 바닥 폴백.
+       * `announcementSalaryByMonthList`: `floor(연간÷12)` 를 활성 월마다 동일 반복. 길이가 맞지 않으면 `salaryMonth` 바닥 폴백.
        */
       salaryMonth: (() => {
         const idx = focusMonth - 1;
@@ -231,8 +231,9 @@ export function ScheduleAnnouncementPanel({
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
         <p className="text-sm leading-relaxed text-[var(--muted)]">
           월별 스케줄과 동일한 기준(N월 칸 = N월 귀속분, 분기는 지정한 지급 월)으로 합계를 계산합니다. 아래에서 월을 바꾸면
-          멘트가 갱신됩니다. 급여분(월 환산) 멘트는 직원 **조정연봉 연간**을 나눈 월별 금액(바닥 월·마지막 활성월 잔차)이며,
-          조정이 없을 때만 기존연봉·월지급 기준으로 채웁니다.
+          멘트가 갱신됩니다. 급여분(월 환산)은 사내근로복지 한도(사복지급분 또는 예상 인센에서 실제 적용되는 값)에서, 해당 연도
+          정기 스케줄만 합친 금액을 뺀 나머지를 연간 급여로 보고, 12로 나눈 뒤 소수 이하는 버린 금액을 활성 월마다 같은 숫자로
+          적습니다. 한도가 맞지 않을 때만 조정·기존연봉·월지급 순으로 채웁니다.
         </p>
         <p
           className={
