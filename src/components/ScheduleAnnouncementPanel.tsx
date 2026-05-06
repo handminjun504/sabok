@@ -231,7 +231,8 @@ export function ScheduleAnnouncementPanel({
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
         <p className="text-sm leading-relaxed text-[var(--muted)]">
           월별 스케줄과 동일한 기준(N월 칸 = N월 귀속분, 분기는 지정한 지급 월)으로 합계를 계산합니다. 아래에서 월을 바꾸면
-          멘트가 갱신됩니다.
+          멘트가 갱신됩니다. 급여분(월 환산) 멘트 금액은 직원 정보의「월지급」이 있으면 그 금액×12를 연간으로 쓰고, 없으면
+          기존연봉입니다.
         </p>
         <p
           className={

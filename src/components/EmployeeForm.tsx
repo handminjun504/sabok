@@ -668,12 +668,19 @@ export function EmployeeForm({
               defaultValue={employee?.priorOverpaidWelfareWon ?? undefined}
               optional
             />
-            <LabeledCommaWon
-              label="월지급"
-              name="monthlyPayAmount"
-              defaultValue={employee?.monthlyPayAmount ?? undefined}
-              optional
-            />
+            <div className="sm:col-span-2">
+              <LabeledCommaWon
+                label="월지급"
+                name="monthlyPayAmount"
+                defaultValue={employee?.monthlyPayAmount ?? undefined}
+                optional
+              />
+              <p className="mt-1 text-[0.65rem] leading-snug text-[var(--muted)]">
+                입력 시 스케줄 「안내」탭의 <strong className="text-[var(--text)]">급여분(월 환산 급여)</strong> 복사
+                멘트가 이 금액을 연간 <span className="tabular-nums">×12</span> 한 값으로 나눕니다. 비우면 기존연봉
+                기준입니다.
+              </p>
+            </div>
             <LabeledCommaWon
               label="분기지급"
               name="quarterlyPayAmount"
