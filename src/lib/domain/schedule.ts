@@ -149,6 +149,20 @@ export function monthIsActive(status: EmployeeStatusForYear, month: number): boo
   return false;
 }
 
+/** 활성 연도 기준 재직(표시·급여 분배) 월 목록 — 오름차순. 퇴사 후 연도(AFTER_RESIGN)는 빈 배열. */
+export function activeMonthsSortedForYear(status: EmployeeStatusForYear): readonly number[] {
+  if (status.kind === "ACTIVE_FULL_YEAR") {
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  }
+  if (status.kind === "ACTIVE_PARTIAL") {
+    const { fromMonth, toMonth } = status.range;
+    const out: number[] = [];
+    for (let m = fromMonth; m <= toMonth; m++) out.push(m);
+    return out;
+  }
+  return [];
+}
+
 /**
  * 사복(사내근로복지기금) 계산·표시 대상 직원만 추리는 헬퍼.
  *
@@ -584,12 +598,13 @@ export function computeQuarterlyAmountFromRates(
 }
 
 /**
- * 단일 "월 조정급여" (모든 월 동일 가정). 월별 노트에 중도 재분배 오버라이드가 있는 경우에는
- * `resolveEffectiveAdjustedSalaryForMonth` 를 월별로 호출해야 정확하다 — 이 함수는 요약 표시용.
+ * 단일 "월 조정급여" 요약(연봉÷12 내림). 마지막 활성 월의 잔차는 반영하지 않는다 —
+ * 월별 정확값은 `resolveEffectiveAdjustedSalaryForMonth` + 활성 월 목록을 사용한다.
  */
 export function monthlySalaryPortion(employee: Pick<Employee, "adjustedSalary" | "baseSalary">): number {
   const base = toNum(employee.adjustedSalary) > 0 ? toNum(employee.adjustedSalary) : toNum(employee.baseSalary);
-  return Math.round(base / 12);
+  const annualWon = Math.round(base);
+  return Math.floor(annualWon / 12);
 }
 
 /**

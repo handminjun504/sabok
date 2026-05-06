@@ -22,7 +22,9 @@ import {
   paymentEventLabel,
 } from "@/lib/domain/payment-events";
 import {
+  activeMonthsSortedForYear,
   buildMonthlyBreakdown,
+  computeActualWelfareThroughPaidMonth,
   computeActualYearlyWelfareForEmployee,
   computeSalaryInclusionCapBlocks,
   employeeStatusForYear,
@@ -41,7 +43,10 @@ import type {
   ScheduleEditAvailableEvent,
   ScheduleEditMonthEvent,
 } from "@/components/ScheduleEmployeeEditModal";
-import { resolveEffectiveAdjustedSalaryForMonth } from "@/lib/domain/salary-inclusion";
+import {
+  computeLoweredSalaryPartialYearTrueUpWon,
+  resolveEffectiveAdjustedSalaryForMonth,
+} from "@/lib/domain/salary-inclusion";
 import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 import { additionalReserveStatus, summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
 import {
@@ -236,15 +241,43 @@ export default async function SchedulePage() {
     );
 
     const salaryByMonth: Record<number, number> = {};
-    let hasSalaryOverride = false;
+    const hasSalaryOverride = empNotes.some(
+      (n) => n.year === year && n.adjustedSalaryOverrideAmount != null,
+    );
+    const salaryActiveMonths = activeMonthsSortedForYear(empStatus);
     for (let m = 1; m <= 12; m++) {
       /** 비활성(퇴사 후) 월은 급여 라인도 0 — 표/카드 모두 ‘—’ 로 가려진다. */
       const v = monthIsActive(empStatus, m)
-        ? resolveEffectiveAdjustedSalaryForMonth(emp, year, m, empNotes)
+        ? resolveEffectiveAdjustedSalaryForMonth(emp, year, m, empNotes, salaryActiveMonths)
         : 0;
       salaryByMonth[m] = v;
-      const note = empNotes.find((n) => n.year === year && n.month === m);
-      if (note?.adjustedSalaryOverrideAmount != null) hasSalaryOverride = true;
+    }
+
+    const lastSalaryActiveMonth =
+      salaryActiveMonths.length > 0 ? salaryActiveMonths[salaryActiveMonths.length - 1]! : null;
+    if (lastSalaryActiveMonth != null && salaryActiveMonths.length < 12) {
+      const welfareYtdThroughLast = computeActualWelfareThroughPaidMonth(
+        emp,
+        year,
+        foundingMonth,
+        rules,
+        ovr,
+        qcfg,
+        empNotes,
+        lastSalaryActiveMonth,
+        customSchedule,
+        fixedEventMonths,
+      );
+      const loweredTrueUp = computeLoweredSalaryPartialYearTrueUpWon({
+        employee: emp,
+        activeMonthsSorted: salaryActiveMonths,
+        welfareYtdThroughLastPaidMonth: welfareYtdThroughLast,
+        hasAdjustedSalaryOverride: hasSalaryOverride,
+      });
+      if (loweredTrueUp > 0) {
+        salaryByMonth[lastSalaryActiveMonth] =
+          (salaryByMonth[lastSalaryActiveMonth] ?? 0) + loweredTrueUp;
+      }
     }
 
     /**
@@ -649,12 +682,12 @@ export default async function SchedulePage() {
       ) : null}
       <Tabs
         tabs={[
-          { label: "월별 스케줄", content: scheduleTab },
-          { label: "안내 멘트", content: announcementTab },
-          { label: "월별 메모", content: monthlyNoteTab },
+          { label: "스케줄", content: scheduleTab },
+          { label: "안내", content: announcementTab },
+          { label: "메모·인센", content: monthlyNoteTab },
           { label: "적립금", content: reserveTab },
-          { label: "레벨·예정액", content: levelAssignmentTab },
-          { label: "조정연봉 점검", content: adjustedSalaryAuditTab },
+          { label: "예정액", content: levelAssignmentTab },
+          { label: "연봉 점검", content: adjustedSalaryAuditTab },
         ]}
       />
     </div>

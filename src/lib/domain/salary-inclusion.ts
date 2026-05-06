@@ -7,6 +7,11 @@
 import type { Employee, MonthlyEmployeeNote } from "@/types/models";
 import type { TenantOperationMode } from "./tenant-profile";
 
+/** 연간 급여 분배 기본 분모 — 오버라이드 없을 때 `computeYearlyAdjustedSalaryFromNotes` 의 활성 월 기본값 */
+export const MONTHS_FULL_YEAR_ORDERED: readonly number[] = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+];
+
 function toNum(v: number | null | undefined): number {
   if (v === null || v === undefined) return 0;
   return Number(v) || 0;
@@ -103,17 +108,20 @@ export type MonthlyNoteAdjustedSalaryFields = Pick<
  *
  * 우선순위:
  *  1) 월별 노트의 `adjustedSalaryOverrideAmount` (중도 재분배로 분배된 값)
- *  2) `Employee.adjustedSalary / 12` (조정급여가 있으면)
- *  3) `Employee.baseSalary / 12` (조정급여가 0 또는 음수이면)
+ *  2) 연간 조정·기준 연봉 분할:
+ *     - 활성 월이 **12개월**(당해 만근에 가까운 경우): 매월 `floor(연봉/12)`, **마지막 활성 월**에 원 단위 잔차.
+ *     - 활성 월이 **12개월 미만**(당해 퇴사 등): 그 연도 재직 월 수 `n`에 대해 기간 합계를 `round(연봉×n/12)`로 두고,
+ *       각 활성 월에는 `floor(기간합/n)`, **마지막 활성 월**에 나머지를 더한다.
  *
- * 반환은 **원 단위 정수**. 연간 합계가 정확히 유지되도록 12월은 상위 호출자(재분배 로직)가
- * 소수점 잔차를 얹어 저장한다.
+ * `activeMonthsSorted` 는 해당 연도에 재직(표시)되는 월의 오름차순 목록(예: `activeMonthsSortedForYear`).
+ * 목록에 없는 월은 0(비활성). 빈 목록이면 0.
  */
 export function resolveEffectiveAdjustedSalaryForMonth(
   employee: Pick<Employee, "adjustedSalary" | "baseSalary">,
   year: number,
   month: number,
   notes: ReadonlyArray<MonthlyNoteAdjustedSalaryFields>,
+  activeMonthsSorted: readonly number[],
 ): number {
   const note = notes.find(
     (n) => n.year === year && n.month === month && n.adjustedSalaryOverrideAmount != null,
@@ -123,22 +131,75 @@ export function resolveEffectiveAdjustedSalaryForMonth(
   }
   const adj = toNum(employee.adjustedSalary);
   const base = toNum(employee.baseSalary);
-  const annual = adj > 0 ? adj : base;
-  return Math.round(annual / 12);
+  const annualWon = Math.round(adj > 0 ? adj : base);
+  const n = activeMonthsSorted.length;
+  if (n === 0) return 0;
+  if (!activeMonthsSorted.includes(month)) return 0;
+
+  const floorFullYear = Math.floor(annualWon / 12);
+  const lastActive = activeMonthsSorted[n - 1]!;
+
+  if (n === 12) {
+    if (month === lastActive) {
+      return annualWon - floorFullYear * 11;
+    }
+    return floorFullYear;
+  }
+
+  const periodTotal = Math.round((annualWon * n) / 12);
+  const floorPartial = Math.floor(periodTotal / n);
+  if (month === lastActive) {
+    return periodTotal - floorPartial * (n - 1);
+  }
+  return floorPartial;
+}
+
+/**
+ * 급여인하(조정연봉이 기존연보보다 작은) 직원이 **당해 연도 재직 월이 12개월 미만**일 때,
+ * 「재직 기간 기존연봉 월바닥 합」≈ 「같은 기간 조정연봉 월분 합 + 마지막 활성월까지 사복 실지급 누적」이 되도록
+ * 마지막 활성 월 급여에 더할 **보정액(원)**.
+ *
+ * - 월별 `adjustedSalaryOverrideAmount` 가 하나라도 있으면 **0** (수동 분배 우선).
+ * - 조정연봉이 없거나 기존연봉 이상이면 **0**.
+ */
+export function computeLoweredSalaryPartialYearTrueUpWon(options: {
+  employee: Pick<Employee, "adjustedSalary" | "baseSalary">;
+  activeMonthsSorted: readonly number[];
+  welfareYtdThroughLastPaidMonth: number;
+  hasAdjustedSalaryOverride: boolean;
+}): number {
+  const {
+    employee,
+    activeMonthsSorted,
+    welfareYtdThroughLastPaidMonth,
+    hasAdjustedSalaryOverride,
+  } = options;
+  if (hasAdjustedSalaryOverride) return 0;
+  const adj = Math.round(toNum(employee.adjustedSalary));
+  const baseAnnual = Math.round(toNum(employee.baseSalary));
+  if (!(adj > 0 && adj < baseAnnual)) return 0;
+  const n = activeMonthsSorted.length;
+  if (n === 0 || n >= 12) return 0;
+
+  const baseFloorMonthly = Math.floor(baseAnnual / 12);
+  const baseTargetStraight = n * baseFloorMonthly;
+  const adjPeriodTotal = Math.round((adj * n) / 12);
+  const welfare = Math.max(0, Math.round(welfareYtdThroughLastPaidMonth));
+  return Math.max(0, baseTargetStraight - adjPeriodTotal - welfare);
 }
 
 /**
  * 한 직원의 연간 조정급여 합. 중도 재분배로 월별 오버라이드가 있으면 월별 합을, 없으면
  * `adjustedSalary`(없으면 `baseSalary`)를 그대로 반환.
  *
- * 재분배가 적용된 월이 1개라도 있으면 "월별 합 방식"으로 모든 12개월을 더해 반환한다 —
- * 오버라이드가 없는 월은 `adjustedSalary/12` 를 사용. 합계가 원래 연간 값과 다르면 호출자가
- * 12월 잔차를 조정해 이 함수를 통과한 값이 연간 불변이 되도록 한다.
+ * 재분배가 적용된 월이 1개라도 있으면 "월별 합 방식"으로 1~12월을 더해 반환한다 —
+ * 오버라이드가 없는 월은 `floor(연봉/12)` 및 마지막 활성 월 잔차 규칙을 따른다(`activeMonthsSorted` 필요).
  */
 export function computeYearlyAdjustedSalaryFromNotes(
   employee: Pick<Employee, "adjustedSalary" | "baseSalary">,
   year: number,
   notes: ReadonlyArray<MonthlyNoteAdjustedSalaryFields>,
+  activeMonthsSorted: readonly number[] = MONTHS_FULL_YEAR_ORDERED,
 ): number {
   const hasOverride = notes.some(
     (n) => n.year === year && n.adjustedSalaryOverrideAmount != null,
@@ -150,7 +211,7 @@ export function computeYearlyAdjustedSalaryFromNotes(
   }
   let sum = 0;
   for (let m = 1; m <= 12; m++) {
-    sum += resolveEffectiveAdjustedSalaryForMonth(employee, year, m, notes);
+    sum += resolveEffectiveAdjustedSalaryForMonth(employee, year, m, notes, activeMonthsSorted);
   }
   return sum;
 }

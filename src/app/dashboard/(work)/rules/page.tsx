@@ -406,10 +406,10 @@ export default async function PaymentRulesPage() {
 
       <Tabs
         tabs={[
-          { label: "레벨별 정기 지급", content: levelTab },
-          { label: "분기 지원 요율", content: quarterlyRatesTab },
-          { label: "분기 대상자 체크", content: quarterlyBulkTab },
-          { label: "직원별 분기 항목", content: quarterlyEmployeeTab },
+          { label: "정기 지급", content: levelTab },
+          { label: "분기 요율", content: quarterlyRatesTab },
+          { label: "분기 체크", content: quarterlyBulkTab },
+          { label: "분기 개별", content: quarterlyEmployeeTab },
         ]}
       />
     </div>

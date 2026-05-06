@@ -142,7 +142,7 @@ export type MonthlyEmployeeNote = {
   welfareOverrideAmount: number | null;
   /**
    * 연중 재분배 시 해당 월 **조정급여 월액** 오버라이드.
-   * null 이면 `Employee.adjustedSalary / 12` 를 사용.
+   * null 이면 연봉을 `floor(연봉/12)`·마지막 활성 월 잔차로 분할한 월액을 사용.
    * 사복 감소분을 잔여 월 조정급여에 분배해 baseSalary 불변을 유지하는 데 사용.
    */
   adjustedSalaryOverrideAmount: number | null;

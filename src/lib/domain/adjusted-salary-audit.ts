@@ -1,6 +1,6 @@
 /**
  * 조정연봉 감사(audit) 유틸 — “조사표에 올린 조정연봉”(Employee.adjustedSalary) vs
- * “실제 월별 누적 조정연봉”(Σ `resolveEffectiveAdjustedSalaryForMonth` × 12) 의 차이를 진단한다.
+ * “실제 월별 누적 조정연봉”(Σ `resolveEffectiveAdjustedSalaryForMonth`) 의 차이를 진단한다.
  *
  * 배경:
  *   `baseSalary × 12 = adjustedSalary × 12 + 연간 사복 지급합` 불변식을 유지하기 위해
@@ -14,7 +14,7 @@
 
 import type { Employee, MonthlyEmployeeNote } from "@/types/models";
 import { resolveEffectiveAdjustedSalaryForMonth } from "./salary-inclusion";
-import { employeeStatusForYear } from "./schedule";
+import { activeMonthsSortedForYear, employeeStatusForYear } from "./schedule";
 
 function toNum(v: number | null | undefined): number {
   if (v == null) return 0;
@@ -29,7 +29,7 @@ export type AdjustedSalaryAudit = {
   level: number;
   /** `Employee.adjustedSalary` — 조사표에 올린 값. 0 이하면 baseSalary 로 폴백되므로 별도 표시. */
   surveyAdjustedAnnual: number;
-  /** 월 조정급여의 1~12월 합. override 가 있으면 그 값, 없으면 `surveyAdjustedAnnual/12`. */
+  /** 월 조정급여의 1~12월 합. override 가 있으면 그 값, 없으면 내림 분할·마지막 활성 월 잔차로 연간과 일치. */
   actualAdjustedAnnual: number;
   /** `actualAdjustedAnnual − surveyAdjustedAnnual`. 양수 = 실제가 더 큼, 음수 = 실제가 더 작음. */
   diff: number;
@@ -52,7 +52,7 @@ export type AdjustedSalaryAudit = {
  *
  * - `baseSalary` 만 있고 `adjustedSalary` 가 0 이면 조사표 값은 `baseSalary` 로 간주한다
  *   (`resolveEffectiveAdjustedSalaryForMonth` 의 폴백과 일치).
- * - 모든 12개월을 합산한다. 월별 override 가 없는 월은 자연스럽게 `조사표/12` 가 반영된다.
+ * - 모든 12개월을 합산한다. 월별 override 가 없는 월은 `floor(연봉/12)` 및 활성 월 중 마지막 달 잔차 규칙이 적용된다.
  */
 export function computeAdjustedSalaryAudit(
   employee: Employee,
@@ -73,10 +73,11 @@ export function computeAdjustedSalaryAudit(
   const base = toNum(employee.baseSalary);
   const surveyAdjustedAnnual = Math.round(adj > 0 ? adj : base);
 
+  const salaryActiveMonths = activeMonthsSortedForYear(status);
   let actual = 0;
   const overrideMonths: number[] = [];
   for (let m = 1; m <= 12; m++) {
-    actual += resolveEffectiveAdjustedSalaryForMonth(employee, year, m, empNotes);
+    actual += resolveEffectiveAdjustedSalaryForMonth(employee, year, m, empNotes, salaryActiveMonths);
     const note = empNotes.find((n) => n.month === m);
     if (note?.adjustedSalaryOverrideAmount != null) overrideMonths.push(m);
   }

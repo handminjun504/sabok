@@ -149,7 +149,7 @@ export function showSalaryPortionNoticeMode(mode: TenantOperationMode): boolean 
 }
 
 /**
- * 급여(월) = 조정·기준 연봉의 월 환산(`monthlySalaryPortion`과 동일).
+ * 급여(월) = 해당 월의 조정·기준 연봉 월분(`salaryByMonth[month]` 등). 요약 시에는 연봉÷12 내림과 동일한 기본 월분.
  * 급여낮추기·복합 모드: 월 환산 급여가 있는 직원은 해당 월 기금 유무와 관계없이 포함(실무 안내 양식).
  */
 export function buildSalaryPortionNotice(

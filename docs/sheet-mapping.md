@@ -9,7 +9,7 @@
 | 시트(탭) 이름     | 앱 대응 |
 |-------------------|---------|
 | 직원정보          | `/dashboard/employees`, `Employee`, CSV 가져오기 |
-| LEVEL 1 ~ LEVEL 5 | `/dashboard/levels` (연도·레벨별 정기 지급액) |
+| LEVEL 1 ~ LEVEL 5 | `/dashboard/rules` 탭 「정기 지급」(연도·레벨별 정기 지급액) |
 | 취합              | `/dashboard/operating-report` (연도·레벨·기금 합계 요약) |
 | 월별지급스케줄    | `/dashboard/schedule` |
 | 반환분 / 적립액 / 인수 | 미연결 — 시트 수식·정의 확보 후 도메인 추가 검토 |

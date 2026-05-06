@@ -87,6 +87,35 @@ export default async function DashboardHomePage() {
 
       <DashboardReserveStatusPanel summary={reserveSummary} />
 
+      <section className="surface dash-panel-pad" aria-labelledby="quick-links">
+        <h2 id="quick-links" className="text-sm font-bold text-[var(--text)]">
+          바로 가기
+        </h2>
+        <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+          자주 쓰는 화면입니다. 좌측 메뉴와 동일한 경로입니다.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href="/dashboard/employees" className="btn btn-outline px-3 py-2 text-xs font-semibold">
+            직원
+          </Link>
+          <Link href="/dashboard/rules" className="btn btn-outline px-3 py-2 text-xs font-semibold">
+            지급 규칙
+          </Link>
+          <Link href="/dashboard/schedule" className="btn btn-outline px-3 py-2 text-xs font-semibold">
+            월별 스케줄
+          </Link>
+          <Link href="/dashboard/operating-report" className="btn btn-outline px-3 py-2 text-xs font-semibold">
+            운영 보고
+          </Link>
+          <Link
+            href="/dashboard/salary-inclusion-report"
+            className="btn btn-outline px-3 py-2 text-xs font-semibold"
+          >
+            급여 포함 신고
+          </Link>
+        </div>
+      </section>
+
       <section className="surface dash-panel-pad" aria-labelledby="tenant-quick-link">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
