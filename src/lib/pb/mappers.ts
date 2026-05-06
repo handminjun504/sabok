@@ -43,6 +43,18 @@ function bool(v: unknown): boolean {
   return Boolean(v);
 }
 
+/**
+ * 월/연도/일 같은 ordinal 필드 정규화. 빈 값·null·0 은 모두 "미입력(=null)" 으로 본다.
+ * - PB number 컬럼 default 가 0 으로 잡히는 환경에서 0 이 도메인에 새어 들어가면
+ *   "1900 년에 퇴사한 직원" 처럼 해석되는 사고가 난다.
+ */
+function ordinalOrNull(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n) || n === 0) return null;
+  return n;
+}
+
 export function mapEmployee(r: Record<string, unknown>): Employee {
   return {
   id: String(r.id),
@@ -59,12 +71,19 @@ export function mapEmployee(r: Record<string, unknown>): Employee {
   optionalWelfareAmount: numNull(r.optionalWelfareAmount),
   monthlyPayAmount: numNull(r.monthlyPayAmount),
   quarterlyPayAmount: numNull(r.quarterlyPayAmount),
-  birthMonth: r.birthMonth === null || r.birthMonth === undefined || r.birthMonth === "" ? null : num(r.birthMonth),
-  hireMonth: r.hireMonth === null || r.hireMonth === undefined || r.hireMonth === "" ? null : num(r.hireMonth),
-  resignMonth: r.resignMonth === null || r.resignMonth === undefined || r.resignMonth === "" ? null : num(r.resignMonth),
-  resignYear: r.resignYear === null || r.resignYear === undefined || r.resignYear === "" ? null : num(r.resignYear),
-  weddingMonth:
-    r.weddingMonth === null || r.weddingMonth === undefined || r.weddingMonth === "" ? null : num(r.weddingMonth),
+  /**
+   * 월/연도/일 같은 ordinal 필드는 0 도 null 로 매핑한다.
+   * - PocketBase 에 새 number 컬럼을 추가하면 기존 행이 NULL 이 아닌 0 으로 채워지는 환경이 있어,
+   *   `resignYear=0` 인 채로 도메인에 들어가면 `year > resignY` 가 항상 참이 되어
+   *   모든 기존 직원이 AFTER_RESIGN 으로 보이는 사고가 난다(2026-05 사용자 보고).
+   * - 0월/0년/0일은 도메인적으로 의미 없으므로 손실 없이 null 로 정규화한다.
+   * - 금액 필드(0원이 의미 있는 값)는 numNull/num 그대로 유지.
+   */
+  birthMonth: ordinalOrNull(r.birthMonth),
+  hireMonth: ordinalOrNull(r.hireMonth),
+  resignMonth: ordinalOrNull(r.resignMonth),
+  resignYear: ordinalOrNull(r.resignYear),
+  weddingMonth: ordinalOrNull(r.weddingMonth),
   childrenInfant: num(r.childrenInfant),
   childrenPreschool: num(r.childrenPreschool),
   childrenTeen: num(r.childrenTeen),
@@ -73,7 +92,7 @@ export function mapEmployee(r: Record<string, unknown>): Employee {
   insurancePremium: num(r.insurancePremium),
   loanInterest: num(r.loanInterest),
   monthlyRentAmount: numNull(r.monthlyRentAmount),
-  payDay: r.payDay === null || r.payDay === undefined || r.payDay === "" ? null : num(r.payDay),
+  payDay: ordinalOrNull(r.payDay),
   level: num(r.level, 1),
   expectedYearlyWelfare: numNull(r.expectedYearlyWelfare),
   flagAutoAmount: bool(r.flagAutoAmount),
