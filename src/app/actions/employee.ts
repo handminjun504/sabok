@@ -193,20 +193,15 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
   }
 
   /**
-   * 편집(update) 흐름에서는 사용자가 칸을 ‘비웠다’ 의도까지 PB 에 그대로 전달해야
-   * "한 번 채운 값이 영영 안 지워지는" 사고가 안 난다.
-   * → 이전에는 이 목록 키들을 null 일 때 drop 해서, 퇴사월/연도 등을 비워 저장해도
-   *   PB 에 reset 이 가지 않아 “저장이 안 된 것처럼” 보였다.
-   *
-   * PocketBase 의 `number` 컬럼은 명시적 `null` 보다 빈 문자열(`""`) 로 reset 하는 패턴이 더 호환성이 좋다.
-   * 따라서 nullable number 필드는 null 을 "" 로 변환해 보내되, 키 자체는 그대로 두어 PB 가 컬럼 default 로 reset 하게 한다.
-   *
-   * - 신규 생성(`bodyForCreate`) 은 PB 의 빈 값 검증을 회피하려 여전히 null 키를 drop.
-   * - 편집은 빈 문자열 reset 을 통해 “지우기” 가 동작.
+   * 편집(update) 흐름.
+   * PocketBase 의 number/select 컬럼은 빈 문자열("")이나 null 을 검증 단계에서 거절할 수 있고,
+   * 그러면 5 같은 정상 입력값까지 update 가 통째로 실패해 "입력해도 저장이 안 됨" 사고가 난다.
+   * → 신규 생성과 동일하게 nullable 키는 drop 해서, 입력한 값만 확실히 PocketBase 에 반영한다.
+   * 비우기(예: 재직 중으로 되돌리기) 의도는 별도 액션(`clearResignAction` 등) 에서 명시적으로 처리한다.
    */
   function bodyForUpdate(employeeCode: string): Record<string, unknown> {
     const o: Record<string, unknown> = { ...data, employeeCode };
-    const resetIfNull = [
+    const dropIfNull = [
       "incentiveAmount",
       "discretionaryAmount",
       "monthlyPayAmount",
@@ -220,9 +215,10 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
       "resignYear",
       "weddingMonth",
       "payDay",
+      "salaryInclusionVarianceMode",
     ] as const;
-    for (const k of resetIfNull) {
-      if (o[k] === null) o[k] = "";
+    for (const k of dropIfNull) {
+      if (o[k] === null) delete o[k];
     }
     return o;
   }

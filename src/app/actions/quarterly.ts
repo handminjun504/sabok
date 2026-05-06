@@ -320,10 +320,15 @@ export async function saveQuarterlyRatesAction(_: QState, formData: FormData): P
   /** level 0 = 공통(기본), 1~5 = 레벨별 */
   const LEVELS = [0, 1, 2, 3, 4, 5] as const;
 
-  try {
-    for (const itemKey of items) {
-      for (const level of LEVELS) {
-        const suffix = level === 0 ? "" : `_lv${level}`;
+  /**
+   * 어느 항목·레벨에서 깨졌는지 사용자에게 그대로 보여줘야 PB 컬럼/검증 문제를 빠르게 식별할 수 있다.
+   * (일괄 try/catch 로 묶으면 "요율 저장 실패" 만 떠 디버깅이 안 된다 — 사용자 보고 사례 누적.)
+   */
+  let failed: { itemKey: QuarterlyItemKey; level: number; cause: string } | null = null;
+  for (const itemKey of items) {
+    for (const level of LEVELS) {
+      const suffix = level === 0 ? "" : `_lv${level}`;
+      try {
         await quarterlyRateUpsert({
           tenantId: ctx.tenantId,
           year,
@@ -338,11 +343,20 @@ export async function saveQuarterlyRatesAction(_: QState, formData: FormData): P
           percentInsurance: toNumOrNull(formData.get(`${itemKey}_pins${suffix}`)),
           percentLoanInterest: toNumOrNull(formData.get(`${itemKey}_ploan${suffix}`)),
         });
+      } catch (e) {
+        const detail =
+          e instanceof Error ? `${e.name}: ${e.message}` : typeof e === "string" ? e : "unknown error";
+        console.error("[quarterly] saveQuarterlyRates", { year, itemKey, level, error: e });
+        failed = { itemKey, level, cause: detail };
+        break;
       }
     }
-  } catch (e) {
-    console.error(e);
-    return { 오류: "요율 저장 실패" };
+    if (failed) break;
+  }
+  if (failed) {
+    return {
+      오류: `요율 저장 실패 — 항목 '${failed.itemKey}' · 레벨 ${failed.level} 단계에서 중단. 원인: ${failed.cause}`,
+    };
   }
 
   await writeAudit({

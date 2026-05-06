@@ -1157,6 +1157,46 @@ export async function quarterlyRateList(tenantId: string, year: number): Promise
   return rows.map((x) => mapQuarterlyRate(asRecord(x)));
 }
 
+/**
+ * PocketBase 의 `sabok_quarterly_rates` 컬렉션은 환경별로 `level` / `percentInsurance` /
+ * `percentLoanInterest` / `amountPerInLaw` 같이 뒤늦게 추가된 컬럼이 빠져 있는 경우가 있다.
+ * - 누락 컬럼은 1차 요청 실패 후 응답 메시지(`unknown field xxx`)를 보고 한 번만 정리해 재시도한다.
+ * - 빈 값(null) 은 number 컬럼이 빈 값을 거절할 수 있어 페이로드에서 drop 한다.
+ * - 그래도 실패하면 "어느 컬럼이 문제인지" 가 보이게 원래 PB 메시지를 그대로 throw 한다.
+ */
+function stripUnknownQuarterlyRateFields(
+  payload: Record<string, unknown>,
+  detailLower: string,
+): Record<string, unknown> | null {
+  const candidates = [
+    "level",
+    "amountPerInfant",
+    "amountPerPreschool",
+    "amountPerTeen",
+    "amountPerParent",
+    "amountPerInLaw",
+    "flatAmount",
+    "percentInsurance",
+    "percentLoanInterest",
+  ] as const;
+  const cleaned: Record<string, unknown> = { ...payload };
+  let changed = false;
+  const looksLikeUnknownField =
+    detailLower.includes("unknown") ||
+    detailLower.includes("invalid") ||
+    detailLower.includes("not found") ||
+    detailLower.includes("no such") ||
+    detailLower.includes("missing");
+  if (!looksLikeUnknownField) return null;
+  for (const k of candidates) {
+    if (detailLower.includes(k.toLowerCase())) {
+      delete cleaned[k];
+      changed = true;
+    }
+  }
+  return changed ? cleaned : null;
+}
+
 export async function quarterlyRateUpsert(
   body: Record<string, unknown> & { tenantId: string; year: number; itemKey: string; level: number }
 ): Promise<void> {
@@ -1164,14 +1204,54 @@ export async function quarterlyRateUpsert(
   const f = `tenantId="${esc(body.tenantId)}" && year=${body.year} && itemKey="${esc(body.itemKey)}" && level=${levelN}`;
   const existing = await firstByFilterStrict(C.quarterlyRates, f);
   const pb = await getAdminPb();
-  const { tenantId: _tid, year: _yr, itemKey: _ik, ...rest } = body;
+  /** PB number 컬럼이 빈값을 거절하는 환경에서도 동작하도록 null 키는 페이로드에서 제거. */
+  const dropIfNull = [
+    "amountPerInfant",
+    "amountPerPreschool",
+    "amountPerTeen",
+    "amountPerParent",
+    "amountPerInLaw",
+    "flatAmount",
+    "percentInsurance",
+    "percentLoanInterest",
+  ] as const;
+  const payload: Record<string, unknown> = { ...body };
+  for (const k of dropIfNull) {
+    if (payload[k] === null) delete payload[k];
+  }
+
+  const { tenantId: _tid, year: _yr, itemKey: _ik, ...restForUpdate } = payload;
   void _tid;
   void _yr;
   void _ik;
-  if (existing?.id) {
-    await pb.collection(C.quarterlyRates).update(String(existing.id), rest);
-  } else {
-    await pb.collection(C.quarterlyRates).create(body);
+
+  const isUpdate = Boolean(existing?.id);
+  const firstPayload = isUpdate ? restForUpdate : payload;
+  try {
+    if (isUpdate) {
+      await pb.collection(C.quarterlyRates).update(String(existing!.id), firstPayload);
+    } else {
+      await pb.collection(C.quarterlyRates).create(firstPayload);
+    }
+  } catch (e) {
+    if (!(e instanceof ClientResponseError)) {
+      logPbClientError("quarterlyRateUpsert", e);
+      throw e;
+    }
+    const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
+    const cleaned = stripUnknownQuarterlyRateFields(firstPayload, detailLower);
+    if (!cleaned) {
+      logPbClientError("quarterlyRateUpsert", e);
+      throw e;
+    }
+    console.warn(
+      "[pb] quarterlyRateUpsert: 미지원 컬럼 감지로 제거 후 재시도. PB Admin → sabok_quarterly_rates 에 해당 필드를 추가하세요.",
+    );
+    if (isUpdate) {
+      await pb.collection(C.quarterlyRates).update(String(existing!.id), cleaned);
+    } else {
+      await pb.collection(C.quarterlyRates).create(cleaned);
+    }
   }
 }
 
