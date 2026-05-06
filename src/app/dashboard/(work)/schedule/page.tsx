@@ -64,10 +64,9 @@ import {
 } from "@/lib/domain/salary-inclusion-display";
 import { CommaWonInput } from "@/components/CommaWonInput";
 import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
-import { Tabs } from "@/components/Tabs";
 import { ScheduleEmployeeLevelAssignments } from "@/components/ScheduleEmployeeLevelAssignments";
 import { MonthlyIncentiveAccrualGrid } from "@/components/MonthlyIncentiveAccrualGrid";
-import { ScheduleAnnouncementPanel } from "@/components/ScheduleAnnouncementPanel";
+import { ScheduleWorkTabs } from "@/components/ScheduleWorkTabs";
 import { AdjustedSalaryAuditPanel } from "@/components/AdjustedSalaryAuditPanel";
 import { computeAdjustedSalaryAuditList } from "@/lib/domain/adjusted-salary-audit";
 import {
@@ -530,18 +529,6 @@ export default async function SchedulePage() {
     />
   );
 
-  const announcementTab = (
-    <ScheduleAnnouncementPanel
-      year={year}
-      rows={scheduleCardRows}
-      operationMode={tenantOperationMode}
-      reserveStatus={reserveStatus}
-      announcementMode={tenantRow?.announcementMode ?? "SINGLE"}
-      defaultBatchFromMonth={tenantRow?.announcementBatchFromMonth ?? null}
-      defaultBatchToMonth={tenantRow?.announcementBatchToMonth ?? null}
-    />
-  );
-
   const reserveTab =
     tenantRow != null ? (
       <ScheduleReserveTab
@@ -702,15 +689,19 @@ export default async function SchedulePage() {
           탭의 진단 배너를 따라 PB 필드를 추가한 뒤, 각 항목을 다시 저장해 주세요.
         </Alert>
       ) : null}
-      <Tabs
-        tabs={[
-          { label: "스케줄", content: scheduleTab },
-          { label: "안내", content: announcementTab },
-          { label: "메모·인센", content: monthlyNoteTab },
-          { label: "적립금", content: reserveTab },
-          { label: "예정액", content: levelAssignmentTab },
-          { label: "연봉 점검", content: adjustedSalaryAuditTab },
-        ]}
+      <ScheduleWorkTabs
+        scheduleTab={scheduleTab}
+        monthlyNoteTab={monthlyNoteTab}
+        reserveTab={reserveTab}
+        levelAssignmentTab={levelAssignmentTab}
+        adjustedSalaryAuditTab={adjustedSalaryAuditTab}
+        announcementRows={scheduleCardRows}
+        announcementYear={year}
+        announcementOperationMode={tenantOperationMode}
+        announcementReserveStatus={reserveStatus}
+        announcementMode={tenantRow?.announcementMode ?? "SINGLE"}
+        defaultBatchFromMonth={tenantRow?.announcementBatchFromMonth ?? null}
+        defaultBatchToMonth={tenantRow?.announcementBatchToMonth ?? null}
       />
     </div>
   );
