@@ -289,8 +289,11 @@ export default async function SchedulePage() {
       }
     }
 
-    /** 급여분 멘트 — floor(조정연봉÷12), 조정 없으면 기존연봉. 활성 월마다 동일 금액. */
-    const monthlyFloor = monthlySalaryPortion(emp);
+    /** 급여분 멘트 — floor(기존연봉÷12). 기존연봉 없으면 조정연봉. 활성 월마다 동일 금액. */
+    const baseWon = Math.round(Number(emp.baseSalary) || 0);
+    const adjWon = Math.round(Number(emp.adjustedSalary) || 0);
+    const annualForNotice = baseWon > 0 ? baseWon : adjWon;
+    const monthlyFloor = Math.floor(annualForNotice / 12);
     const announcementSalaryByMonthList: readonly number[] = Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
       return monthIsActive(empStatus, m) ? monthlyFloor : 0;
