@@ -134,10 +134,13 @@ export function ScheduleAnnouncementPanel({
       name: r.name,
       welfareMonth: r.welfareByMonth[focusMonth] ?? 0,
       /**
-       * 중도 재분배로 월별 `adjustedSalaryOverrideAmount` 가 있으면 그 값을 우선 사용.
-       * 없으면 기존 `salaryMonth`(연봉/12) 로 폴백.
+       * 급여분 멘트는 실무 안내용으로 `announcementSalaryByMonth`(기존연봉 월분 등)를 우선한다.
+       * 없으면 카드·표와 동일하게 `salaryByMonth` → `salaryMonth`.
        */
-      salaryMonth: r.salaryByMonth?.[focusMonth] ?? r.salaryMonth,
+      salaryMonth:
+        r.announcementSalaryByMonth?.[focusMonth] ??
+        r.salaryByMonth?.[focusMonth] ??
+        r.salaryMonth,
       flagRepReturn: r.flagRepReturn,
       discretionaryAmount: r.discretionaryAmount,
     }));

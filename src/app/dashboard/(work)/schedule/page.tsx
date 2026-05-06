@@ -44,6 +44,7 @@ import type {
   ScheduleEditMonthEvent,
 } from "@/components/ScheduleEmployeeEditModal";
 import {
+  announcementSalaryAnnualWon,
   computeLoweredSalaryPartialYearTrueUpWon,
   resolveEffectiveAdjustedSalaryForMonth,
 } from "@/lib/domain/salary-inclusion";
@@ -145,6 +146,8 @@ export default async function SchedulePage() {
     salaryMonth: number;
     /** 월별 조정급여 — 중도 재분배로 월별 오버라이드가 있으면 월별로 다를 수 있음 */
     salaryByMonth: Record<number, number>;
+    /** 급여분 복사 멘트 전용 월별 급여 — 급여인하 시 기존연봉 월분, 재분배 오버라이드 시 salaryByMonth 와 동일 */
+    announcementSalaryByMonth: Record<number, number>;
     hasSalaryOverride: boolean;
     capBlocks: ReturnType<typeof computeSalaryInclusionCapBlocks>;
     /** 이 직원의 월별 편집 가능한 이벤트 목록 (모달 prefill 용) */
@@ -255,6 +258,8 @@ export default async function SchedulePage() {
 
     const lastSalaryActiveMonth =
       salaryActiveMonths.length > 0 ? salaryActiveMonths[salaryActiveMonths.length - 1]! : null;
+    let loweredTrueUpApplied = 0;
+    let loweredTrueUpMonth: number | null = null;
     if (lastSalaryActiveMonth != null && salaryActiveMonths.length < 12) {
       const welfareYtdThroughLast = computeActualWelfareThroughPaidMonth(
         emp,
@@ -275,8 +280,30 @@ export default async function SchedulePage() {
         hasAdjustedSalaryOverride: hasSalaryOverride,
       });
       if (loweredTrueUp > 0) {
+        loweredTrueUpApplied = loweredTrueUp;
+        loweredTrueUpMonth = lastSalaryActiveMonth;
         salaryByMonth[lastSalaryActiveMonth] =
           (salaryByMonth[lastSalaryActiveMonth] ?? 0) + loweredTrueUp;
+      }
+    }
+
+    const announcementSalaryByMonth: Record<number, number> = {};
+    if (hasSalaryOverride) {
+      for (let m = 1; m <= 12; m++) {
+        announcementSalaryByMonth[m] = salaryByMonth[m] ?? 0;
+      }
+      /** 급여분 멘트에는 급여인하 퇴직 보정 lump 을 넣지 않는다. */
+      if (loweredTrueUpApplied > 0 && loweredTrueUpMonth != null) {
+        announcementSalaryByMonth[loweredTrueUpMonth] =
+          (announcementSalaryByMonth[loweredTrueUpMonth] ?? 0) - loweredTrueUpApplied;
+      }
+    } else {
+      const ann = announcementSalaryAnnualWon(emp);
+      const annPseudo: Employee = { ...emp, adjustedSalary: ann, baseSalary: ann };
+      for (let m = 1; m <= 12; m++) {
+        announcementSalaryByMonth[m] = monthIsActive(empStatus, m)
+          ? resolveEffectiveAdjustedSalaryForMonth(annPseudo, year, m, empNotes, salaryActiveMonths)
+          : 0;
       }
     }
 
@@ -399,6 +426,7 @@ export default async function SchedulePage() {
       yearlyWelfare,
       salaryMonth: monthlySalaryPortion(emp),
       salaryByMonth,
+      announcementSalaryByMonth,
       hasSalaryOverride,
       capBlocks,
       editableEventsByMonth,
@@ -432,6 +460,7 @@ export default async function SchedulePage() {
       yearlyWelfare: r.yearlyWelfare,
       salaryMonth: r.salaryMonth,
       salaryByMonth: r.salaryByMonth,
+      announcementSalaryByMonth: r.announcementSalaryByMonth,
       flagRepReturn: r.emp.flagRepReturn,
       discretionaryAmount: r.emp.discretionaryAmount,
       showCapOver: salaryInclusionShowOverage(eff),
