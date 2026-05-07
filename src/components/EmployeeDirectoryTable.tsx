@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { EmployeeForm } from "@/components/EmployeeForm";
+import type { LevelTarget, SalaryInclusionVarianceMode } from "@/types/models";
 import type {
   Employee,
   Level5Override,
@@ -73,20 +75,36 @@ function SectionTitle({ children }: { children: ReactNode }) {
   return <p className="dash-eyebrow mb-1.5">{children}</p>;
 }
 
+export type EmployeeDirectoryEditContext = {
+  activeYear: number;
+  foundingMonth: number;
+  minimumAnnualSalaryWon: number;
+  tenantSalaryInclusionVarianceMode: SalaryInclusionVarianceMode;
+  surveyShowRepReturn: boolean;
+  surveyShowSpouseReceipt: boolean;
+  surveyShowWorkerNet: boolean;
+  existingEmployees: { id: string; employeeCode: string; name: string; position: string }[];
+  levelTargets: LevelTarget[];
+};
+
 export function EmployeeDirectoryTable({
   employees,
   colRepReturn,
   colSpouseReceipt,
   colWorkerNet,
   payrollYearContext,
+  editContext,
 }: {
   employees: Employee[];
   colRepReturn: boolean;
   colSpouseReceipt: boolean;
   colWorkerNet: boolean;
   payrollYearContext?: EmployeeDirectoryPayrollYearContext;
+  /** null이면 편집 불가(조회 전용) */
+  editContext?: EmployeeDirectoryEditContext | null;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [editModes, setEditModes] = useState<Set<string>>(() => new Set());
   const hasCtx = payrollYearContext != null;
 
   const rows = useMemo(() => {
@@ -127,6 +145,20 @@ export function EmployeeDirectoryTable({
 
   function toggle(id: string) {
     setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        // 접을 때 편집 모드도 끔
+        setEditModes((em) => { const n = new Set(em); n.delete(id); return n; });
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function toggleEditMode(id: string) {
+    setEditModes((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -180,6 +212,7 @@ export function EmployeeDirectoryTable({
             {rows.map((r) => {
               const e = r.e;
               const isOpen = expanded.has(e.id);
+              const isEditMode = editModes.has(e.id);
               const dimmed = r.status?.kind === "AFTER_RESIGN";
               const eff = effectiveWelfareAllocationWon(e);
               const showEffWelfare =
@@ -242,9 +275,9 @@ export function EmployeeDirectoryTable({
                     <td className="text-center">
                       <Link
                         href={`/dashboard/employees/${e.id}`}
-                        className="text-xs font-bold text-[var(--accent)] hover:underline"
+                        className="text-xs text-[var(--muted)] hover:underline"
                       >
-                        편집
+                        상세
                       </Link>
                     </td>
                   </tr>
@@ -252,6 +285,49 @@ export function EmployeeDirectoryTable({
                   {isOpen ? (
                     <tr className="border-b border-[var(--border)] bg-[var(--surface-hover)]/30">
                       <td colSpan={totalCols} className="px-4 py-4">
+                        {/* 편집/요약 모드 토글 헤더 */}
+                        {editContext && (
+                          <div className="mb-3 flex items-center gap-2 border-b border-[var(--border)] pb-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleEditMode(e.id)}
+                              className={`rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                !isEditMode
+                                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-dim)]"
+                                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]"
+                              }`}
+                            >
+                              요약
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleEditMode(e.id)}
+                              className={`rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                isEditMode
+                                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-dim)]"
+                                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]"
+                              }`}
+                            >
+                              편집
+                            </button>
+                          </div>
+                        )}
+
+                        {/* 편집 모드 */}
+                        {isEditMode && editContext ? (
+                          <EmployeeForm
+                            employee={e}
+                            activeYear={editContext.activeYear}
+                            foundingMonth={editContext.foundingMonth}
+                            minimumAnnualSalaryWon={editContext.minimumAnnualSalaryWon}
+                            tenantSalaryInclusionVarianceMode={editContext.tenantSalaryInclusionVarianceMode}
+                            surveyShowRepReturn={editContext.surveyShowRepReturn}
+                            surveyShowSpouseReceipt={editContext.surveyShowSpouseReceipt}
+                            surveyShowWorkerNet={editContext.surveyShowWorkerNet}
+                            existingEmployees={editContext.existingEmployees}
+                            levelTargets={editContext.levelTargets}
+                          />
+                        ) : (
                         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                           {/* 급여·복지 */}
                           <div>
@@ -351,6 +427,7 @@ export function EmployeeDirectoryTable({
                             ) : null}
                           </div>
                         </div>
+                        )}
                       </td>
                     </tr>
                   ) : null}
