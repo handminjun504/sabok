@@ -36,6 +36,7 @@ import {
   welfareByScheduleDisplayMonth,
   welfareEligibleEmployees,
   welfareScheduleLinesByMonth,
+  yearlyWelfareTotal,
 } from "@/lib/domain/schedule";
 import { PAYMENT_EVENT, PAYMENT_EVENT_LABELS, QUARTERLY_ITEM_LABELS } from "@/lib/business-rules";
 import type { PaymentEventKey, QuarterlyItemKey } from "@/lib/business-rules";
@@ -292,18 +293,24 @@ export default async function SchedulePage() {
 
     /**
      * 급여분 멘트 월액:
-     *   조정급여(adjustedSalary) 가 운영자가 사복 분리 후 의도한 "실제 급여" 그 자체이므로,
-     *   adjustedSalary 가 있으면 그 값을, 비어 있으면 기존연봉(baseSalary) 을 12 로 나누어 보여 준다.
+     *   받아야 할 금액(= baseSalary) − 실제 사복 스케줄 합 = 급여분 연간
+     *   → floor(÷ 12)
      *
-     * 예: 이소영 baseSalary 60,000,000 / adjustedSalary 48,800,000
-     *     → 48,800,000 / 12 = 4,066,666 (소수점 절사)
-     *
-     * 과거 `baseSalary − yearlyWelfareTotal(br)` 공식은 br 합산 누락 시 큰 값으로 튀어
-     * (예: 4,541,666) 사용자 의도와 어긋났다 — 단일 소스로 단순화한다.
+     * 「실제 사복 스케줄 합」은 정기 + 분기 + welfareOverride 가 반영된 `yearlyWelfareTotal(br)`.
+     * baseSalary 가 비어 있거나 결과가 0 이하이면 adjustedSalary, 그것도 없으면
+     * `monthlySalaryPortion` 의 ÷12 결과로 폴백한다.
      */
     const baseAnnual = Math.round(Number(emp.baseSalary) || 0);
     const adjAnnual = Math.round(Number(emp.adjustedSalary) || 0);
-    const salaryAnnualForNotice = adjAnnual > 0 ? adjAnnual : baseAnnual;
+    const welfareScheduleTotal = Math.max(0, Math.round(yearlyWelfareTotal(br)));
+    const fromBaseMinusActual =
+      baseAnnual > 0 ? Math.max(0, baseAnnual - welfareScheduleTotal) : 0;
+    const salaryAnnualForNotice =
+      fromBaseMinusActual > 0
+        ? fromBaseMinusActual
+        : adjAnnual > 0
+          ? adjAnnual
+          : Math.round(monthlySalaryPortion(emp) * 12);
     const monthlyFloor = Math.floor(salaryAnnualForNotice / 12);
     const announcementSalaryByMonthList: readonly number[] = Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
