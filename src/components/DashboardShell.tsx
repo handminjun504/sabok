@@ -147,23 +147,29 @@ export function DashboardShell({
       </a>
 
       {/* 데스크톱 사이드바 */}
-      <aside className="neu-sidebar sticky top-3 z-20 mx-3 hidden h-[calc(100vh-1.5rem)] w-[var(--sidebar-w)] shrink-0 flex-col md:flex">
-        <div className="border-b border-[var(--border)] px-4 py-4">
+      <aside className="sticky top-0 z-20 hidden h-screen w-[var(--sidebar-w)] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] md:flex">
+        {/* 로고 영역 — 민트 포인트 */}
+        <div className="border-b border-[var(--border)] px-5 py-5">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="dash-eyebrow">SABOK</p>
-              <p className="neu-title-gradient mt-0.5 truncate text-[0.9375rem] font-bold">사내근로복지기금</p>
+              <div className="flex items-center gap-2">
+                <span
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-white text-xs font-black"
+                  style={{ background: "var(--accent)" }}
+                >
+                  SB
+                </span>
+                <span className="font-extrabold text-sm text-[var(--text)] tracking-tight">SABOK</span>
+              </div>
+              <p className="mt-1 truncate text-xs text-[var(--muted)] leading-snug">사내근로복지기금</p>
             </div>
             <ThemeToggle />
           </div>
           {tenantLine ? (
-            <div className="mt-3 space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-hover)] px-3 py-2.5">
+            <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-hover)] px-3 py-2.5 space-y-2">
               <p className="line-clamp-3 text-xs leading-snug text-[var(--muted)]">{tenantLine}</p>
               {showTenantSwitch ? (
-                <Link
-                  href="/dashboard/select-tenant"
-                  className="btn btn-secondary w-full justify-center text-xs"
-                >
+                <Link href="/dashboard/select-tenant" className="btn btn-secondary w-full justify-center text-xs">
                   거래처 전환
                 </Link>
               ) : null}
@@ -178,7 +184,7 @@ export function DashboardShell({
 
       {/* 모바일 상단 바 */}
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="neu-topbar sticky top-3 z-30 mx-3 mt-3 flex items-center gap-3 px-3 py-2.5 md:hidden">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 md:hidden">
           <button
             type="button"
             className="btn btn-outline h-10 px-3 text-sm"
@@ -251,7 +257,7 @@ export function DashboardShell({
 
         <main
           id="main-content"
-          className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8"
+          className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-5 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12"
         >
           {children}
         </main>
