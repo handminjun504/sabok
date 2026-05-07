@@ -12,8 +12,11 @@ export function DashboardReserveStatusPanel({ summary }: { summary: TenantAdditi
           추가 적립(출연) 누적
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-          활성 출연(위탁) 거래처가 없어 적립 완료 여부를 표시할 수 없습니다. 출연처를 두고 출연 금액을 반영하면
-          여기서 법인 자본금의 50% 한도 대비 누적 추가 적립을 볼 수 있습니다.
+          거래처가 등록되어 있지 않아 적립 현황을 계산할 수 없습니다.
+        </p>
+        <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
+          법인은 사업주가 기금에 출연할 때 지출액의 <strong className="text-[var(--text)]">20%를 추가로 적립</strong>해야 하며, 자본금의 50%에 도달하면 추가 적립이 끝납니다.
+          거래처 메뉴에서 출연처를 등록하고 출연 금액을 입력하면 여기서 진행 현황을 볼 수 있습니다.
         </p>
       </section>
     );
