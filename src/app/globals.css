@@ -1,32 +1,32 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────────────
- * 디자인 토큰 — 민트(Mint) × 흑백 팔레트
- *   Accent: 민트 계열 (#00B8A0) — 라이트/다크 모두 콘트라스트 4.5:1+ 충족
- *   Neutral: 완전한 흑백 계열 (웜 힌트 없음) — 가독성 최우선
+ * 디자인 토큰 — 진(眞) 흑백 × 민트 강조
+ *   Surfaces / Text: 100% 무채색(중성 회색) — 배경에 민트 힌트 없음
+ *   Accent only: 민트(#00B8A0) — 버튼·링·강조에만 한정 사용
  * ──────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
 
-  /* ── Brand / Accent (민트) ── */
+  /* ── Brand / Accent (민트) — 강조에만 사용 ── */
   --mint-500: #00B8A0;
   --mint-600: #00998A;
   --mint-400: #1FD0BA;
 
-  /* ── Neutrals (light) ── */
-  --ink:       #0D1F1D;
-  --ink-muted: #4B6B68;
+  /* ── Neutrals (light) — 무채색 ── */
+  --ink:       #0F0F10;
+  --ink-muted: #6A6A6E;
 
-  /* ── Surfaces ── */
-  --bg:            #F4FAFA;
-  --bg-soft:       #E8F5F3;
+  /* ── Surfaces — 순백·회색 계열 ── */
+  --bg:            #FFFFFF;
+  --bg-soft:       #FAFAFA;
   --surface:       #FFFFFF;
-  --surface-hover: #F0FAFA;
-  --surface-sunken:#E3F2F0;
+  --surface-hover: #F5F5F6;
+  --surface-sunken:#F2F2F3;
 
   /* ── Borders ── */
-  --border:        rgba(13, 31, 29, 0.09);
-  --border-strong: rgba(13, 31, 29, 0.17);
+  --border:        rgba(15, 15, 16, 0.08);
+  --border-strong: rgba(15, 15, 16, 0.16);
   --line:          1px solid var(--border);
   --line-strong:   1px solid var(--border-strong);
 
@@ -42,8 +42,8 @@
   --primary:       var(--mint-500);
   --primary-hover: var(--mint-600);
 
-  --success:      #059669;
-  --success-soft: rgba(5, 150, 105, 0.10);
+  --success:      #16A34A;
+  --success-soft: rgba(22, 163, 74, 0.10);
   --warn:         #B45309;
   --warn-soft:    rgba(180, 83, 9, 0.10);
   --danger:       #DC2626;
@@ -74,25 +74,25 @@
   --dash-caps-tracking: 0.05em;
 }
 
-/* ── 다크모드 (OS 자동) ── */
+/* ── 다크모드 (OS 자동) — 무채색 검정 ── */
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --ink:       #E4F2F0;
-    --ink-muted: #7AABA7;
-    --bg:            #08100F;
-    --bg-soft:       #0D1817;
-    --surface:       #111C1B;
-    --surface-hover: #182724;
-    --surface-sunken:#0A1615;
-    --border:        rgba(228, 242, 240, 0.09);
-    --border-strong: rgba(228, 242, 240, 0.16);
+    --ink:       #F5F5F6;
+    --ink-muted: #9A9A9E;
+    --bg:            #0A0A0B;
+    --bg-soft:       #111113;
+    --surface:       #131315;
+    --surface-hover: #1B1B1E;
+    --surface-sunken:#0F0F11;
+    --border:        rgba(245, 245, 246, 0.09);
+    --border-strong: rgba(245, 245, 246, 0.18);
     --accent:        #1FD0BA;
     --accent-dim:    #00B8A0;
     --accent-soft:   rgba(31, 208, 186, 0.14);
-    --accent-ring:   rgba(31, 208, 186, 0.32);
-    --success:      #34D399;
-    --success-soft: rgba(52, 211, 153, 0.14);
+    --accent-ring:   rgba(31, 208, 186, 0.34);
+    --success:      #22C55E;
+    --success-soft: rgba(34, 197, 94, 0.14);
     --warn:         #FBBF24;
     --warn-soft:    rgba(251, 191, 36, 0.14);
     --danger:       #F87171;
@@ -107,13 +107,13 @@
 /* ── 수동 다크 토글 ── */
 [data-theme="dark"] {
   color-scheme: dark;
-  --ink: #E4F2F0; --ink-muted: #7AABA7;
-  --bg: #08100F; --bg-soft: #0D1817;
-  --surface: #111C1B; --surface-hover: #182724; --surface-sunken: #0A1615;
-  --border: rgba(228,242,240,0.09); --border-strong: rgba(228,242,240,0.16);
+  --ink: #F5F5F6; --ink-muted: #9A9A9E;
+  --bg: #0A0A0B; --bg-soft: #111113;
+  --surface: #131315; --surface-hover: #1B1B1E; --surface-sunken: #0F0F11;
+  --border: rgba(245,245,246,0.09); --border-strong: rgba(245,245,246,0.18);
   --accent: #1FD0BA; --accent-dim: #00B8A0;
-  --accent-soft: rgba(31,208,186,0.14); --accent-ring: rgba(31,208,186,0.32);
-  --success: #34D399; --success-soft: rgba(52,211,153,0.14);
+  --accent-soft: rgba(31,208,186,0.14); --accent-ring: rgba(31,208,186,0.34);
+  --success: #22C55E; --success-soft: rgba(34,197,94,0.14);
   --warn: #FBBF24; --warn-soft: rgba(251,191,36,0.14);
   --danger: #F87171; --danger-soft: rgba(248,113,113,0.14); --danger-ring: rgba(248,113,113,0.34);
   --shadow-card: 0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
@@ -123,13 +123,13 @@
 
 [data-theme="light"] {
   color-scheme: light;
-  --ink: #0D1F1D; --ink-muted: #4B6B68;
-  --bg: #F4FAFA; --bg-soft: #E8F5F3;
-  --surface: #FFFFFF; --surface-hover: #F0FAFA; --surface-sunken: #E3F2F0;
-  --border: rgba(13,31,29,0.09); --border-strong: rgba(13,31,29,0.17);
+  --ink: #0F0F10; --ink-muted: #6A6A6E;
+  --bg: #FFFFFF; --bg-soft: #FAFAFA;
+  --surface: #FFFFFF; --surface-hover: #F5F5F6; --surface-sunken: #F2F2F3;
+  --border: rgba(15,15,16,0.08); --border-strong: rgba(15,15,16,0.16);
   --accent: #00B8A0; --accent-dim: #00998A;
   --accent-soft: rgba(0,184,160,0.10); --accent-ring: rgba(0,184,160,0.28);
-  --success: #059669; --success-soft: rgba(5,150,105,0.10);
+  --success: #16A34A; --success-soft: rgba(22,163,74,0.10);
   --warn: #B45309; --warn-soft: rgba(180,83,9,0.10);
   --danger: #DC2626; --danger-soft: rgba(220,38,38,0.08); --danger-ring: rgba(220,38,38,0.30);
   --shadow-card: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04);
@@ -711,6 +711,42 @@ main h1 { letter-spacing: -0.025em; }
    * ──────────────────────────────────────────────────────────────── */
   .table-zebra tbody tr:nth-child(odd) { background: color-mix(in srgb, var(--surface-sunken) 50%, transparent); }
   .table-zebra tbody tr:hover { background: var(--surface-hover); }
+
+  /* ─────────────────────────────────────────────────────────────────
+   * 콤팩트 폼 — 직원/거래처 등 양식형 UI
+   *   th 가 좌측 라벨, td 가 입력 — 시각적 잡음을 최소화한다.
+   * ──────────────────────────────────────────────────────────────── */
+  .form-section-header {
+    background: var(--surface-sunken);
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem 0.875rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: var(--dash-caps-tracking);
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .form-section-header + table { border-top: none; }
+  .form-compact th {
+    background: var(--bg-soft);
+    padding: 0.5rem 0.875rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    vertical-align: middle;
+    border-right: 1px solid var(--border);
+    line-height: 1.35;
+  }
+  .form-compact td {
+    padding: 0.4rem 0.875rem;
+    vertical-align: middle;
+  }
+  .form-compact tbody tr {
+    border-bottom: 1px solid var(--border);
+  }
+  .form-compact tbody tr:last-child { border-bottom: none; }
+  .form-compact .input { padding: 0.4rem 0.625rem; }
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }

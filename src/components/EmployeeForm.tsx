@@ -48,10 +48,10 @@ function NameFieldWithDuplicateCheck({
   }, [name, selfId, existing]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <input
         id={inputId}
-        className="input w-full max-w-xl min-w-0 text-[0.8125rem] leading-normal text-[var(--text)]"
+        className="input w-full max-w-sm min-w-0 text-[0.8125rem] leading-normal text-[var(--text)]"
         name="name"
         type="text"
         required
@@ -94,10 +94,12 @@ function NameFieldWithDuplicateCheck({
   );
 }
 
-const fieldLabelClass = "dash-field-label";
+const fieldLabelClass = "dash-field-label !mb-1";
 
-/** 직원 폼 전역: `.input`과 동일 계열(0.8125rem)로 목록·상세 타이포 통일 */
-const inputClass = "input w-full min-w-0 text-[0.8125rem] leading-normal text-[var(--text)]";
+/** 직원 폼 전역: 폭 과대 입력칸 방지 — 단일 입력은 24rem 까지만 늘어남. */
+const inputClass = "input w-full max-w-sm min-w-0 text-[0.8125rem] leading-normal text-[var(--text)]";
+/** 자녀 수·월 등 짧은 숫자 입력 — 6em 고정. */
+const numCellClass = "input w-24 min-w-0 text-[0.8125rem] leading-normal text-[var(--text)]";
 
 /**
  * 라벨 + 공통 `CommaWonInput` 으로 묶은 Wrapper.
@@ -131,15 +133,17 @@ function LabeledCommaWon({
   const inputId = useId();
   return (
     <div className={`min-w-0 ${className}`}>
-      <label className={fieldLabelClass} htmlFor={inputId}>
-        {label}
-      </label>
+      {label ? (
+        <label className={fieldLabelClass} htmlFor={inputId}>
+          {label}
+        </label>
+      ) : null}
       <CommaWonInput
         id={inputId}
         name={name}
         defaultValue={defaultValue ?? null}
         className={inputClass}
-        placeholder={optional ? "(선택)" : undefined}
+        placeholder={optional ? "0" : "0"}
         onUserChange={onUserChange}
       />
       {hint ? (
@@ -208,15 +212,11 @@ function SalaryPairFields({
   }, [effectiveAnnual, minimumAnnualSalaryWon]);
 
   return (
-    <div className="w-full min-w-0 space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-hover)]/60 p-3">
-      <p className="text-xs font-semibold text-[var(--muted)]">기존연봉 · 조정급여 (원)</p>
-      <p className="text-xs text-[var(--muted)]">
-        조정급여는 기존의 <strong className="text-[var(--text)]">80~100%</strong>만 가능.
-      </p>
-      <div className="grid gap-2 sm:grid-cols-2">
+    <div className="w-full min-w-0 space-y-1.5">
+      <div className="grid gap-2 sm:grid-cols-2 sm:max-w-md">
         <div className="min-w-0">
           <label className={fieldLabelClass} htmlFor={baseId}>
-            기존연봉 (원)
+            기존연봉
           </label>
           <input
             id={baseId}
@@ -234,7 +234,7 @@ function SalaryPairFields({
         </div>
         <div className="min-w-0">
           <label className={fieldLabelClass} htmlFor={adjId}>
-            조정급여 (원)
+            조정급여
           </label>
           <input
             id={adjId}
@@ -244,7 +244,7 @@ function SalaryPairFields({
             inputMode="numeric"
             autoComplete="off"
             value={adjStr}
-            placeholder="미입력·0 = 기존연봉 적용"
+            placeholder="0 = 기존연봉"
             onChange={(e) => {
               const d = digitsOnly(e.target.value);
               setAdjStr(d ? formatWon(Number(d)) : "");
@@ -253,13 +253,11 @@ function SalaryPairFields({
         </div>
       </div>
       {adjRangeHint && !adjRangeError ? (
-        <p className="text-xs leading-relaxed text-[var(--muted)]">{adjRangeHint}</p>
+        <p className="text-[11px] leading-snug text-[var(--muted)]">{adjRangeHint}</p>
       ) : null}
-      {adjRangeError ? <p className="text-sm font-medium text-[var(--danger)]">{adjRangeError}</p> : null}
+      {adjRangeError ? <p className="text-xs font-medium text-[var(--danger)]">{adjRangeError}</p> : null}
       {minWageWarning ? (
-        <p className="rounded-lg border border-amber-200/90 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950">
-          {minWageWarning}
-        </p>
+        <p className="text-[11px] leading-snug text-[var(--warn)]">⚠ {minWageWarning}</p>
       ) : null}
     </div>
   );
@@ -281,6 +279,8 @@ function Cell({
   required?: boolean;
 }) {
   const inputId = useId();
+  /** 숫자(월·인원)는 6em 고정 폭, 그 외 텍스트는 그리드 셀 폭 따라감 */
+  const cls = type === "number" ? numCellClass : inputClass;
   return (
     <div className={`min-w-0 ${className}`}>
       <label className={fieldLabelClass} htmlFor={inputId}>
@@ -288,7 +288,7 @@ function Cell({
       </label>
       <input
         id={inputId}
-        className={inputClass}
+        className={cls}
         name={name}
         type={type}
         defaultValue={defaultValue ?? ""}
@@ -554,152 +554,168 @@ export function EmployeeForm({
       ) : null}
 
       {/* ── 콤팩트 테이블 폼 ── */}
-      <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+      <div className="form-compact overflow-hidden rounded-lg border border-[var(--border)]">
 
         {/* 기본 정보 */}
-        <div className="border-b border-[var(--border)] bg-[var(--surface-hover)]/60 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-[var(--muted)]">기본 정보</div>
+        <div className="form-section-header">기본 정보</div>
         <table className="w-full border-collapse bg-[var(--surface)] text-sm">
-          <colgroup><col className="w-[28%]" /><col /></colgroup>
+          <colgroup><col className="w-[22%] sm:w-[18%]" /><col /></colgroup>
           <tbody>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">코드</th>
-              <td className="px-3 py-2 text-xs text-[var(--muted)]">
+            <tr>
+              <th>코드</th>
+              <td className="text-xs text-[var(--muted)]">
                 {isNew ? "저장 시 자동 부여 (대표이사 → 0)" : <span className="font-mono font-semibold text-[var(--text)]">{employee!.employeeCode}</span>}
               </td>
             </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">이름 <span className="text-[var(--danger)]">*</span></th>
-              <td className="px-3 py-1.5"><NameFieldWithDuplicateCheck inputId={nameId} defaultValue={employee?.name ?? ""} selfId={employee?.id ?? null} existing={existingEmployees} /></td>
+            <tr>
+              <th>이름 <span className="text-[var(--danger)]">*</span></th>
+              <td><NameFieldWithDuplicateCheck inputId={nameId} defaultValue={employee?.name ?? ""} selfId={employee?.id ?? null} existing={existingEmployees} /></td>
             </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">직급 <span className="text-[var(--danger)]">*</span></th>
-              <td className="px-3 py-1.5">
-                <select id={positionId} name="position" className={`${inputClass} max-w-xs`} required defaultValue={positionNeedsPlaceholder ? "" : positionDefault}>
+            <tr>
+              <th>직급 <span className="text-[var(--danger)]">*</span></th>
+              <td>
+                <select id={positionId} name="position" className={inputClass} required defaultValue={positionNeedsPlaceholder ? "" : positionDefault}>
                   {positionNeedsPlaceholder ? <option value="" disabled>선택하세요</option> : null}
                   {positionOptions.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
               </td>
             </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">레벨 (1~5) <span className="text-[var(--danger)]">*</span></th>
-              <td className="px-3 py-1.5">
-                <input id={levelId} className={`${inputClass} w-20`} name="level" type="number" min={1} max={5} value={levelStr} onChange={(e) => setLevelStr(e.target.value)} required />
+            <tr>
+              <th>레벨 <span className="text-[var(--danger)]">*</span></th>
+              <td>
+                <input id={levelId} className={numCellClass} name="level" type="number" min={1} max={5} value={levelStr} onChange={(e) => setLevelStr(e.target.value)} required />
               </td>
             </tr>
           </tbody>
         </table>
 
         {/* 급여·복지 */}
-        <div className="border-b border-t border-[var(--border)] bg-[var(--surface-hover)]/60 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-[var(--muted)]">급여 · 복지</div>
+        <div className="form-section-header">급여 · 복지</div>
         <table className="w-full border-collapse bg-[var(--surface)] text-sm">
-          <colgroup><col className="w-[28%]" /><col /></colgroup>
+          <colgroup><col className="w-[22%] sm:w-[18%]" /><col /></colgroup>
           <tbody>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">기존연봉 / 조정급여</th>
-              <td className="px-3 py-1.5">
+            <tr>
+              <th>기존연봉 / 조정급여</th>
+              <td>
                 <SalaryPairFields key={`salary-${employee?.baseSalary ?? 0}-${employee?.adjustedSalary ?? 0}`} defaultBase={employee?.baseSalary} defaultAdjusted={employee?.adjustedSalary} minimumAnnualSalaryWon={minimumAnnualSalaryWon} onSalaryRangeValid={setSalaryRangeOk} />
               </td>
             </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">사복지급분</th>
-              <td className="px-3 py-1.5"><LabeledCommaWon name="welfareAllocation" label="" defaultValue={welfareDefaultValue} onUserChange={() => { if (!welfareTouched) setWelfareTouched(true); }} hint={welfareHint} /></td>
+            <tr>
+              <th>사복지급분</th>
+              <td><LabeledCommaWon name="welfareAllocation" label="" defaultValue={welfareDefaultValue} onUserChange={() => { if (!welfareTouched) setWelfareTouched(true); }} hint={welfareHint} /></td>
             </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">예상 인센</th>
-              <td className="px-3 py-1.5"><LabeledCommaWon name="incentiveAmount" label="" defaultValue={employee?.incentiveAmount ?? undefined} optional /></td>
+            <tr>
+              <th>예상 인센</th>
+              <td><LabeledCommaWon name="incentiveAmount" label="" defaultValue={employee?.incentiveAmount ?? undefined} optional /></td>
             </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">알아서금액</th>
-              <td className="px-3 py-1.5"><LabeledCommaWon name="discretionaryAmount" label="" defaultValue={employee?.discretionaryAmount ?? undefined} optional /></td>
+            <tr>
+              <th>알아서금액</th>
+              <td><LabeledCommaWon name="discretionaryAmount" label="" defaultValue={employee?.discretionaryAmount ?? undefined} optional /></td>
             </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">전기 더받은 사복(차감)</th>
-              <td className="px-3 py-1.5"><LabeledCommaWon name="priorOverpaidWelfareWon" label="" defaultValue={employee?.priorOverpaidWelfareWon ?? undefined} optional /></td>
+            <tr>
+              <th>전기 더받은<br/>사복(차감)</th>
+              <td><LabeledCommaWon name="priorOverpaidWelfareWon" label="" defaultValue={employee?.priorOverpaidWelfareWon ?? undefined} optional /></td>
             </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">월지급 / 분기지급</th>
-              <td className="flex flex-wrap gap-3 px-3 py-1.5">
-                <LabeledCommaWon name="monthlyPayAmount" label="월" defaultValue={employee?.monthlyPayAmount ?? undefined} optional />
-                <LabeledCommaWon name="quarterlyPayAmount" label="분기" defaultValue={employee?.quarterlyPayAmount ?? undefined} optional />
+            <tr>
+              <th>월·분기 지급</th>
+              <td>
+                <div className="flex flex-wrap gap-3">
+                  <LabeledCommaWon name="monthlyPayAmount" label="월" defaultValue={employee?.monthlyPayAmount ?? undefined} optional />
+                  <LabeledCommaWon name="quarterlyPayAmount" label="분기" defaultValue={employee?.quarterlyPayAmount ?? undefined} optional />
+                </div>
               </td>
             </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">연간 지급 예정액</th>
-              <td className="px-3 py-1.5"><LabeledCommaWon name="expectedYearlyWelfare" label="" defaultValue={employee?.expectedYearlyWelfare ?? undefined} optional /></td>
+            <tr>
+              <th>연간 지급 예정</th>
+              <td><LabeledCommaWon name="expectedYearlyWelfare" label="" defaultValue={employee?.expectedYearlyWelfare ?? undefined} optional /></td>
             </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">급여포함 신고 표시</th>
-              <td className="px-3 py-1.5">
-                <select id={varianceModeId} name="salaryInclusionVarianceMode" className={`${inputClass} max-w-xs`} defaultValue={employee?.salaryInclusionVarianceMode ?? ""}>
+            <tr>
+              <th>급여포함<br/>신고 표시</th>
+              <td>
+                <select id={varianceModeId} name="salaryInclusionVarianceMode" className={inputClass} defaultValue={employee?.salaryInclusionVarianceMode ?? ""}>
                   <option value="">전사 기본</option>
                   {SALARY_INCLUSION_VARIANCE_MODES.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </td>
             </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">플래그</th>
-              <td className="flex flex-wrap gap-x-4 gap-y-2 px-3 py-2 text-[0.8125rem]">
-                <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagAutoAmount" defaultChecked={employee?.flagAutoAmount} />알아서금액(자동)</label>
-                {surveyShowRepReturn && <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagRepReturn" defaultChecked={employee?.flagRepReturn} />대표반환</label>}
-                {surveyShowSpouseReceipt && <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagSpouseReceipt" defaultChecked={employee?.flagSpouseReceipt} />배우자수령</label>}
-                {surveyShowWorkerNet && <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagWorkerNet" defaultChecked={employee?.flagWorkerNet} />근로자 실질수령</label>}
-                <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagWelfareIneligible" defaultChecked={employee?.flagWelfareIneligible ?? false} />사복 미대상</label>
+            <tr>
+              <th>플래그</th>
+              <td>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[0.8125rem]">
+                  <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagAutoAmount" defaultChecked={employee?.flagAutoAmount} />알아서금액(자동)</label>
+                  {surveyShowRepReturn && <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagRepReturn" defaultChecked={employee?.flagRepReturn} />대표반환</label>}
+                  {surveyShowSpouseReceipt && <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagSpouseReceipt" defaultChecked={employee?.flagSpouseReceipt} />배우자수령</label>}
+                  {surveyShowWorkerNet && <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagWorkerNet" defaultChecked={employee?.flagWorkerNet} />근로자 실질수령</label>}
+                  <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagWelfareIneligible" defaultChecked={employee?.flagWelfareIneligible ?? false} />사복 미대상</label>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
 
         {/* 일정·가족·공제 */}
-        <div className="border-b border-t border-[var(--border)] bg-[var(--surface-hover)]/60 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-[var(--muted)]">일정 · 가족 · 공제</div>
+        <div className="form-section-header">일정 · 가족 · 공제</div>
         <table className="w-full border-collapse bg-[var(--surface)] text-sm">
-          <colgroup><col className="w-[28%]" /><col /></colgroup>
+          <colgroup><col className="w-[22%] sm:w-[18%]" /><col /></colgroup>
           <tbody>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">입사월 / 급여일</th>
-              <td className="flex flex-wrap gap-3 px-3 py-1.5">
-                <Cell label="입사월" name="hireMonth" type="number" defaultValue={employee?.hireMonth ?? ""} />
-                <Cell label="급여일" name="payDay" type="number" defaultValue={employee?.payDay ?? ""} />
-              </td>
-            </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">퇴사</th>
-              <td className="flex flex-wrap items-end gap-3 px-3 py-1.5">
-                <Cell label="퇴사 연도" name="resignYear" type="number" defaultValue={employee?.resignYear ?? ""} />
-                <Cell label="퇴사 월" name="resignMonth" type="number" defaultValue={employee?.resignMonth ?? ""} />
-                <label className="flex cursor-pointer items-center gap-1.5 text-xs">
-                  <input type="checkbox" name="flagPayWelfareOnResignMonth" defaultChecked={employee?.flagPayWelfareOnResignMonth ?? false} />
-                  퇴사월 사복 지급
-                </label>
-              </td>
-            </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">생일월 / 결혼기념월</th>
-              <td className="flex flex-wrap gap-3 px-3 py-1.5">
-                <Cell label="생일월" name="birthMonth" type="number" defaultValue={employee?.birthMonth ?? ""} />
-                <Cell label="결혼기념월" name="weddingMonth" type="number" defaultValue={employee?.weddingMonth ?? ""} />
-              </td>
-            </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">자녀 수</th>
-              <td className="flex flex-wrap gap-3 px-3 py-1.5">
-                <Cell label="영유아" name="childrenInfant" type="number" defaultValue={employee?.childrenInfant ?? 0} />
-                <Cell label="미취학" name="childrenPreschool" type="number" defaultValue={employee?.childrenPreschool ?? 0} />
-                <Cell label="청소년" name="childrenTeen" type="number" defaultValue={employee?.childrenTeen ?? 0} />
-              </td>
-            </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">부모 수</th>
-              <td className="flex flex-wrap gap-3 px-3 py-1.5">
-                <Cell label="부모님" name="parentsCount" type="number" defaultValue={employee?.parentsCount ?? 0} />
-                <Cell label="시부모님" name="parentsInLawCount" type="number" defaultValue={employee?.parentsInLawCount ?? 0} />
+            <tr>
+              <th>입사월 / 급여일</th>
+              <td>
+                <div className="flex flex-wrap gap-3">
+                  <Cell label="입사월" name="hireMonth" type="number" defaultValue={employee?.hireMonth ?? ""} />
+                  <Cell label="급여일" name="payDay" type="number" defaultValue={employee?.payDay ?? ""} />
+                </div>
               </td>
             </tr>
             <tr>
-              <th className="bg-[var(--surface-hover)]/30 px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">공제 발생액</th>
-              <td className="flex flex-wrap gap-3 px-3 py-1.5">
-                <LabeledCommaWon name="insurancePremium" label="보험료" defaultValue={employee?.insurancePremium} />
-                <LabeledCommaWon name="loanInterest" label="대출이자" defaultValue={employee?.loanInterest} />
-                <LabeledCommaWon name="monthlyRentAmount" label="월세(월)" defaultValue={employee?.monthlyRentAmount ?? undefined} optional />
+              <th>퇴사</th>
+              <td>
+                <div className="flex flex-wrap items-end gap-3">
+                  <Cell label="연도" name="resignYear" type="number" defaultValue={employee?.resignYear ?? ""} />
+                  <Cell label="월" name="resignMonth" type="number" defaultValue={employee?.resignMonth ?? ""} />
+                  <label className="flex cursor-pointer items-center gap-1.5 pb-2 text-xs">
+                    <input type="checkbox" name="flagPayWelfareOnResignMonth" defaultChecked={employee?.flagPayWelfareOnResignMonth ?? false} />
+                    퇴사월 사복 지급
+                  </label>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>생일·결혼월</th>
+              <td>
+                <div className="flex flex-wrap gap-3">
+                  <Cell label="생일월" name="birthMonth" type="number" defaultValue={employee?.birthMonth ?? ""} />
+                  <Cell label="결혼기념월" name="weddingMonth" type="number" defaultValue={employee?.weddingMonth ?? ""} />
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>자녀 수</th>
+              <td>
+                <div className="flex flex-wrap gap-3">
+                  <Cell label="영유아" name="childrenInfant" type="number" defaultValue={employee?.childrenInfant ?? 0} />
+                  <Cell label="미취학" name="childrenPreschool" type="number" defaultValue={employee?.childrenPreschool ?? 0} />
+                  <Cell label="청소년" name="childrenTeen" type="number" defaultValue={employee?.childrenTeen ?? 0} />
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>부모 수</th>
+              <td>
+                <div className="flex flex-wrap gap-3">
+                  <Cell label="부모님" name="parentsCount" type="number" defaultValue={employee?.parentsCount ?? 0} />
+                  <Cell label="시부모님" name="parentsInLawCount" type="number" defaultValue={employee?.parentsInLawCount ?? 0} />
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>공제 발생액</th>
+              <td>
+                <div className="flex flex-wrap gap-3">
+                  <LabeledCommaWon name="insurancePremium" label="보험료" defaultValue={employee?.insurancePremium} />
+                  <LabeledCommaWon name="loanInterest" label="대출이자" defaultValue={employee?.loanInterest} />
+                  <LabeledCommaWon name="monthlyRentAmount" label="월세(월)" defaultValue={employee?.monthlyRentAmount ?? undefined} optional />
+                </div>
               </td>
             </tr>
           </tbody>
