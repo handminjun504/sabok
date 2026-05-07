@@ -70,7 +70,13 @@ export async function saveLevelPaymentRuleCellAction(
     return { ok: false, 오류: "저장에 실패했습니다." };
   }
 
-  revalidateLevelArtifacts();
+  /**
+   * 셀 단위 자동 저장(탭 이동 중 blur)에서는 revalidate 를 생략한다.
+   * revalidateLevelArtifacts() 가 RSC 전체를 재렌더링해 입력 포커스가 날아가는 문제를 막기 위함.
+   * LevelRulesMatrixForm 의 liveValues 로컬 상태가 즉시 UI 를 반영하고,
+   * 다른 페이지(스케줄 등)는 force-dynamic 으로 DB 를 직접 읽으므로 지연 없음.
+   * 전체 행 저장(saveLevelRulesAction) 은 별도로 revalidate 한다.
+   */
   return { ok: true };
 }
 
