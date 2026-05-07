@@ -19,7 +19,7 @@ import type {
   Tenant,
 } from "@/types/models";
 import { JournalUploadPanel } from "./JournalUploadPanel";
-import { OperatingReportJsonView } from "./OperatingReportJsonView";
+
 import { OperatingReportPreview } from "./OperatingReportPreview";
 import { OperatingReportValidationPanel } from "./OperatingReportValidationPanel";
 
@@ -129,10 +129,6 @@ export function OperatingReportPreviewClient({ computeArgs, initialView, realEst
 
       <OperatingReportValidationPanel result={validation} unit={unit} />
 
-      <OperatingReportJsonView
-        json={json}
-        fileName={`operating-report-${computeArgs.year}.json`}
-      />
     </div>
   );
 }
