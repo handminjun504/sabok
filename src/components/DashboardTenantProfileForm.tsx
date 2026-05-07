@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateTenantProfileAction, type TenantProfileState } from "@/app/actions/tenant-profile";
 import { CommaWonInput } from "@/components/CommaWonInput";
+import { MaskedInput } from "@/components/MaskedInput";
 import {
   ANNOUNCEMENT_MODES,
   TENANT_OPERATION_MODES,
@@ -102,23 +103,22 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="dash-eyebrow mb-1 block">② 인가번호</label>
-            <input
+            <MaskedInput
               name="approvalNumber"
-              className="input w-full text-xs"
+              pattern="DDDD-DDDD-D"
               defaultValue={tenant.approvalNumber ?? ""}
+              placeholder="2020-2020-4"
               disabled={fieldsLocked}
-              autoComplete="off"
             />
           </div>
           <div>
             <label className="dash-eyebrow mb-1 block">사업자등록번호</label>
-            <input
+            <MaskedInput
               name="businessRegNo"
-              className="input w-full text-xs"
+              pattern="DDD-DD-DDDDD"
               defaultValue={tenant.businessRegNo ?? ""}
+              placeholder="101-01-01010"
               disabled={fieldsLocked}
-              autoComplete="off"
-              placeholder="000-00-00000"
             />
           </div>
         </div>
@@ -225,14 +225,12 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
           </div>
           <div>
             <label className="dash-eyebrow mb-1 block">④ 전화번호</label>
-            <input
+            <MaskedInput
               name="phone"
-              type="tel"
-              className="input w-full text-xs"
+              pattern="DDD-DDDD-DDDD"
               defaultValue={tenant.phone ?? ""}
+              placeholder="010-0101-0101"
               disabled={fieldsLocked}
-              placeholder="02-0000-0000"
-              autoComplete="off"
             />
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
