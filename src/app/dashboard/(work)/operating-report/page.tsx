@@ -31,6 +31,9 @@ import {
   estimateOptionalRecipientsByNotes,
   firstCeoNameFromEmployees,
 } from "@/lib/domain/operating-report";
+import {
+  summarizeTenantAdditionalReserve,
+} from "@/lib/domain/vendor-reserve";
 import { welfareEligibleEmployees } from "@/lib/domain/schedule";
 import { Tabs } from "@/components/Tabs";
 import { OperatingReportPreviewClient } from "@/components/OperatingReportPreviewClient";
@@ -152,6 +155,12 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
   ]);
 
   const { employerTotal, otherTotal } = aggregateVendorContributions(tenant, vendors, vendorContribs);
+  const reserveSummary = tenant != null
+    ? summarizeTenantAdditionalReserve(
+        { clientEntityType: tenant.clientEntityType, headOfficeCapital: tenant.headOfficeCapital },
+        vendors,
+      )
+    : { kind: "NO_VENDORS" as const };
   const autoCeoName = firstCeoNameFromEmployees(employees);
   const autoOptionalRecipients = estimateOptionalRecipientsByNotes(notes, year);
 
@@ -253,6 +262,42 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
               <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">사업주 외 출연(자동)</th>
               <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">{format(otherTotal)} 원</td>
             </tr>
+            {/* 법인 전용: 추가 적립금 현황 */}
+            {reserveSummary.kind === "CORPORATE" ? (
+              <>
+                <tr className="border-b border-[var(--border)]">
+                  <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">본사 자본금</th>
+                  <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">
+                    {reserveSummary.capitalWon > 0 ? `${format(reserveSummary.capitalWon)} 원` : "— (미입력)"}
+                  </td>
+                </tr>
+                <tr className="border-b border-[var(--border)]">
+                  <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">추가 적립 상한 (자본금 × 50%)</th>
+                  <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">
+                    {reserveSummary.capWon > 0 ? `${format(reserveSummary.capWon)} 원` : "—"}
+                  </td>
+                </tr>
+                <tr className="border-b border-[var(--border)]">
+                  <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">누적 추가 적립금</th>
+                  <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">
+                    {format(reserveSummary.accumulatedTotalWon)} 원
+                  </td>
+                </tr>
+                <tr className="border-b border-[var(--border)]">
+                  <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">남은 적립액</th>
+                  <td className={`px-3 py-2 font-mono tabular-nums font-semibold ${reserveSummary.isComplete ? "text-[var(--success)]" : "text-[var(--warn)]"}`}>
+                    {reserveSummary.isComplete
+                      ? "✓ 적립 완료 — 추가 적립 필요 없음"
+                      : `${format(reserveSummary.remainingWon)} 원 남음`}
+                  </td>
+                </tr>
+              </>
+            ) : reserveSummary.kind === "NO_VENDORS" && tenant?.clientEntityType === "CORPORATE" ? (
+              <tr className="border-b border-[var(--border)]">
+                <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">추가 적립금</th>
+                <td className="px-3 py-2 text-xs text-[var(--muted)]">출연처 미등록 — 거래처 설정에서 등록하세요</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
