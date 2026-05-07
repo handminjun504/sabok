@@ -27,6 +27,7 @@ const schema = z.object({
   approvalNumber: z.string().optional(),
   businessRegNo: z.string().optional(),
   headOfficeCapital: z.string().optional(),
+  accumulatedReserveTotalWon: z.string().optional(),
   announcementMode: z.preprocess(
     (v) => parseAnnouncementMode(v),
     z.enum(["SINGLE", "BATCHED"]),
@@ -58,6 +59,9 @@ export async function updateTenantProfileAction(
   const capitalRaw = String(formData.get("headOfficeCapital") ?? "")
     .replace(/,/g, "")
     .trim();
+  const reserveRaw = String(formData.get("accumulatedReserveTotalWon") ?? "")
+    .replace(/,/g, "")
+    .trim();
   const ceoRaw = String(formData.get("ceoName") ?? "").trim();
   const industryRaw = String(formData.get("industry") ?? "").trim();
   const phoneRaw = String(formData.get("phone") ?? "").trim();
@@ -73,6 +77,7 @@ export async function updateTenantProfileAction(
     approvalNumber: approvalRaw.length > 0 ? approvalRaw : undefined,
     businessRegNo: businessRegRaw.length > 0 ? businessRegRaw : undefined,
     headOfficeCapital: capitalRaw.length > 0 ? capitalRaw : undefined,
+    accumulatedReserveTotalWon: reserveRaw.length > 0 ? reserveRaw : undefined,
     announcementMode: formData.get("announcementMode"),
     announcementBatchFromMonth: String(formData.get("announcementBatchFromMonth") ?? "").trim() || undefined,
     announcementBatchToMonth: String(formData.get("announcementBatchToMonth") ?? "").trim() || undefined,
@@ -94,6 +99,18 @@ export async function updateTenantProfileAction(
       return { 오류: "본사 자본금은 0 이상의 숫자로 입력하세요." };
     }
     headOfficeCapital = n;
+  }
+
+  let accumulatedReserveTotalWon: number | null = null;
+  if (
+    parsed.data.accumulatedReserveTotalWon != null &&
+    parsed.data.accumulatedReserveTotalWon !== ""
+  ) {
+    const n = Number(parsed.data.accumulatedReserveTotalWon);
+    if (!Number.isFinite(n) || n < 0) {
+      return { 오류: "누적 추가 적립금은 0 이상의 숫자로 입력하세요." };
+    }
+    accumulatedReserveTotalWon = Math.round(n);
   }
 
   const industryCode = parsed.data.industry && isIndustryCode(parsed.data.industry) ? parsed.data.industry : null;
@@ -120,6 +137,7 @@ export async function updateTenantProfileAction(
       approvalNumber: parsed.data.approvalNumber?.trim() ? parsed.data.approvalNumber.trim() : null,
       businessRegNo: parsed.data.businessRegNo?.trim() ? parsed.data.businessRegNo.trim() : null,
       headOfficeCapital,
+      accumulatedReserveTotalWon,
       announcementMode: parsed.data.announcementMode,
       announcementBatchFromMonth: batchRange.fromMonth,
       announcementBatchToMonth: batchRange.toMonth,

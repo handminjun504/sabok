@@ -214,6 +214,18 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             </p>
           </div>
           <div>
+            <label className="dash-eyebrow mb-1 block">누적 추가 적립금 (원)</label>
+            <CommaWonInput
+              name="accumulatedReserveTotalWon"
+              defaultValue={tenant.accumulatedReserveTotalWon}
+              className="input w-full text-xs"
+              disabled={fieldsLocked}
+            />
+            <p className="mt-1 text-[10px] leading-4 text-[var(--muted)]">
+              사업주 출연 시 추가로 적립한 금액의 누적 합. 자본금 50% 한도 진행도(대시보드)에 사용됩니다. 법인은 한도 도달 시 가산이 종료됩니다.
+            </p>
+          </div>
+          <div>
             <label className="dash-eyebrow mb-1 block">③ 설립등기일</label>
             <input
               name="incorporationDate"

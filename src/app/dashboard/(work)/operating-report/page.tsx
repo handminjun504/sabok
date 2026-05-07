@@ -158,7 +158,11 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
   const { employerTotal, otherTotal } = aggregateVendorContributions(tenant, vendors, vendorContribs);
   const reserveSummary = tenant != null
     ? summarizeTenantAdditionalReserve(
-        { clientEntityType: tenant.clientEntityType, headOfficeCapital: tenant.headOfficeCapital },
+        {
+          clientEntityType: tenant.clientEntityType,
+          headOfficeCapital: tenant.headOfficeCapital,
+          accumulatedReserveTotalWon: tenant.accumulatedReserveTotalWon,
+        },
         vendors,
       )
     : { kind: "NO_VENDORS" as const };

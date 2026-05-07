@@ -28,7 +28,11 @@ export default async function DashboardHomePage() {
   const inactiveCount = employees.length - activeCount;
   const reserveSummary = tenant
     ? summarizeTenantAdditionalReserve(
-        { clientEntityType: tenant.clientEntityType, headOfficeCapital: tenant.headOfficeCapital },
+        {
+          clientEntityType: tenant.clientEntityType,
+          headOfficeCapital: tenant.headOfficeCapital,
+          accumulatedReserveTotalWon: tenant.accumulatedReserveTotalWon,
+        },
         vendors,
       )
     : { kind: "NO_VENDORS" as const };

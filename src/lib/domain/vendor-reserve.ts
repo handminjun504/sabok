@@ -82,6 +82,11 @@ export type TenantAdditionalReserveSummary =
 type ReserveTenantInput = {
   clientEntityType: "INDIVIDUAL" | "CORPORATE";
   headOfficeCapital: number | null;
+  /**
+   * 운영자가 거래처 출연처와 무관하게 직접 입력한 누적 추가 적립금(원).
+   * 거래처 합산이 비어 있을 때(또는 거래처 기능 미사용 환경) 폴백 소스로 사용된다.
+   */
+  accumulatedReserveTotalWon?: number | null;
 };
 
 type ReserveVendorInput = {
@@ -99,9 +104,22 @@ export function summarizeTenantAdditionalReserve(
   vendors: readonly ReserveVendorInput[]
 ): TenantAdditionalReserveSummary {
   const active = vendors.filter((v) => v.active);
-  if (active.length === 0) return { kind: "NO_VENDORS" };
+  const vendorTotal = active.reduce((s, v) => s + Math.max(0, v.accumulatedReserve), 0);
+  const tenantDirectRaw = tenant.accumulatedReserveTotalWon;
+  const tenantDirect =
+    tenantDirectRaw != null && Number.isFinite(tenantDirectRaw)
+      ? Math.max(0, Math.round(tenantDirectRaw))
+      : 0;
 
-  const accumulatedTotalWon = active.reduce((s, v) => s + Math.max(0, v.accumulatedReserve), 0);
+  /**
+   * 거래처 합과 테넌트 직접 입력값을 합산해 누적 적립금을 산정한다.
+   * 거래처 기능을 미사용 (active.length === 0) 하고 직접 입력값도 0 이면 NO_VENDORS.
+   */
+  if (active.length === 0 && tenantDirect <= 0) {
+    return { kind: "NO_VENDORS" };
+  }
+
+  const accumulatedTotalWon = vendorTotal + tenantDirect;
 
   if (tenant.clientEntityType !== "CORPORATE") {
     return { kind: "INDIVIDUAL", accumulatedTotalWon, activeVendorCount: active.length };

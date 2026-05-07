@@ -256,6 +256,12 @@ export type Tenant = {
   businessRegNo: string | null;
   /** PB `headOfficeCapital` (원) — 없으면 null */
   headOfficeCapital: number | null;
+  /**
+   * PB `accumulatedReserveTotalWon` (원) — 운영자가 직접 입력하는 「누적 추가 적립금」.
+   * 거래처(출연처) 기능이 비활성화된 환경에서 자본금 50% 한도 진행도 산정에 사용한다.
+   * 거래처가 등록되어 있으면 거래처 합산이 우선이고 이 값은 폴백.
+   */
+  accumulatedReserveTotalWon: number | null;
   /** 안내 멘트 기본 모드 — PB `announcementMode` 없으면 "SINGLE" */
   announcementMode: AnnouncementMode;
   /** 묶음 안내 기본 시작 월(1~12) — 없으면 null (UI 기본 1) */

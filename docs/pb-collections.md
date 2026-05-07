@@ -27,13 +27,14 @@ Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사
 | approvalNumber     | text | no   | 인가번호 등 위탁·등록 식별 문자열 |
 | businessRegNo      | text | no   | 사업자등록번호(표시·검색용, 형식 자유) |
 | headOfficeCapital  | number | no | 본사 자본금(원). 미입력 시 null |
+| accumulatedReserveTotalWon | number | no | 운영자가 직접 입력하는 누적 추가 적립금(원). 거래처(출연처) 컬렉션이 비어 있어도 자본금 50% 한도 진행도 산정에 사용. 미입력 시 null |
 | announcementMode   | text | no   | 안내 멘트 기본 모드. `SINGLE`(매 달 하나씩) \| `BATCHED`(여러 달 한 번에). 없으면 `SINGLE` 로 동작 |
 | announcementBatchFromMonth | number | no | 묶음 모드 기본 시작 월(1~12). 없으면 UI 기본 1 |
 | announcementBatchToMonth   | number | no | 묶음 모드 기본 끝 월(1~12). 없으면 UI 기본 3 |
 
 **도메인**: 테넌트 1건 ≈ 사업장·기금 1단위(기금 1개/사업장). 코드: `fund-site-model.ts`.
 
-앱은 PB에 필드가 없어도 **조회 시** 기본값(개인·일반운영)으로 동작하지만, **신규 업체 등록(create)** 은 `clientEntityType`, `operationMode`가 컬렉션에 있어야 합니다. 선택 필드 `approvalNumber`, `businessRegNo`, `headOfficeCapital`를 폼에서내려면 Admin에서 동일 이름으로 필드를 추가하세요(없으면 create 시 400).
+앱은 PB에 필드가 없어도 **조회 시** 기본값(개인·일반운영)으로 동작하지만, **신규 업체 등록(create)** 은 `clientEntityType`, `operationMode`가 컬렉션에 있어야 합니다. 선택 필드 `approvalNumber`, `businessRegNo`, `headOfficeCapital`, `accumulatedReserveTotalWon`을 폼에서 내려면 Admin에서 동일 이름으로 필드를 추가하세요(없으면 create 시 400). `accumulatedReserveTotalWon`은 update 시 자동 폴백 재시도가 있어 미추가 환경에서도 다른 필드는 정상 저장되지만, 값을 보존하려면 PB 어드민 → `sabok_tenants` → 「+ New field」 → number 로 추가하세요.
 
 ## `sabok_users`
 
@@ -249,6 +250,6 @@ Unique: `(tenantId, code)`
 | note                 | text   | no   |      |
 | occurredAt           | text   | no   | ISO 날짜 문자열(선택) |
 
-추가 적립 산식: 앱은 `src/lib/domain/vendor-reserve.ts`의 `computeAdditionalReserve`를 따른다. **법인**은 출연금 C의 20%를 본사 자본금의 50% 누적까지 추가 적립하고 상한 도달 후에는 추가 적립 없음. **개인**은 매 출연금(월)마다 항상 C의 20% 추가 적립. 서버 기록 시 거래처(`sabok_tenants`)의 `clientEntityType`·`headOfficeCapital`을 우선한다.
+추가 적립 산식: 앱은 `src/lib/domain/vendor-reserve.ts`의 `computeAdditionalReserve`를 따른다. **법인**은 출연금 C의 20%를 본사 자본금의 50% 누적까지 추가 적립하고 상한 도달 후에는 추가 적립 없음. **개인**은 매 출연금(월)마다 항상 C의 20% 추가 적립. 서버 기록 시 거래처(`sabok_tenants`)의 `clientEntityType`·`headOfficeCapital`을 우선한다. 누적 적립 진행도(`summarizeTenantAdditionalReserve`)는 거래처(`sabok_vendors`) 합산에 `sabok_tenants.accumulatedReserveTotalWon` 직접 입력값을 더해 표시하므로, 거래처 등록을 사용하지 않는 환경에서도 직접 입력만으로 진행도를 볼 수 있다.
 
 Rule: 공개 API는 모두 막고 **Superuser/Admin SDK(Next 서버)** 만 사용하는 것을 권장한다.

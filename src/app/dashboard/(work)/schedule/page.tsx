@@ -107,7 +107,11 @@ export default async function SchedulePage() {
   const reserveSummary =
     tenantRow != null
       ? summarizeTenantAdditionalReserve(
-          { clientEntityType: tenantRow.clientEntityType, headOfficeCapital: tenantRow.headOfficeCapital },
+          {
+            clientEntityType: tenantRow.clientEntityType,
+            headOfficeCapital: tenantRow.headOfficeCapital,
+            accumulatedReserveTotalWon: tenantRow.accumulatedReserveTotalWon,
+          },
           vendors
         )
       : { kind: "NO_VENDORS" as const };

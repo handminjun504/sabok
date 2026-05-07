@@ -168,6 +168,14 @@ function tenantMonthOrNull(r: Record<string, unknown>, key: string): number | nu
 
 function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
   const cap = Number(r.headOfficeCapital);
+  const reserveRaw = r.accumulatedReserveTotalWon;
+  const reserve =
+    reserveRaw == null || reserveRaw === ""
+      ? null
+      : (() => {
+          const n = Math.round(Number(reserveRaw));
+          return Number.isFinite(n) && n >= 0 ? n : null;
+        })();
   const accStart = r.accountingYearStartMonth == null || r.accountingYearStartMonth === ""
     ? null
     : (() => {
@@ -191,6 +199,7 @@ function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
       "사업자등록번호",
     ),
     headOfficeCapital: Number.isFinite(cap) ? cap : null,
+    accumulatedReserveTotalWon: reserve,
     announcementMode: parseAnnouncementMode(r.announcementMode),
     announcementBatchFromMonth: tenantMonthOrNull(r, "announcementBatchFromMonth"),
     announcementBatchToMonth: tenantMonthOrNull(r, "announcementBatchToMonth"),
@@ -372,6 +381,7 @@ export async function tenantUpdateProfile(
     approvalNumber: string | null;
     businessRegNo: string | null;
     headOfficeCapital: number | null;
+    accumulatedReserveTotalWon: number | null;
     announcementMode: AnnouncementMode;
     announcementBatchFromMonth: number | null;
     announcementBatchToMonth: number | null;
@@ -398,6 +408,13 @@ export async function tenantUpdateProfile(
     businessRegNo: data.businessRegNo,
     headOfficeCapital: data.headOfficeCapital,
   };
+  /**
+   * 누적 추가 적립금은 PB 어드민에 컬럼이 없을 수 있는 신규 필드 — 별도 그룹으로 두고
+   * unknown field 시 폴백 재시도에서 제외한다.
+   */
+  const reserveField = {
+    accumulatedReserveTotalWon: data.accumulatedReserveTotalWon,
+  };
   const operatingReportFields = {
     ceoName: data.ceoName ?? null,
     industry: data.industry ?? null,
@@ -412,36 +429,61 @@ export async function tenantUpdateProfile(
     announcementBatchToMonth: data.announcementBatchToMonth,
   };
 
-  const fullPayload = { ...coreBase, ...operatingReportFields, ...announcementFields };
+  const fullPayload = { ...coreBase, ...reserveField, ...operatingReportFields, ...announcementFields };
 
   try {
     const r = asRecord(await pb.collection(C.tenants).update(id, fullPayload));
     return tenantFromPbRecord(r);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (!/announcement|ceoName|industry|phone|addressLine|incorporationDate|accountingYearStartMonth|unknown field|invalid_value/i.test(msg)) {
+    if (
+      !/announcement|ceoName|industry|phone|addressLine|incorporationDate|accountingYearStartMonth|accumulatedReserveTotalWon|unknown field|invalid_value/i.test(
+        msg,
+      )
+    ) {
       throw e;
     }
-    /** 1차 재시도: announcement 계열만 제외 */
+    /** 1차 재시도: 누적 적립금 필드 제외 (PB에 컬럼 미추가 환경) */
     try {
       const r = asRecord(
-        await pb.collection(C.tenants).update(id, { ...coreBase, ...operatingReportFields }),
+        await pb
+          .collection(C.tenants)
+          .update(id, { ...coreBase, ...operatingReportFields, ...announcementFields }),
       );
       console.warn(
-        "[pb] tenantUpdateProfile: announcementMode/announcementBatch* 컬럼이 없어 저장되지 않았습니다. sabok_tenants 에 해당 필드를 추가하세요.",
+        "[pb] tenantUpdateProfile: accumulatedReserveTotalWon 컬럼이 없어 저장되지 않았습니다. sabok_tenants 에 number 필드로 추가하세요.",
       );
       return tenantFromPbRecord(r);
-    } catch (e2) {
-      const msg2 = e2 instanceof Error ? e2.message : String(e2);
-      if (!/ceoName|industry|phone|addressLine|incorporationDate|accountingYearStartMonth|unknown field|invalid_value/i.test(msg2)) {
-        throw e2;
+    } catch (e1) {
+      const msg1 = e1 instanceof Error ? e1.message : String(e1);
+      if (
+        !/announcement|ceoName|industry|phone|addressLine|incorporationDate|accountingYearStartMonth|unknown field|invalid_value/i.test(
+          msg1,
+        )
+      ) {
+        throw e1;
       }
-      /** 2차 재시도: 운영상황 보고 필드도 제외 (오래된 스키마) */
-      const r = asRecord(await pb.collection(C.tenants).update(id, coreBase));
-      console.warn(
-        "[pb] tenantUpdateProfile: 운영상황 보고용 컬럼(ceoName/industry/phone/addressLine/incorporationDate/accountingYearStartMonth)과 안내 모드 일부가 저장되지 않았습니다. sabok_tenants 에 해당 컬럼을 추가하세요.",
-      );
-      return tenantFromPbRecord(r);
+      /** 2차 재시도: announcement 계열도 제외 */
+      try {
+        const r = asRecord(
+          await pb.collection(C.tenants).update(id, { ...coreBase, ...operatingReportFields }),
+        );
+        console.warn(
+          "[pb] tenantUpdateProfile: announcementMode/announcementBatch* 컬럼이 없어 저장되지 않았습니다. sabok_tenants 에 해당 필드를 추가하세요.",
+        );
+        return tenantFromPbRecord(r);
+      } catch (e2) {
+        const msg2 = e2 instanceof Error ? e2.message : String(e2);
+        if (!/ceoName|industry|phone|addressLine|incorporationDate|accountingYearStartMonth|unknown field|invalid_value/i.test(msg2)) {
+          throw e2;
+        }
+        /** 3차 재시도: 운영상황 보고 필드도 제외 (오래된 스키마) */
+        const r = asRecord(await pb.collection(C.tenants).update(id, coreBase));
+        console.warn(
+          "[pb] tenantUpdateProfile: 운영상황 보고용 컬럼(ceoName/industry/phone/addressLine/incorporationDate/accountingYearStartMonth)과 안내 모드 일부가 저장되지 않았습니다. sabok_tenants 에 해당 컬럼을 추가하세요.",
+        );
+        return tenantFromPbRecord(r);
+      }
     }
   }
 }
