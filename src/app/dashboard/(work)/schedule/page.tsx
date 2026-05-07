@@ -36,7 +36,7 @@ import {
   welfareByScheduleDisplayMonth,
   welfareEligibleEmployees,
   welfareScheduleLinesByMonth,
-  yearlyRegularScheduledWelfareTotal,
+  yearlyWelfareTotal,
 } from "@/lib/domain/schedule";
 import { PAYMENT_EVENT, PAYMENT_EVENT_LABELS, QUARTERLY_ITEM_LABELS } from "@/lib/business-rules";
 import type { PaymentEventKey, QuarterlyItemKey } from "@/lib/business-rules";
@@ -292,20 +292,16 @@ export default async function SchedulePage() {
 
     /**
      * 급여분 멘트 월액:
-     * 받아야 할 금액(기존연봉) − 정기 스케줄 연합(welfareOverride 월 제외) = 급여분 연간
-     * → floor(연간 ÷ 12)
+     * 받아야 할 금액(기존연봉) − 정기분(정기+분기 스케줄 합계) = 급여분 연간 → floor(÷12)
      *
-     * 기존연봉이 없거나 결과가 0 이하이면 조정연봉/기존연봉 순 폴백.
+     * yearlyWelfareTotal(br) = br 의 totalWelfareMonth 합계 (정기+분기, welfareOverride 반영, 선택복지 노트 미포함).
+     * 기존연봉이 없거나 결과가 0 이하이면 monthlySalaryPortion(조정연봉/기존연봉) 폴백.
      */
     const baseAnnual = Math.round(Number(emp.baseSalary) || 0);
-    const regularSched = yearlyRegularScheduledWelfareTotal(
-      br,
-      (m) => monthIsActive(empStatus, m),
-      overrideMap,
-    );
+    const welfareScheduleTotal = Math.round(yearlyWelfareTotal(br));
     const salaryAnnualForNotice =
-      baseAnnual > 0 && baseAnnual - regularSched > 0
-        ? baseAnnual - regularSched
+      baseAnnual > 0 && baseAnnual - welfareScheduleTotal > 0
+        ? baseAnnual - welfareScheduleTotal
         : monthlySalaryPortion(emp) * 12;
     const monthlyFloor = Math.floor(salaryAnnualForNotice / 12);
     const announcementSalaryByMonthList: readonly number[] = Array.from({ length: 12 }, (_, i) => {
