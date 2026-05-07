@@ -85,9 +85,34 @@ type ReserveTenantInput = {
   /**
    * 운영자가 거래처 출연처와 무관하게 직접 입력한 누적 추가 적립금(원).
    * 거래처 합산이 비어 있을 때(또는 거래처 기능 미사용 환경) 폴백 소스로 사용된다.
+   * 호출자는 보통 `tenantReserveTotalSumWon(byYear, legacy)` 결과를 그대로 넘긴다.
    */
   accumulatedReserveTotalWon?: number | null;
 };
+
+/**
+ * 연도별 12개월 적립금 맵 + 호환 단일 필드를 합산해 누적 적립금(원)을 산정.
+ * 음수·NaN 은 0으로 보정한다. 결과는 항상 정수.
+ */
+export function tenantReserveTotalSumWon(
+  byYear: Record<number, readonly number[]> | null | undefined,
+  legacy: number | null | undefined,
+): number {
+  let s = 0;
+  if (byYear) {
+    for (const arr of Object.values(byYear)) {
+      if (!Array.isArray(arr)) continue;
+      for (const v of arr) {
+        const n = Math.round(Number(v));
+        if (Number.isFinite(n) && n > 0) s += n;
+      }
+    }
+  }
+  if (legacy != null && Number.isFinite(legacy) && legacy > 0) {
+    s += Math.round(legacy);
+  }
+  return s;
+}
 
 type ReserveVendorInput = {
   active: boolean;

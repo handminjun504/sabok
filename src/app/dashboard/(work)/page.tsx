@@ -5,7 +5,10 @@ import {
   vendorListByTenant,
 } from "@/lib/pb/repository";
 import { DashboardReserveStatusPanel } from "@/components/DashboardReserveStatusPanel";
-import { summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
+import {
+  summarizeTenantAdditionalReserve,
+  tenantReserveTotalSumWon,
+} from "@/lib/domain/vendor-reserve";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings } from "@/lib/permissions";
 import { employeeIsInactiveForYear } from "@/lib/domain/schedule";
@@ -31,7 +34,10 @@ export default async function DashboardHomePage() {
         {
           clientEntityType: tenant.clientEntityType,
           headOfficeCapital: tenant.headOfficeCapital,
-          accumulatedReserveTotalWon: tenant.accumulatedReserveTotalWon,
+          accumulatedReserveTotalWon: tenantReserveTotalSumWon(
+            tenant.reserveMonthlyByYearWon,
+            tenant.accumulatedReserveTotalWon,
+          ),
         },
         vendors,
       )

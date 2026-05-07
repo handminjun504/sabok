@@ -33,6 +33,7 @@ import {
 } from "@/lib/domain/operating-report";
 import {
   summarizeTenantAdditionalReserve,
+  tenantReserveTotalSumWon,
 } from "@/lib/domain/vendor-reserve";
 import { welfareEligibleEmployees } from "@/lib/domain/schedule";
 import { Tabs } from "@/components/Tabs";
@@ -161,7 +162,10 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
         {
           clientEntityType: tenant.clientEntityType,
           headOfficeCapital: tenant.headOfficeCapital,
-          accumulatedReserveTotalWon: tenant.accumulatedReserveTotalWon,
+          accumulatedReserveTotalWon: tenantReserveTotalSumWon(
+            tenant.reserveMonthlyByYearWon,
+            tenant.accumulatedReserveTotalWon,
+          ),
         },
         vendors,
       )

@@ -48,7 +48,11 @@ import {
   resolveEffectiveAdjustedSalaryForMonth,
 } from "@/lib/domain/salary-inclusion";
 import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
-import { additionalReserveStatus, summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
+import {
+  additionalReserveStatus,
+  summarizeTenantAdditionalReserve,
+  tenantReserveTotalSumWon,
+} from "@/lib/domain/vendor-reserve";
 import {
   saveMonthlyNoteFormAction,
   setCompanyIncentiveNetRatioAction,
@@ -110,7 +114,10 @@ export default async function SchedulePage() {
           {
             clientEntityType: tenantRow.clientEntityType,
             headOfficeCapital: tenantRow.headOfficeCapital,
-            accumulatedReserveTotalWon: tenantRow.accumulatedReserveTotalWon,
+            accumulatedReserveTotalWon: tenantReserveTotalSumWon(
+              tenantRow.reserveMonthlyByYearWon,
+              tenantRow.accumulatedReserveTotalWon,
+            ),
           },
           vendors
         )

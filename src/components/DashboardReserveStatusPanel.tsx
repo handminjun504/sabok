@@ -21,12 +21,12 @@ export function DashboardReserveStatusPanel({ summary }: { summary: TenantAdditi
           </div>
           <div className="min-w-0">
             <h2 id="reserve-status-heading" className="text-sm font-bold text-[var(--text)]">
-              누적 추가 적립금 미입력
+              적립금 미입력
             </h2>
             <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
               법인은 사업주가 기금에 출연할 때 지출액의{" "}
               <strong className="text-[var(--text)]">20%를 추가로 적립</strong>해야 하며, 자본금의 50%에 도달하면 추가 적립이 끝납니다.
-              <strong className="text-[var(--text)]"> 설정 ▸ 거래처 등록 정보</strong>에서 「누적 추가 적립금」 칸에 누적값을 입력하면 진행 현황을 볼 수 있습니다.
+              <strong className="text-[var(--text)]"> 설정 ▸ 적립금</strong> 탭에서 1~12월 적립금을 입력하면 여기서 진행 현황을 볼 수 있습니다.
             </p>
           </div>
         </div>

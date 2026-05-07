@@ -27,14 +27,15 @@ Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사
 | approvalNumber     | text | no   | 인가번호 등 위탁·등록 식별 문자열 |
 | businessRegNo      | text | no   | 사업자등록번호(표시·검색용, 형식 자유) |
 | headOfficeCapital  | number | no | 본사 자본금(원). 미입력 시 null |
-| accumulatedReserveTotalWon | number | no | 운영자가 직접 입력하는 누적 추가 적립금(원). 거래처(출연처) 컬렉션이 비어 있어도 자본금 50% 한도 진행도 산정에 사용. 미입력 시 null |
+| accumulatedReserveTotalWon | number | no | (호환) 과거 단일 누적 추가 적립금. 신규 입력 경로는 `reserveMonthlyByYearJson` 이며, 이 칼럼은 합산에만 포함되고 폼에 노출되지 않는다. 미입력 시 null |
+| reserveMonthlyByYearJson | json | no | 연도별 1~12월 적립금(원) 배열 맵. 예: `{"2025":[100000,100000,...],"2026":[...]}`. 길이 12 강제, 각 원소는 0 이상 정수. 설정 ▸ 적립금 탭에서 갱신. 누적 한도 진행도는 모든 연도 합 + 호환 단일값으로 산정 |
 | announcementMode   | text | no   | 안내 멘트 기본 모드. `SINGLE`(매 달 하나씩) \| `BATCHED`(여러 달 한 번에). 없으면 `SINGLE` 로 동작 |
 | announcementBatchFromMonth | number | no | 묶음 모드 기본 시작 월(1~12). 없으면 UI 기본 1 |
 | announcementBatchToMonth   | number | no | 묶음 모드 기본 끝 월(1~12). 없으면 UI 기본 3 |
 
 **도메인**: 테넌트 1건 ≈ 사업장·기금 1단위(기금 1개/사업장). 코드: `fund-site-model.ts`.
 
-앱은 PB에 필드가 없어도 **조회 시** 기본값(개인·일반운영)으로 동작하지만, **신규 업체 등록(create)** 은 `clientEntityType`, `operationMode`가 컬렉션에 있어야 합니다. 선택 필드 `approvalNumber`, `businessRegNo`, `headOfficeCapital`, `accumulatedReserveTotalWon`을 폼에서 내려면 Admin에서 동일 이름으로 필드를 추가하세요(없으면 create 시 400). `accumulatedReserveTotalWon`은 update 시 자동 폴백 재시도가 있어 미추가 환경에서도 다른 필드는 정상 저장되지만, 값을 보존하려면 PB 어드민 → `sabok_tenants` → 「+ New field」 → number 로 추가하세요.
+앱은 PB에 필드가 없어도 **조회 시** 기본값(개인·일반운영)으로 동작하지만, **신규 업체 등록(create)** 은 `clientEntityType`, `operationMode`가 컬렉션에 있어야 합니다. 선택 필드 `approvalNumber`, `businessRegNo`, `headOfficeCapital`을 폼에서 내려면 Admin에서 동일 이름으로 필드를 추가하세요(없으면 create 시 400). 적립금 월별 입력(설정 ▸ 적립금 탭)을 사용하려면 `reserveMonthlyByYearJson`(JSON 타입)을 PB 어드민 → `sabok_tenants` → 「+ New field」 → JSON 으로 추가하세요. 컬럼이 없으면 적립금 저장 시 PB 가 400 을 반환합니다.
 
 ## `sabok_users`
 
