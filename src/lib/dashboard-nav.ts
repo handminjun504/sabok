@@ -1,5 +1,5 @@
 import type { Role } from "@/lib/role";
-import { canEditCompanySettings, canTriggerGlSync } from "@/lib/permissions";
+import { canEditCompanySettings } from "@/lib/permissions";
 import { isSingleTenantMode } from "@/lib/single-tenant";
 
 export type NavItem = { href: string; label: string };
@@ -54,9 +54,7 @@ export function getDashboardNav(opts: {
   if (isPlatformAdmin) {
     manage.push({ href: "/dashboard/audit", label: "감사 로그" });
   }
-  if (canTriggerGlSync(role)) {
-    manage.push({ href: "/dashboard/gl", label: "GL 동기화" });
-  }
+
   if (manage.length > 0) {
     groups.push({ title: "관리", items: manage });
   }
