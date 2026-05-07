@@ -601,8 +601,27 @@ export function EmployeeForm({
               </td>
             </tr>
             <tr>
-              <th>사복지급분</th>
-              <td><LabeledCommaWon name="welfareAllocation" label="" defaultValue={welfareDefaultValue} onUserChange={() => { if (!welfareTouched) setWelfareTouched(true); }} hint={welfareHint} /></td>
+              <th>
+                <span className="block">사복지급분</span>
+                <span className="block mt-0.5 text-[10px] font-normal normal-case tracking-normal text-[var(--muted)]">
+                  예정 한도
+                </span>
+              </th>
+              <td>
+                <LabeledCommaWon
+                  name="welfareAllocation"
+                  label=""
+                  defaultValue={welfareDefaultValue}
+                  onUserChange={() => { if (!welfareTouched) setWelfareTouched(true); }}
+                  hint={
+                    welfareHint ?? (
+                      <>
+                        예정·한도 표시용입니다. <strong className="text-[var(--text)]">실제 받는 금액은 레벨 규칙(정기·커스텀·분기 스케줄)</strong>에 의해 결정됩니다.
+                      </>
+                    )
+                  }
+                />
+              </td>
             </tr>
             <tr>
               <th>예상 인센</th>

@@ -201,10 +201,20 @@ export function EmployeeDirectoryTable({
               <th className="dash-table-th-md text-left">직급</th>
               <th className="dash-table-th-md text-center">Lv</th>
               <th className="dash-table-th-md text-left">상태</th>
-              <th className="dash-table-th-md text-right">사복지급분</th>
               {hasCtx ? (
-                <th className="dash-table-th-md text-right">{payrollYearContext.activeYear}년 사복</th>
+                <th
+                  className="dash-table-th-md text-right text-[var(--text)]"
+                  title="레벨에서 정한 정기·커스텀·분기 스케줄 연간 합계 — 실제 받는 금액"
+                >
+                  {payrollYearContext.activeYear}년 사복 (실제)
+                </th>
               ) : null}
+              <th
+                className="dash-table-th-md text-right"
+                title="직원 입력란 — 한도/예정값. 실제 지급은 좌측 ‘실제’ 칸을 따른다."
+              >
+                예정 사복(연)
+              </th>
               <th className="dash-table-th-md w-20 text-center">편집</th>
             </tr>
           </thead>
@@ -257,21 +267,24 @@ export function EmployeeDirectoryTable({
                       Lv.{e.level}
                     </td>
                     <td className="px-2 py-2.5">{statusBadge(r.status)}</td>
-                    <td className="px-2 py-2.5 text-right text-sm tabular-nums">
+                    {hasCtx ? (
+                      <td
+                        className="px-2 py-2.5 text-right text-sm font-bold tabular-nums text-[var(--text)]"
+                        title="레벨에서 정한 정기·분기 스케줄 연간 합계 — 실제 받는 금액"
+                      >
+                        {won(r.welfareY)}
+                      </td>
+                    ) : null}
+                    <td className="px-2 py-2.5 text-right text-xs tabular-nums text-[var(--muted)]">
                       {showEffWelfare ? (
-                        <span title={`사복 ${won(e.welfareAllocation)} − 전기 ${won(e.priorOverpaidWelfareWon)} = 실효 ${won(eff)}`}>
-                          <span className="font-semibold text-[var(--accent)]">{won(eff)}</span>
-                          <span className="ml-1 text-[var(--muted)]">/{won(e.welfareAllocation)}</span>
+                        <span title={`예정 ${won(e.welfareAllocation)} − 전기 ${won(e.priorOverpaidWelfareWon)} = 실효 ${won(eff)}`}>
+                          <span>{won(eff)}</span>
+                          <span className="ml-1 opacity-70">/{won(e.welfareAllocation)}</span>
                         </span>
                       ) : (
                         won(e.welfareAllocation)
                       )}
                     </td>
-                    {hasCtx ? (
-                      <td className="px-2 py-2.5 text-right text-sm font-bold tabular-nums text-[var(--accent)]">
-                        {won(r.welfareY)}
-                      </td>
-                    ) : null}
                     <td className="text-center">
                       <Link
                         href={`/dashboard/employees/${e.id}`}

@@ -130,7 +130,7 @@ export function salaryInclusionCapLabel(source: SalaryInclusionCapSource): strin
     case "incentive":
       return "예상 인센";
     case "welfare":
-      return "사복지급분";
+      return "사복 한도(예정)";
     default:
       return "—";
   }
@@ -379,7 +379,7 @@ export function computeSalaryInclusionCapBlocks(
     return [
       {
         key: "welfare",
-        title: "사복지급분 상한",
+        title: "사복 한도(예정)",
         actualLabel: lastPaidMonthInclusive >= 12 ? "연간 기금 실적" : `기금 실적(~${lastPaidMonthInclusive}월)`,
         cap: wv.cap,
         actual: wv.actual,
@@ -410,7 +410,7 @@ export function computeSalaryInclusionCapBlocks(
     legacy.capSource === "incentive"
       ? "예상 인센 상한"
       : legacy.capSource === "welfare"
-        ? "사복지급분 상한"
+        ? "사복 한도(예정)"
         : "상한";
   const singleActualLabel =
     legacy.capSource === "incentive"

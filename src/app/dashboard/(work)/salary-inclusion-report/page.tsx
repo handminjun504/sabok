@@ -172,9 +172,19 @@ export default async function SalaryInclusionReportPage({
                 <th className="px-3 py-2.5">이름</th>
                 <th className="px-3 py-2.5 text-center">레벨</th>
                 <th className="hidden md:table-cell px-3 py-2.5">표시</th>
-                <th className="dash-table-vline-strong px-3 py-2.5 text-right">상한</th>
-                <th className="dash-table-vline px-3 py-2.5">상한 · 실적 기준</th>
-                <th className="dash-table-vline px-3 py-2.5 text-right">누적 실지급</th>
+                <th
+                  className="dash-table-vline-strong px-3 py-2.5 text-right"
+                  title="직원 입력값(예정 한도) — 실제 받는 금액은 ‘누적 실지급(레벨 스케줄)’"
+                >
+                  한도 (예정)
+                </th>
+                <th className="dash-table-vline px-3 py-2.5">한도 · 실적 기준</th>
+                <th
+                  className="dash-table-vline px-3 py-2.5 text-right"
+                  title="레벨에서 정한 정기·분기 스케줄로 실제 누적 지급된 금액"
+                >
+                  누적 실지급 (실제)
+                </th>
                 {colShowOver ? (
                   <th className="dash-table-vline px-3 py-2.5 text-right">초과(급여 포함)</th>
                 ) : null}
