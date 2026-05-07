@@ -316,16 +316,35 @@ export default async function SchedulePage() {
     if (salaryAnnualForNotice <= 0) {
       salaryAnnualForNotice = Math.round(monthlySalaryPortion(emp) * 12);
     }
-    const monthlyFloor = Math.floor(salaryAnnualForNotice / 12);
     /**
-     * 활성월 기본값: `monthlyFloor` (= floor(연간 급여 ÷ 12)).
-     * 중도 입·퇴사로 활성월 < 12 이면, 위에서 계산한 `loweredTrueUpApplied`
-     * (= base/12 × N − adj×N/12 − 활성 사복 합)을 마지막 근무월에 더해
-     * 「받아야 할 누적 = 실제 누적」 이 되도록 안내 멘트에서도 정산한다.
+     * 안내 멘트 월액 — 운영보고 `salaryByMonth` 와 정합되는 산출.
+     *
+     *   1) 활성 월: `resolveEffectiveAdjustedSalaryForMonth(proxy)` 로 계산.
+     *      - 일반 활성월: floor(연간 ÷ 12)
+     *      - 마지막 활성월: round(연간 × N ÷ 12) − floor(연간÷12) × (N−1) (round 잔차 흡수)
+     *      - proxy 는 운용방식 분기 결과 1순위 연봉을 `adjustedSalary` 로 주입.
+     *        (`baseSalary` 폴백·overrides 영향 없이 단일 소스)
+     *   2) 활성월 < 12 이면 마지막 근무월에 `loweredTrueUpApplied` 가산
+     *      (= base/12×N − round(adj×N/12) − 활성 사복 합).
+     *
+     * 위 식을 결합하면 마지막 근무월 = base/12×N − floor(adj/12)×(N−1) − 활성 사복 합 으로
+     * 운영보고용 `salaryByMonth[lastActive]` 와 동일한 원 단위 결과가 나온다.
      */
+    const noticeEmpProxy = (
+      isSalaryLowering
+        ? { adjustedSalary: salaryAnnualForNotice, baseSalary: 0 }
+        : { adjustedSalary: 0, baseSalary: salaryAnnualForNotice }
+    ) as Pick<Employee, "adjustedSalary" | "baseSalary">;
     const announcementSalaryByMonth: number[] = Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
-      return monthIsActive(empStatus, m) ? monthlyFloor : 0;
+      if (!monthIsActive(empStatus, m)) return 0;
+      return resolveEffectiveAdjustedSalaryForMonth(
+        noticeEmpProxy,
+        year,
+        m,
+        [],
+        salaryActiveMonths,
+      );
     });
     if (loweredTrueUpApplied > 0 && loweredTrueUpMonth != null) {
       const idx = loweredTrueUpMonth - 1;
