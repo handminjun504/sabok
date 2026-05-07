@@ -263,6 +263,14 @@ export default async function SchedulePage() {
       salaryActiveMonths.length > 0 ? salaryActiveMonths[salaryActiveMonths.length - 1]! : null;
     let loweredTrueUpApplied = 0;
     let loweredTrueUpMonth: number | null = null;
+    /**
+     * 안내 멘트 전용 정산 — 운영보고 정산(`loweredTrueUpApplied`) 과 분리한다.
+     * 운영자가 월별 `adjustedSalaryOverrideAmount` 로 수동 분배를 했더라도 안내 멘트는
+     * 「받아야 할 누적 = 실제 누적」 룰을 그대로 따라야 하므로 `hasAdjustedSalaryOverride: false`
+     * 로 호출해 가드를 우회한다.
+     */
+    let announcementTrueUpApplied = 0;
+    let announcementTrueUpMonth: number | null = null;
     if (lastSalaryActiveMonth != null && salaryActiveMonths.length < 12) {
       const welfareYtdThroughLast = computeActualWelfareThroughPaidMonth(
         emp,
@@ -287,6 +295,16 @@ export default async function SchedulePage() {
         loweredTrueUpMonth = lastSalaryActiveMonth;
         salaryByMonth[lastSalaryActiveMonth] =
           (salaryByMonth[lastSalaryActiveMonth] ?? 0) + loweredTrueUp;
+      }
+      const announcementTrueUp = computeLoweredSalaryPartialYearTrueUpWon({
+        employee: emp,
+        activeMonthsSorted: salaryActiveMonths,
+        welfareYtdThroughLastPaidMonth: welfareYtdThroughLast,
+        hasAdjustedSalaryOverride: false,
+      });
+      if (announcementTrueUp > 0) {
+        announcementTrueUpApplied = announcementTrueUp;
+        announcementTrueUpMonth = lastSalaryActiveMonth;
       }
     }
 
@@ -346,9 +364,10 @@ export default async function SchedulePage() {
         salaryActiveMonths,
       );
     });
-    if (loweredTrueUpApplied > 0 && loweredTrueUpMonth != null) {
-      const idx = loweredTrueUpMonth - 1;
-      announcementSalaryByMonth[idx] = (announcementSalaryByMonth[idx] ?? 0) + loweredTrueUpApplied;
+    if (announcementTrueUpApplied > 0 && announcementTrueUpMonth != null) {
+      const idx = announcementTrueUpMonth - 1;
+      announcementSalaryByMonth[idx] =
+        (announcementSalaryByMonth[idx] ?? 0) + announcementTrueUpApplied;
     }
     const announcementSalaryByMonthList: readonly number[] = announcementSalaryByMonth;
 
