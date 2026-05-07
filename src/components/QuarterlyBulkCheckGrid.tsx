@@ -90,6 +90,23 @@ export function QuarterlyBulkCheckGrid({
 
   /** 낙관적 체크 상태: `${employeeId}:${itemKey}` → boolean */
   const [optimistic, setOptimistic] = useState<Map<string, boolean>>(() => new Map());
+
+  /**
+   * PARENT_SUPPORT 전용: 직원별 부모/시부모 인원 수 오버라이드.
+   * 키: employeeId → { parentsCount, parentsInLawCount }
+   * 초기값은 직원 프로필. 사용자가 수정하면 즉시 금액 재계산에 반영.
+   */
+  const [parentOverrides, setParentOverrides] = useState<Map<string, { parentsCount: number; parentsInLawCount: number }>>(() => {
+    const m = new Map<string, { parentsCount: number; parentsInLawCount: number }>();
+    for (const e of employees) {
+      m.set(e.id, { parentsCount: e.parentsCount, parentsInLawCount: e.parentsInLawCount });
+    }
+    return m;
+  });
+
+  function getParentOverride(empId: string, emp: QuarterlyCheckEmployee) {
+    return parentOverrides.get(empId) ?? { parentsCount: emp.parentsCount, parentsInLawCount: emp.parentsInLawCount };
+  }
   const [cellState, setCellState] = useState<Map<string, CellState>>(() => new Map());
 
   /**
@@ -176,7 +193,10 @@ export function QuarterlyBulkCheckGrid({
       });
 
       const itemRates = ratesByItem.get(item.itemKey) ?? [];
-      const amount = computeQuarterlyAmountFromRates(emp, item.itemKey, itemRates, emp.level);
+      const overrideOrEmp = item.itemKey === "PARENT_SUPPORT"
+        ? { ...emp, ...getParentOverride(emp.id, emp) }
+        : emp;
+      const amount = computeQuarterlyAmountFromRates(overrideOrEmp, item.itemKey, itemRates, emp.level);
       const payMonths = [...(item.payMonths.length ? item.payMonths : DEFAULT_PAY_MONTHS)];
 
       startTransition(async () => {
@@ -308,24 +328,59 @@ export function QuarterlyBulkCheckGrid({
                     const checked = isCellChecked(emp.id, item.itemKey, !!existingConfigId);
                     const k = cellKey(emp.id, item.itemKey);
                     const cs = cellState.get(k) ?? "idle";
-                    const amount = computeQuarterlyAmountFromRates(emp, item.itemKey, itemRatesForDisplay, emp.level);
+                    const effectiveEmp = item.itemKey === "PARENT_SUPPORT"
+                      ? { ...emp, ...getParentOverride(emp.id, emp) }
+                      : emp;
+                    const amount = computeQuarterlyAmountFromRates(effectiveEmp, item.itemKey, itemRatesForDisplay, emp.level);
                     const resigned =
                       emp.resignYear != null &&
                       emp.resignMonth != null;
 
-                    const relevantCountLabel = (() => {
+                    const po = getParentOverride(emp.id, emp);
+                    const relevantCountCell = (() => {
                       switch (item.itemKey) {
-                        case "INFANT_SCHOLARSHIP": return emp.childrenInfant > 0 ? `영유아 ${emp.childrenInfant}명` : "—";
-                        case "PRESCHOOL_SCHOLARSHIP": return emp.childrenPreschool > 0 ? `미취학 ${emp.childrenPreschool}명` : "—";
-                        case "TEEN_SCHOLARSHIP": return emp.childrenTeen > 0 ? `청소년 ${emp.childrenTeen}명` : "—";
-                        case "PARENT_SUPPORT": {
-                          const total = emp.parentsCount + emp.parentsInLawCount;
-                          return total > 0 ? `부모 ${emp.parentsCount}+${emp.parentsInLawCount}명` : "—";
-                        }
-                        case "HEALTH_INSURANCE": return emp.insurancePremium > 0 ? `보험 ${fmt(emp.insurancePremium)}` : "—";
-                        case "HOUSING_INTEREST": return emp.loanInterest > 0 ? `이자 ${fmt(emp.loanInterest)}` : "—";
-                        case "HOUSING_RENT": return emp.monthlyRentAmount != null && emp.monthlyRentAmount > 0 ? `월세 ${fmt(emp.monthlyRentAmount)}` : "—";
-                        default: return "—";
+                        case "INFANT_SCHOLARSHIP": return <span className="text-xs text-[var(--muted)]">{emp.childrenInfant > 0 ? `영유아 ${emp.childrenInfant}명` : "—"}</span>;
+                        case "PRESCHOOL_SCHOLARSHIP": return <span className="text-xs text-[var(--muted)]">{emp.childrenPreschool > 0 ? `미취학 ${emp.childrenPreschool}명` : "—"}</span>;
+                        case "TEEN_SCHOLARSHIP": return <span className="text-xs text-[var(--muted)]">{emp.childrenTeen > 0 ? `청소년 ${emp.childrenTeen}명` : "—"}</span>;
+                        case "PARENT_SUPPORT":
+                          return (
+                            <div className="flex flex-wrap items-center justify-end gap-1.5">
+                              <label className="flex items-center gap-1 text-[0.7rem] text-[var(--muted)]">
+                                부모
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={10}
+                                  value={po.parentsCount}
+                                  disabled={!canEdit}
+                                  onChange={(e) => {
+                                    const v = Math.max(0, Math.round(Number(e.target.value) || 0));
+                                    setParentOverrides((m) => new Map(m).set(emp.id, { ...po, parentsCount: v }));
+                                  }}
+                                  className="w-10 rounded border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 text-center text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[var(--accent)] disabled:opacity-50"
+                                />명
+                              </label>
+                              <label className="flex items-center gap-1 text-[0.7rem] text-[var(--muted)]">
+                                시부모
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={10}
+                                  value={po.parentsInLawCount}
+                                  disabled={!canEdit}
+                                  onChange={(e) => {
+                                    const v = Math.max(0, Math.round(Number(e.target.value) || 0));
+                                    setParentOverrides((m) => new Map(m).set(emp.id, { ...po, parentsInLawCount: v }));
+                                  }}
+                                  className="w-10 rounded border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 text-center text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[var(--accent)] disabled:opacity-50"
+                                />명
+                              </label>
+                            </div>
+                          );
+                        case "HEALTH_INSURANCE": return <span className="text-xs text-[var(--muted)]">{emp.insurancePremium > 0 ? `보험 ${fmt(emp.insurancePremium)}` : "—"}</span>;
+                        case "HOUSING_INTEREST": return <span className="text-xs text-[var(--muted)]">{emp.loanInterest > 0 ? `이자 ${fmt(emp.loanInterest)}` : "—"}</span>;
+                        case "HOUSING_RENT": return <span className="text-xs text-[var(--muted)]">{emp.monthlyRentAmount != null && emp.monthlyRentAmount > 0 ? `월세 ${fmt(emp.monthlyRentAmount)}` : "—"}</span>;
+                        default: return <span className="text-xs text-[var(--muted)]">—</span>;
                       }
                     })();
 
@@ -362,8 +417,8 @@ export function QuarterlyBulkCheckGrid({
                           {emp.name}
                           {resigned ? <span className="ml-1.5 text-[0.65rem] text-[var(--muted)]">퇴사</span> : null}
                         </td>
-                        <td className="px-2 py-2 text-right text-xs text-[var(--muted)]">
-                          {relevantCountLabel}
+                        <td className="px-2 py-2 text-right">
+                          {relevantCountCell}
                         </td>
                         <td className={
                           "px-2 py-2 text-right font-semibold tabular-nums " +
