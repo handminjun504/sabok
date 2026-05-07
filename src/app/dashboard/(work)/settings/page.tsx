@@ -130,9 +130,16 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <PageHeader
-        eyebrow="환경 설정"
-        title="설정"
-        description="전사 설정과 거래처 프로필을 한 곳에서 관리합니다."
+        eyebrow={`설정 · ${activeYear}`}
+        title="전사 설정"
+        description="기금 운영 방식·창립월·기준 연도·거래처 프로필을 한 곳에서 관리합니다."
+        meta={
+          <>
+            <span className="trust-pill">기준 연도 {activeYear}</span>
+            <span className="trust-pill">창립월 {foundingMonth}월</span>
+            <span className="trust-pill">급여일 {defaultPayDay}일</span>
+          </>
+        }
       />
       <Tabs
         tabs={[

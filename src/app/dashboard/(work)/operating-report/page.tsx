@@ -44,6 +44,7 @@ import { FundSourceAnnualForm } from "@/components/FundSourceAnnualForm";
 import { ContribUsageAnnualForm } from "@/components/ContribUsageAnnualForm";
 import { BizResultAnnualForm } from "@/components/BizResultAnnualForm";
 import { RealEstateHoldingsForm } from "@/components/RealEstateHoldingsForm";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 function format(n: number) {
   return n.toLocaleString("ko-KR");
@@ -214,102 +215,145 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
     return s + (r.yearlyWelfareSum - target);
   }, 0);
 
-  return (
-    <div className="space-y-6">
-      {/* 헤더 */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="page-eyebrow">보고</p>
-          <h1 className="page-hero-title mt-1 neu-title-gradient">운영상황 보고</h1>
-        </div>
-        <form className="flex items-center gap-2" method="get">
-          <label className="text-xs text-[var(--muted)]">연도</label>
-          <select name="year" defaultValue={String(year)} className="input text-sm">
-            {years.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-          <button type="submit" className="btn btn-ghost text-xs">적용</button>
-        </form>
-      </div>
+  /** 법인 적립 진행도(%) — 0~100, 한도 산정 불가 시 null */
+  const reserveProgressPct =
+    reserveSummary.kind === "CORPORATE" && !reserveSummary.cannotAssess && reserveSummary.capWon > 0
+      ? Math.min(100, Math.round((reserveSummary.accumulatedTotalWon / reserveSummary.capWon) * 100))
+      : null;
 
-      {/* ─── 핵심 요약 표 ─── */}
-      <div className="surface overflow-x-auto dash-panel-pad">
-        <h2 className="mb-3 text-sm font-bold text-[var(--text)]">{year}년 사복 핵심 요약</h2>
-        <table className="w-full min-w-[480px] border-collapse text-sm">
-          <tbody>
-            <tr className="border-b border-[var(--border)]">
-              <th className="w-[40%] bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">업체</th>
-              <td className="px-3 py-2 font-medium text-[var(--text)]">{tenant?.name ?? "—"}</td>
-            </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">회계연도</th>
-              <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">{view.basic.accountingYearLabel}</td>
-            </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">사복 대상 직원</th>
-              <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">{summary.employeeCount}명</td>
-            </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">연간 기금 지급 합계</th>
-              <td className="px-3 py-2 font-mono tabular-nums font-semibold text-[var(--text)]">{format(summary.totalYearlyWelfare)} 원</td>
-            </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">사업주 출연(자동)</th>
-              <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">{format(employerTotal)} 원</td>
-            </tr>
-            <tr className="border-b border-[var(--border)]">
-              <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">사업주 외 출연(자동)</th>
-              <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">{format(otherTotal)} 원</td>
-            </tr>
-            {/* 법인 전용: 추가 적립금 현황 */}
-            {reserveSummary.kind === "CORPORATE" ? (
-              <>
-                <tr className="border-b border-[var(--border)]">
-                  <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">본사 자본금</th>
-                  <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">
-                    {reserveSummary.capitalWon > 0 ? `${format(reserveSummary.capitalWon)} 원` : "— (미입력)"}
-                  </td>
-                </tr>
-                <tr className="border-b border-[var(--border)]">
-                  <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">추가 적립 상한 (자본금 × 50%)</th>
-                  <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">
-                    {reserveSummary.capWon > 0 ? `${format(reserveSummary.capWon)} 원` : "—"}
-                  </td>
-                </tr>
-                <tr className="border-b border-[var(--border)]">
-                  <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">누적 추가 적립금</th>
-                  <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">
-                    {format(reserveSummary.accumulatedTotalWon)} 원
-                  </td>
-                </tr>
-                <tr className="border-b border-[var(--border)]">
-                  <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">남은 적립액</th>
-                  <td className={`px-3 py-2 font-mono tabular-nums font-semibold ${reserveSummary.isComplete ? "text-[var(--success)]" : "text-[var(--warn)]"}`}>
-                    {reserveSummary.isComplete
-                      ? "✓ 적립 완료 — 추가 적립 필요 없음"
-                      : `${format(reserveSummary.remainingWon)} 원 남음`}
-                  </td>
-                </tr>
-              </>
-            ) : reserveSummary.kind === "NO_VENDORS" && tenant?.clientEntityType === "CORPORATE" ? (
-              <tr className="border-b border-[var(--border)]">
-                <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">추가 적립금</th>
-                <td className="px-3 py-2 text-xs text-[var(--muted)]">출연처 미등록 — 거래처 설정에서 등록하세요</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+  return (
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow={`운영 보고 · ${year}`}
+        title="운영상황 보고"
+        description="회계연도별 핵심 요약과 법인 적립 진행을 확인하고, 보고용 데이터를 입력하세요."
+        actions={
+          <form className="flex items-center gap-2" method="get">
+            <label className="text-xs text-[var(--muted)]">연도</label>
+            <select name="year" defaultValue={String(year)} className="input text-sm h-9">
+              {years.map((y) => (
+                <option key={y} value={y}>{y}년</option>
+              ))}
+            </select>
+            <button type="submit" className="btn btn-outline text-xs">적용</button>
+          </form>
+        }
+      />
+
+      {/* KPI 4종 — 핵심 숫자 */}
+      <section aria-labelledby="op-kpi">
+        <h2 id="op-kpi" className="sr-only">핵심 지표</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="kpi-card">
+            <p className="kpi-card-label">사복 대상 직원</p>
+            <p className="kpi-card-value">{summary.employeeCount}<span className="kpi-card-suffix">명</span></p>
+            <div className="kpi-card-foot">
+              <span className="truncate">{tenant?.name ?? "—"}</span>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <p className="kpi-card-label">연간 기금 지급</p>
+            <p className="kpi-card-value text-[var(--accent)]">{format(summary.totalYearlyWelfare)}<span className="kpi-card-suffix">원</span></p>
+            <div className="kpi-card-foot">
+              <span>{view.basic.accountingYearLabel}</span>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <p className="kpi-card-label">사업주 출연 (자동)</p>
+            <p className="kpi-card-value">{format(employerTotal)}<span className="kpi-card-suffix">원</span></p>
+            <div className="kpi-card-foot">
+              <span>거래처 출연 합산</span>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <p className="kpi-card-label">사업주 외 출연 (자동)</p>
+            <p className="kpi-card-value">{format(otherTotal)}<span className="kpi-card-suffix">원</span></p>
+            <div className="kpi-card-foot">
+              <span>비사업주 거래처</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 법인 적립 진행도 — 법인이고 한도 산정 가능할 때 */}
+      {reserveSummary.kind === "CORPORATE" ? (
+        <section className="surface dash-panel-pad" aria-labelledby="reserve-progress">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="reserve-progress" className="section-title">법인 자본금 50% 한도 — 추가 적립 진행</h2>
+            {reserveSummary.cannotAssess ? (
+              <span className="badge badge-neutral">한도 산정 불가</span>
+            ) : reserveSummary.isComplete ? (
+              <span className="badge badge-success">적립 완료</span>
+            ) : (
+              <span className="badge badge-warn">진행 중 · {reserveProgressPct}%</span>
+            )}
+          </div>
+
+          {!reserveSummary.cannotAssess && reserveProgressPct != null ? (
+            <div className="mt-3">
+              <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                <span className="text-xs text-[var(--muted)]">
+                  <span className="font-bold tabular-nums text-[var(--accent)]">{format(reserveSummary.accumulatedTotalWon)}</span>
+                  <span className="mx-1">/</span>
+                  <span className="tabular-nums">{format(reserveSummary.capWon)}</span>
+                  <span className="ml-1">원</span>
+                </span>
+                <span className="text-sm font-bold tabular-nums text-[var(--text)]">{reserveProgressPct}%</span>
+              </div>
+              <div className="h-2.5 w-full overflow-hidden rounded-full border border-[var(--border)] bg-[var(--surface-sunken)]">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${reserveProgressPct}%`,
+                    background: reserveSummary.isComplete
+                      ? "var(--success)"
+                      : "linear-gradient(90deg, var(--accent) 0%, var(--accent-dim) 100%)",
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          <dl className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2.5">
+              <dt className="dash-eyebrow">본사 자본금</dt>
+              <dd className="mt-1 font-bold tabular-nums text-[var(--text)]">
+                {reserveSummary.capitalWon > 0 ? `${format(reserveSummary.capitalWon)}원` : "— (미입력)"}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2.5">
+              <dt className="dash-eyebrow">상한 (50%)</dt>
+              <dd className="mt-1 font-bold tabular-nums text-[var(--text)]">
+                {reserveSummary.capWon > 0 ? `${format(reserveSummary.capWon)}원` : "—"}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2.5">
+              <dt className="dash-eyebrow">남은 적립액</dt>
+              <dd className={`mt-1 font-bold tabular-nums ${reserveSummary.isComplete ? "text-[var(--success)]" : "text-[var(--warn)]"}`}>
+                {reserveSummary.cannotAssess ? "—" : reserveSummary.isComplete ? "✓ 적립 완료" : `${format(reserveSummary.remainingWon)}원 남음`}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      ) : reserveSummary.kind === "NO_VENDORS" && tenant?.clientEntityType === "CORPORATE" ? (
+        <section className="surface dash-panel-pad">
+          <h2 className="section-title">법인 자본금 50% 한도</h2>
+          <p className="mt-2 text-xs text-[var(--muted)]">
+            출연처가 등록되어 있지 않습니다. 거래처 메뉴에서 등록한 뒤 출연 금액을 입력하면 진행도를 표시합니다.
+          </p>
+        </section>
+      ) : null}
 
       {/* ─── 레벨별 + 법정코드 2열 표 ─── */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         {/* 레벨별 */}
-        <div className="surface overflow-x-auto dash-panel-pad">
-          <h2 className="mb-3 text-sm font-bold text-[var(--text)]">레벨별 기금</h2>
-          <table className="w-full min-w-[360px] border-collapse text-sm">
+        <div className="surface overflow-x-auto">
+          <div className="dash-panel-toolbar border-b border-[var(--border)]">
+            <h2 className="section-title">레벨별 기금 vs 목표</h2>
+          </div>
+          <table className="table-zebra w-full min-w-[360px] border-collapse text-sm">
             <thead>
-              <tr className="border-b-2 border-[var(--border)]">
+              <tr className="border-b border-[var(--border)] bg-[var(--surface-sunken)]">
                 <th className="dash-table-head text-center">레벨</th>
                 <th className="dash-table-head text-right">인원</th>
                 <th className="dash-table-head text-right">연간 합계</th>
@@ -325,24 +369,24 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
                   delta > 0 ? "text-[var(--danger)]" : delta < 0 ? "text-[var(--warn)]" : "text-[var(--muted)]";
                 return (
                   <tr key={row.level} className="border-b border-[var(--border)]">
-                    <td className="px-3 py-2 text-center font-medium">{row.level}</td>
+                    <td className="px-3 py-2 text-center font-bold tabular-nums">Lv.{row.level}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{row.count}</td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums">{format(row.yearlyWelfareSum)}</td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--muted)]">{format(target)}</td>
-                    <td className={`px-3 py-2 text-right font-mono tabular-nums font-medium ${deltaCls}`}>
+                    <td className={`px-3 py-2 text-right font-mono tabular-nums font-semibold ${deltaCls}`}>
                       {delta > 0 ? "+" : ""}{format(delta)}
                     </td>
                   </tr>
                 );
               })}
-              <tr className="border-t-2 border-[var(--border)] bg-[var(--surface-hover)]/50 font-semibold">
-                <td className="px-3 py-2 text-center">합계</td>
+              <tr className="border-t-2 border-[var(--border-strong)] bg-[var(--accent-soft)] font-semibold">
+                <td className="px-3 py-2 text-center text-[var(--accent-dim)]">합계</td>
                 <td className="px-3 py-2 text-right tabular-nums">{summary.employeeCount}</td>
                 <td className="px-3 py-2 text-right font-mono tabular-nums">{format(summary.totalYearlyWelfare)}</td>
                 <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--muted)]">
                   {format(Array.from(targetByLevel.values()).reduce((a, b) => a + b, 0))}
                 </td>
-                <td className={`px-3 py-2 text-right font-mono tabular-nums font-semibold ${totalDelta > 0 ? "text-[var(--danger)]" : totalDelta < 0 ? "text-[var(--warn)]" : "text-[var(--muted)]"}`}>
+                <td className={`px-3 py-2 text-right font-mono tabular-nums font-bold ${totalDelta > 0 ? "text-[var(--danger)]" : totalDelta < 0 ? "text-[var(--warn)]" : "text-[var(--muted)]"}`}>
                   {totalDelta > 0 ? "+" : ""}{format(totalDelta)}
                 </td>
               </tr>
@@ -351,14 +395,16 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
         </div>
 
         {/* 법정 코드별 */}
-        <div className="surface overflow-x-auto dash-panel-pad">
-          <h2 className="mb-3 text-sm font-bold text-[var(--text)]">복지비 구분 (법정 코드)</h2>
-          <table className="w-full min-w-[320px] border-collapse text-sm">
+        <div className="surface overflow-x-auto">
+          <div className="dash-panel-toolbar border-b border-[var(--border)]">
+            <h2 className="section-title">복지비 구분 (법정 코드)</h2>
+          </div>
+          <table className="table-zebra w-full min-w-[320px] border-collapse text-sm">
             <thead>
-              <tr className="border-b-2 border-[var(--border)]">
+              <tr className="border-b border-[var(--border)] bg-[var(--surface-sunken)]">
                 <th className="dash-table-head text-left">코드</th>
                 <th className="dash-table-head text-left">구분</th>
-                <th className="dash-table-head text-right">금액(원)</th>
+                <th className="dash-table-head text-right">금액 (원)</th>
               </tr>
             </thead>
             <tbody>
@@ -366,7 +412,7 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
                 const amt = legalAllocByCode.get(row.code) ?? 0;
                 return (
                   <tr key={row.code} className="border-b border-[var(--border)]">
-                    <td className="px-3 py-2 tabular-nums text-[var(--muted)]">{row.code}</td>
+                    <td className="px-3 py-2 font-mono tabular-nums text-[var(--muted)]">{row.code}</td>
                     <td className="px-3 py-2">{row.label}</td>
                     <td className={`px-3 py-2 text-right font-mono tabular-nums ${amt === 0 ? "text-[var(--muted)]" : "text-[var(--text)]"}`}>
                       {format(amt)}
@@ -374,8 +420,8 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
                   </tr>
                 );
               })}
-              <tr className="border-t-2 border-[var(--border)] bg-[var(--surface-hover)]/50 font-semibold">
-                <td className="px-3 py-2 text-[var(--muted)]" colSpan={2}>합계</td>
+              <tr className="border-t-2 border-[var(--border-strong)] bg-[var(--accent-soft)] font-semibold">
+                <td className="px-3 py-2 text-[var(--accent-dim)]" colSpan={2}>합계</td>
                 <td className="px-3 py-2 text-right font-mono tabular-nums">{format(summary.totalYearlyWelfare)}</td>
               </tr>
             </tbody>
@@ -503,12 +549,12 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
         ]}
       />
 
-      <div className="flex flex-wrap gap-3 text-sm">
-        <Link href="/dashboard/schedule" className="text-[var(--accent)] hover:underline">월별지급스케줄 →</Link>
-        <Link href="/dashboard/rules" className="text-[var(--accent)] hover:underline">레벨·정기지급 →</Link>
-        <Link href="/dashboard/salary-inclusion-report" className="text-[var(--accent)] hover:underline">급여포함신고 →</Link>
-        <Link href="/dashboard/employees" className="text-[var(--accent)] hover:underline">직원정보 →</Link>
-      </div>
+      <nav className="flex flex-wrap gap-2 pt-2" aria-label="관련 화면">
+        <Link href="/dashboard/schedule" className="btn btn-outline text-xs">월별 지급 스케줄 →</Link>
+        <Link href="/dashboard/rules" className="btn btn-outline text-xs">지급 규칙 →</Link>
+        <Link href="/dashboard/salary-inclusion-report" className="btn btn-outline text-xs">급여 포함 신고 →</Link>
+        <Link href="/dashboard/employees" className="btn btn-outline text-xs">직원 정보 →</Link>
+      </nav>
     </div>
   );
 }

@@ -45,7 +45,7 @@ export default async function EmployeesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="인원 관리"
+        eyebrow={`직원 · ${activeYear}`}
         title="직원 정보"
         description={`<${yy}년 사복 진행 조사표> · 창립월 ${foundingMonth}월 · 기준 연도 ${activeYear}년`}
         actions={

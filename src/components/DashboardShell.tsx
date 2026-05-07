@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { logoutAction } from "@/app/actions/auth";
 import type { NavGroup } from "@/lib/dashboard-nav";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { NavIcon } from "@/components/ui/NavIcon";
 
 function navLinkActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") {
@@ -35,11 +36,11 @@ function NavBody({
   onNavigate?: () => void;
 }) {
   return (
-    <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4" aria-label="대시보드 내비게이션">
+    <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-5" aria-label="대시보드 내비게이션">
       {groups.map((g) => (
         <div key={g.title}>
-          <p className="dash-eyebrow mb-2 px-2">{g.title}</p>
-          <ul className="flex flex-col gap-0.5">
+          <p className="dash-eyebrow mb-2 px-3">{g.title}</p>
+          <ul className="flex flex-col gap-1">
             {g.items.map((item) => {
               const active = navLinkActive(pathname, item.href);
               return (
@@ -50,7 +51,8 @@ function NavBody({
                     aria-current={active ? "page" : undefined}
                     className={"neu-nav-link " + (active ? "neu-nav-link-active" : "")}
                   >
-                    {item.label}
+                    <NavIcon icon={item.icon} />
+                    <span className="truncate">{item.label}</span>
                   </Link>
                 </li>
               );
@@ -148,34 +150,39 @@ export function DashboardShell({
 
       {/* 데스크톱 사이드바 */}
       <aside className="sticky top-0 z-20 hidden h-screen w-[var(--sidebar-w)] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] md:flex">
-        {/* 로고 영역 — 민트 포인트 */}
-        <div className="border-b border-[var(--border)] px-5 py-5">
+        <div className="px-5 pt-5 pb-4">
           <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-white text-xs font-black"
-                  style={{ background: "var(--accent)" }}
-                >
-                  SB
+            <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 group" aria-label="대시보드 홈">
+              <span
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-white text-sm font-black shadow-sm transition-transform group-hover:scale-105"
+                style={{ background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%)" }}
+              >
+                SB
+              </span>
+              <span className="flex flex-col min-w-0">
+                <span className="font-black text-[15px] text-[var(--text)] tracking-tight leading-none">SABOK</span>
+                <span className="mt-0.5 text-[10px] text-[var(--muted)] leading-none tracking-wider uppercase">
+                  사내근로복지기금
                 </span>
-                <span className="font-extrabold text-sm text-[var(--text)] tracking-tight">SABOK</span>
-              </div>
-              <p className="mt-1 truncate text-xs text-[var(--muted)] leading-snug">사내근로복지기금</p>
-            </div>
+              </span>
+            </Link>
             <ThemeToggle />
           </div>
           {tenantLine ? (
-            <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-hover)] px-3 py-2.5 space-y-2">
-              <p className="line-clamp-3 text-xs leading-snug text-[var(--muted)]">{tenantLine}</p>
+            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-3 space-y-2.5">
+              <div className="flex items-start gap-2">
+                <NavIcon icon="tenant" className="h-4 w-4 mt-0.5 shrink-0 text-[var(--accent)]" />
+                <p className="line-clamp-3 text-[12px] leading-snug text-[var(--text)] font-medium">{tenantLine}</p>
+              </div>
               {showTenantSwitch ? (
-                <Link href="/dashboard/select-tenant" className="btn btn-secondary w-full justify-center text-xs">
+                <Link href="/dashboard/select-tenant" className="btn btn-secondary w-full justify-center text-xs h-8">
                   거래처 전환
                 </Link>
               ) : null}
             </div>
           ) : null}
         </div>
+        <div className="border-t border-[var(--border)]" />
         <NavBody groups={groups} pathname={pathname} />
         <div className="border-t border-[var(--border)] p-3">
           <LogoutButton block />

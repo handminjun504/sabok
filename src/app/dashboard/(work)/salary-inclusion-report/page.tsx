@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/PageHeader";
 import {
   companySettingsByTenant,
   employeeListByTenantCodeAsc,
@@ -107,67 +108,52 @@ export default async function SalaryInclusionReportPage({
   const colShowUnder = rows.some((r) => r.showUnder);
 
   return (
-    <div className="space-y-8">
-      <header className="surface dash-panel-pad border border-[var(--border)] shadow-[var(--shadow-card)]">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 space-y-2">
-            <h1 className="neu-title-gradient text-2xl font-bold tracking-tight">급여포함신고</h1>
-            <p className="text-sm text-[var(--muted)]">
-              <span className="font-medium text-[var(--text)]">{year}년</span>
-              <span className="mx-1.5 text-[var(--border)]">·</span>
-              지급월 누적 <span className="tabular-nums text-[var(--text)]">1–{throughMonth}월</span>
-            </p>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
-              <span>
-                전사 기본 표시:{" "}
-                <strong className="text-[var(--text)]">{tenantVarianceLabel}</strong>
-                <Link href="/dashboard/settings" className="ml-1.5 text-[var(--accent)] hover:underline">
-                  설정에서 변경
-                </Link>
-              </span>
-              <span className="hidden sm:inline">|</span>
-              <span>
-                직원별로 다르게 두면{" "}
-                <Link href="/dashboard/employees" className="text-[var(--accent)] hover:underline">
-                  직원 추가·수정
-                </Link>
-                에서 덮어씁니다.
-              </span>
-            </div>
-          </div>
-          <div className="shrink-0 rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3 text-xs text-[var(--muted)] lg:max-w-md">
-            <p className="font-semibold text-[var(--text)]">누적 지급월</p>
-            <p className="mt-1 leading-relaxed">
-              아래 표의 기금 실적·인센 사복 합은 선택한 월까지 합산됩니다. 열이 숨겨진 직원은 해당 표시 방식을 쓰지
-              않는 경우입니다.
-            </p>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow={`급여포함신고 · ${year}`}
+        title="급여포함신고"
+        description="기금 실적이 사복 한도를 넘는 직원은 초과분이 급여로 포함됩니다 — 누적 지급월까지의 결과를 표시합니다."
+        meta={
+          <>
+            <span className="trust-pill">기준 연도 {year}</span>
+            <span className="trust-pill">누적 1–{throughMonth}월</span>
+            <span className="trust-pill">전사 표시 {tenantVarianceLabel}</span>
+          </>
+        }
+      />
 
-        <nav className="mt-5 border-t border-[var(--border)] pt-4" aria-label="누적 지급월 선택">
-          <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6 md:grid-cols-12">
-            {MONTH_LINKS.map((m) => {
-              const active = throughMonth === m;
-              const href =
-                m === 12 ? "/dashboard/salary-inclusion-report" : `/dashboard/salary-inclusion-report?throughMonth=${m}`;
-              const label = m === 12 ? "연간" : `${m}월`;
-              return (
-                <Link
-                  key={m}
-                  href={href}
-                  className={`rounded-lg border px-2 py-2 text-center text-xs font-medium tabular-nums transition-colors ${
-                    active
-                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-dim)]"
-                      : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
-                  }`}
-                >
-                  {label}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-      </header>
+      <section className="surface dash-panel-pad" aria-label="누적 지급월 선택">
+        <div className="flex items-baseline justify-between gap-3 mb-3">
+          <h2 className="section-title">누적 지급월</h2>
+          <p className="text-xs text-[var(--muted)]">
+            전사 기본은{" "}
+            <Link href="/dashboard/settings" className="text-[var(--accent)] hover:underline">설정</Link>
+            , 직원별 덮어쓰기는{" "}
+            <Link href="/dashboard/employees" className="text-[var(--accent)] hover:underline">직원</Link>에서.
+          </p>
+        </div>
+        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6 md:grid-cols-12">
+          {MONTH_LINKS.map((m) => {
+            const active = throughMonth === m;
+            const href =
+              m === 12 ? "/dashboard/salary-inclusion-report" : `/dashboard/salary-inclusion-report?throughMonth=${m}`;
+            const label = m === 12 ? "연간" : `${m}월`;
+            return (
+              <Link
+                key={m}
+                href={href}
+                className={`rounded-lg border px-2 py-2 text-center text-xs font-bold tabular-nums transition-colors ${
+                  active
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-dim)] shadow-sm"
+                    : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--text)]"
+                }`}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="surface overflow-hidden rounded-xl border border-[var(--border)] shadow-[var(--shadow-card)]">
         <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] bg-[var(--surface-hover)]/40 px-4 py-2.5 text-xs text-[var(--muted)]">

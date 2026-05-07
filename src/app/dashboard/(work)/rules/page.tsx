@@ -29,6 +29,7 @@ import { QuarterlyEmployeeConfigForm } from "@/components/QuarterlyEmployeeConfi
 import { QuarterlyRatesMatrixForm } from "@/components/QuarterlyRatesMatrixForm";
 import { Tabs } from "@/components/Tabs";
 import { Alert } from "@/components/ui/Alert";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 const MONTHS_1_12 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 const DEFAULT_QUARTER_PAY_MONTHS: readonly number[] = [3, 6, 9, 12];
@@ -401,13 +402,18 @@ export default async function PaymentRulesPage() {
   );
 
   return (
-    <div className="space-y-2">
-      <div>
-        <h1 className="neu-title-gradient text-xl font-bold sm:text-2xl">지급 규칙</h1>
-        <p className="mt-0.5 text-sm leading-snug text-[var(--muted)]">
-          레벨별 정기 지급 금액·분기 지원 요율·분기 대상자까지 한 페이지에서 관리합니다.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow={`지급 규칙 · ${year}`}
+        title="지급 규칙"
+        description="레벨별 정기 지급 금액·분기 지원 요율·분기 대상자까지 한 페이지에서 관리합니다."
+        meta={
+          <>
+            <span className="trust-pill">기준 연도 {year}</span>
+            <span className="trust-pill">대상 직원 {employees.length}명</span>
+          </>
+        }
+      />
 
       <Tabs
         tabs={[

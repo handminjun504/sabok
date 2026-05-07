@@ -24,20 +24,20 @@ export function YearSwitchPanel({
 
   return (
     <form action={formAction} className="surface dash-panel-pad space-y-4">
-      <div>
-        <h2 className="text-sm font-bold text-[var(--text)]">기준 연도 변경</h2>
-        <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
-          현재 기준 연도: <strong className="text-[var(--text)]">{currentYear}년</strong>.
-          새 연도를 선택하면 스케줄·지급 규칙·운영 보고 전체가 해당 연도 기준으로 바뀝니다.
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-sm leading-relaxed text-[var(--muted)]">
+          현재{" "}
+          <strong className="text-[var(--text)] font-bold tabular-nums text-base">{currentYear}년</strong>
+          {" "}— 새 연도를 선택하면 스케줄·지급 규칙·운영 보고 전체가 해당 연도 기준으로 바뀝니다.
         </p>
       </div>
 
-      <div className="flex flex-wrap items-end gap-4">
+      <div className="grid gap-3">
         <div>
           <label className="dash-field-label">새 기준 연도</label>
           <select
             name="year"
-            className="input text-sm"
+            className="input text-sm w-full"
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
           >
@@ -49,23 +49,20 @@ export function YearSwitchPanel({
           </select>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="flex cursor-pointer items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="copy"
-              defaultChecked
-              className="mt-0.5 size-4 accent-[var(--accent)]"
-            />
-            <span>
-              <span className="font-semibold text-[var(--text)]">이전 연도({currentYear}년) 데이터 복사</span>
-              <span className="ml-1 text-[var(--muted)]">— 레벨 규칙·목표액·분기 요율·분기 대상자</span>
+        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2.5 text-sm">
+          <input
+            type="checkbox"
+            name="copy"
+            defaultChecked
+            className="mt-0.5 size-4 accent-[var(--accent)]"
+          />
+          <span className="min-w-0">
+            <span className="font-semibold text-[var(--text)]">{currentYear}년 데이터 복사</span>
+            <span className="block mt-0.5 text-[11px] leading-snug text-[var(--muted)]">
+              레벨 규칙·목표액·분기 요율·분기 대상자 — 직원 정보는 연도와 무관하게 유지됩니다.
             </span>
-          </label>
-          <p className="ml-6 text-[0.7rem] leading-snug text-[var(--muted)]">
-            체크 해제 시 새 연도를 빈 상태로 시작합니다. 직원 정보는 연도와 무관하게 유지됩니다.
-          </p>
-        </div>
+          </span>
+        </label>
       </div>
 
       {result?.ok === false && (
@@ -81,13 +78,10 @@ export function YearSwitchPanel({
       <button
         type="submit"
         disabled={pending || selectedYear === currentYear}
-        className="btn btn-primary text-sm disabled:opacity-50"
+        className="btn btn-primary text-sm w-full disabled:opacity-50"
       >
-        {pending ? "변경 중…" : `${selectedYear}년으로 변경`}
+        {pending ? "변경 중…" : selectedYear === currentYear ? "현재 연도와 같음" : `${selectedYear}년으로 변경`}
       </button>
-      {selectedYear === currentYear && (
-        <p className="text-xs text-[var(--muted)]">현재 연도와 같습니다.</p>
-      )}
     </form>
   );
 }

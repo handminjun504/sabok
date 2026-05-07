@@ -8,6 +8,8 @@ import {
   levelTargetList,
 } from "@/lib/pb/repository";
 import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
+import { PageHeader } from "@/components/ui/PageHeader";
+import Link from "next/link";
 
 export default async function NewEmployeePage() {
   const { tenantId, role } = await requireTenantContext();
@@ -31,7 +33,16 @@ export default async function NewEmployeePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">직원 추가</h1>
+      <PageHeader
+        eyebrow={`직원 추가 · ${activeYear}`}
+        title="직원 추가"
+        description="기본정보·급여·복지·일정·가족까지 한 화면에서 입력합니다."
+        actions={
+          <Link href="/dashboard/employees" className="btn btn-outline text-sm">
+            ← 직원 목록
+          </Link>
+        }
+      />
       <EmployeeForm
         activeYear={activeYear}
         foundingMonth={foundingMonth}

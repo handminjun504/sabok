@@ -77,6 +77,7 @@ import {
 } from "@/components/ScheduleEmployeeTable";
 import { ScheduleReserveTab } from "@/components/ScheduleReserveTab";
 import { Alert } from "@/components/ui/Alert";
+import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
 
 export default async function SchedulePage() {
@@ -675,17 +676,23 @@ export default async function SchedulePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="neu-title-gradient text-2xl font-bold">월별 지급 스케줄</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">{year}년 — 정기 지급(귀속월) + 분기 지원(지급월) + 선택 복지를 같은 칸에 합산해 표시합니다.</p>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          카카오·문자 안내문은 <span className="font-semibold text-[var(--text)]">「안내 멘트」</span> 탭,
-          월별 발생 인센·선택 복지·메모는 <span className="font-semibold text-[var(--text)]">「월별 메모」</span> 탭,
-          자본금 50% 한도·추가 적립 누적은 <span className="font-semibold text-[var(--text)]">「적립금」</span> 탭,
-          중도 변동으로 조사표 조정연봉이 어긋난 직원은{" "}
-          <span className="font-semibold text-[var(--text)]">「조정연봉 점검」</span> 탭에서 확인·동기화할 수 있습니다.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow={`월별 스케줄 · ${year}`}
+        title="월별 지급 스케줄"
+        description="정기 지급(귀속월) + 분기 지원(지급월) + 선택 복지를 같은 칸에 합산해 표시합니다."
+        meta={
+          <>
+            <span className="trust-pill">기준 연도 {year}</span>
+            <span className="trust-pill">대상 직원 {employees.length}명</span>
+          </>
+        }
+      />
+      <p className="text-sm text-[var(--muted)] leading-relaxed">
+        카카오·문자 안내문은 <span className="font-semibold text-[var(--text)]">「안내 멘트」</span>,
+        월별 발생 인센·선택 복지·메모는 <span className="font-semibold text-[var(--text)]">「월별 메모」</span>,
+        자본금 50% 한도·추가 적립 누적은 <span className="font-semibold text-[var(--text)]">「적립금」</span>,
+        조정연봉 어긋남 점검은 <span className="font-semibold text-[var(--text)]">「조정연봉 점검」</span> 탭에서 확인합니다.
+      </p>
 
       {quarterlyEmpty ? (
         <Alert tone="info" title="분기 지원이 아직 등록되지 않았습니다">

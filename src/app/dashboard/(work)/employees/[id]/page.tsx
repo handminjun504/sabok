@@ -18,6 +18,8 @@ import {
 } from "@/lib/domain/payment-events";
 import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
 import { Level5OverrideMatrixForm, type Level5OverrideRow } from "@/components/Level5OverrideMatrixForm";
+import { PageHeader } from "@/components/ui/PageHeader";
+import Link from "next/link";
 
 async function OverrideMatrix({
   employeeId,
@@ -91,10 +93,16 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">
-        직원 상세 — {emp.name}{" "}
-        <span className="text-base font-normal text-[var(--muted)]">({emp.employeeCode})</span>
-      </h1>
+      <PageHeader
+        eyebrow="직원 상세"
+        title={emp.name}
+        description={`${emp.position || "—"} · 사번 ${emp.employeeCode} · Lv.${emp.level}`}
+        actions={
+          <Link href="/dashboard/employees" className="btn btn-outline text-sm">
+            ← 직원 목록
+          </Link>
+        }
+      />
 
       {canEditEmployees(role) ? (
         <EmployeeForm
