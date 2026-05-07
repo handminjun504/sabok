@@ -199,41 +199,146 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
 
   const warningCount = view.warnings.length;
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <p className="page-eyebrow">보고</p>
-        <h1 className="page-hero-title mt-2 neu-title-gradient">운영상황 보고</h1>
-      </div>
+  /* ── 공통 요약 데이터 ── */
+  const totalDelta = summary.byLevel.reduce((s, r) => {
+    const target = targetByLevel.get(r.level) ?? 0;
+    return s + (r.yearlyWelfareSum - target);
+  }, 0);
 
-      <div className="surface dash-panel-pad flex flex-wrap items-center justify-between gap-4">
-        <div className="text-sm text-[var(--muted)]">
-          업체: <span className="font-medium text-[var(--text)]">{tenant?.name ?? "—"}</span>
-          <span className="mx-2">·</span>
-          회계연도:
-          <span className="ml-2 font-mono tabular-nums text-[var(--text)]">
-            {view.basic.accountingYearLabel}
-          </span>
+  return (
+    <div className="space-y-6">
+      {/* 헤더 */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="page-eyebrow">보고</p>
+          <h1 className="page-hero-title mt-1 neu-title-gradient">운영상황 보고</h1>
         </div>
         <form className="flex items-center gap-2" method="get">
           <label className="text-xs text-[var(--muted)]">연도</label>
-          <select
-            name="year"
-            defaultValue={String(year)}
-            className="input text-sm"
-          >
+          <select name="year" defaultValue={String(year)} className="input text-sm">
             {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
+              <option key={y} value={y}>{y}</option>
             ))}
           </select>
-          <button type="submit" className="btn btn-ghost text-xs">
-            적용
-          </button>
+          <button type="submit" className="btn btn-ghost text-xs">적용</button>
         </form>
       </div>
 
+      {/* ─── 핵심 요약 표 ─── */}
+      <div className="surface overflow-x-auto dash-panel-pad">
+        <h2 className="mb-3 text-sm font-bold text-[var(--text)]">{year}년 사복 핵심 요약</h2>
+        <table className="w-full min-w-[480px] border-collapse text-sm">
+          <tbody>
+            <tr className="border-b border-[var(--border)]">
+              <th className="w-[40%] bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">업체</th>
+              <td className="px-3 py-2 font-medium text-[var(--text)]">{tenant?.name ?? "—"}</td>
+            </tr>
+            <tr className="border-b border-[var(--border)]">
+              <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">회계연도</th>
+              <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">{view.basic.accountingYearLabel}</td>
+            </tr>
+            <tr className="border-b border-[var(--border)]">
+              <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">사복 대상 직원</th>
+              <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">{summary.employeeCount}명</td>
+            </tr>
+            <tr className="border-b border-[var(--border)]">
+              <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">연간 기금 지급 합계</th>
+              <td className="px-3 py-2 font-mono tabular-nums font-semibold text-[var(--text)]">{format(summary.totalYearlyWelfare)} 원</td>
+            </tr>
+            <tr className="border-b border-[var(--border)]">
+              <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">사업주 출연(자동)</th>
+              <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">{format(employerTotal)} 원</td>
+            </tr>
+            <tr className="border-b border-[var(--border)]">
+              <th className="bg-[var(--surface-hover)] px-3 py-2 text-left text-[11px] font-semibold text-[var(--muted)]">사업주 외 출연(자동)</th>
+              <td className="px-3 py-2 font-mono tabular-nums text-[var(--text)]">{format(otherTotal)} 원</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* ─── 레벨별 + 법정코드 2열 표 ─── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* 레벨별 */}
+        <div className="surface overflow-x-auto dash-panel-pad">
+          <h2 className="mb-3 text-sm font-bold text-[var(--text)]">레벨별 기금</h2>
+          <table className="w-full min-w-[360px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b-2 border-[var(--border)]">
+                <th className="dash-table-head text-center">레벨</th>
+                <th className="dash-table-head text-right">인원</th>
+                <th className="dash-table-head text-right">연간 합계</th>
+                <th className="dash-table-head text-right">목표</th>
+                <th className="dash-table-head text-right">차이</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.byLevel.map((row) => {
+                const target = targetByLevel.get(row.level) ?? 0;
+                const delta = row.yearlyWelfareSum - target;
+                const deltaCls =
+                  delta > 0 ? "text-[var(--danger)]" : delta < 0 ? "text-[var(--warn)]" : "text-[var(--muted)]";
+                return (
+                  <tr key={row.level} className="border-b border-[var(--border)]">
+                    <td className="px-3 py-2 text-center font-medium">{row.level}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{row.count}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{format(row.yearlyWelfareSum)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--muted)]">{format(target)}</td>
+                    <td className={`px-3 py-2 text-right font-mono tabular-nums font-medium ${deltaCls}`}>
+                      {delta > 0 ? "+" : ""}{format(delta)}
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t-2 border-[var(--border)] bg-[var(--surface-hover)]/50 font-semibold">
+                <td className="px-3 py-2 text-center">합계</td>
+                <td className="px-3 py-2 text-right tabular-nums">{summary.employeeCount}</td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums">{format(summary.totalYearlyWelfare)}</td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--muted)]">
+                  {format(Array.from(targetByLevel.values()).reduce((a, b) => a + b, 0))}
+                </td>
+                <td className={`px-3 py-2 text-right font-mono tabular-nums font-semibold ${totalDelta > 0 ? "text-[var(--danger)]" : totalDelta < 0 ? "text-[var(--warn)]" : "text-[var(--muted)]"}`}>
+                  {totalDelta > 0 ? "+" : ""}{format(totalDelta)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* 법정 코드별 */}
+        <div className="surface overflow-x-auto dash-panel-pad">
+          <h2 className="mb-3 text-sm font-bold text-[var(--text)]">복지비 구분 (법정 코드)</h2>
+          <table className="w-full min-w-[320px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b-2 border-[var(--border)]">
+                <th className="dash-table-head text-left">코드</th>
+                <th className="dash-table-head text-left">구분</th>
+                <th className="dash-table-head text-right">금액(원)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {LEGAL_WELFARE_CATEGORY_ROWS.map((row) => {
+                const amt = legalAllocByCode.get(row.code) ?? 0;
+                return (
+                  <tr key={row.code} className="border-b border-[var(--border)]">
+                    <td className="px-3 py-2 tabular-nums text-[var(--muted)]">{row.code}</td>
+                    <td className="px-3 py-2">{row.label}</td>
+                    <td className={`px-3 py-2 text-right font-mono tabular-nums ${amt === 0 ? "text-[var(--muted)]" : "text-[var(--text)]"}`}>
+                      {format(amt)}
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t-2 border-[var(--border)] bg-[var(--surface-hover)]/50 font-semibold">
+                <td className="px-3 py-2 text-[var(--muted)]" colSpan={2}>합계</td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums">{format(summary.totalYearlyWelfare)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ─── 탭: 미리보기 / 데이터 입력 ─── */}
       <Tabs
         tabs={[
           {
@@ -247,244 +352,117 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
             ),
           },
           {
-            label: "기본정보",
-            content: tenant ? (
-              <div className="space-y-3">
-                <div className="rounded-md border border-[var(--border)] bg-[var(--surface-hover)] p-3 text-xs leading-relaxed text-[var(--muted)]">
-                  양식 ①~⑪ 기본정보는{" "}
-                  <Link href="/dashboard/settings" className="text-[var(--accent)] hover:underline">
-                    대시보드 설정 → 거래처 정보
-                  </Link>
-                  에서 입력·수정합니다. 이곳에서는 읽기 전용 요약만 보여줍니다. ⑦ 대표자가 비어 있으면
-                  position=대표이사 직원(<b>{autoCeoName ?? "미지정"}</b>)이 자동 적용됩니다.
-                </div>
-                <div className="overflow-x-auto rounded-md border border-[var(--border)]">
-                  <table className="w-full border-collapse text-xs">
-                    <tbody>
-                      <BasicRow label="① 기금법인명" value={view.basic.name} />
-                      <BasicRow label="② 인가번호" value={view.basic.approvalNumber} mono />
-                      <BasicRow label="사업자등록번호" value={tenant.businessRegNo ?? ""} mono />
-                      <BasicRow label="③ 설립등기일" value={view.basic.incorporationDate} mono />
-                      <BasicRow label="④ 전화번호" value={view.basic.phone} mono />
-                      <BasicRow label="⑤ 소재지" value={view.basic.addressLine} full />
-                      <BasicRow label="⑥ 회계연도" value={view.basic.accountingYearLabel} mono />
-                      <BasicRow label="⑦ 대표자" value={view.basic.ceoName} />
-                      <BasicRow
-                        label="⑧ 업종"
-                        value={
-                          view.basic.industry ? `${view.basic.industry}. ${industryLabelOf(view.basic.industry)}` : ""
-                        }
-                      />
-                      <BasicRow
-                        label="⑪ 납입자본금"
-                        value={
-                          view.basic.headOfficeCapital
-                            ? `${view.basic.headOfficeCapital.toLocaleString("ko-KR")} 원`
-                            : ""
-                        }
-                        mono
-                      />
-                    </tbody>
-                  </table>
-                </div>
-                <Link
-                  href="/dashboard/settings"
-                  className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--accent-hover)]"
-                >
-                  거래처 정보 편집하러 가기 →
-                </Link>
+            label: "데이터 입력",
+            content: (
+              <div className="space-y-8">
+                {/* 기본정보 */}
+                <section className="space-y-2">
+                  <h3 className="text-sm font-semibold text-[var(--text)]">① 기본정보 (읽기 전용)</h3>
+                  <p className="text-xs text-[var(--muted)]">
+                    수정은{" "}
+                    <Link href="/dashboard/settings" className="text-[var(--accent)] hover:underline">
+                      대시보드 설정 → 거래처 정보
+                    </Link>
+                    에서 합니다.
+                  </p>
+                  <div className="overflow-x-auto rounded-md border border-[var(--border)]">
+                    <table className="w-full border-collapse text-xs">
+                      <tbody>
+                        <BasicRow label="기금법인명" value={view.basic.name} />
+                        <BasicRow label="인가번호" value={view.basic.approvalNumber} mono />
+                        <BasicRow label="사업자등록번호" value={tenant?.businessRegNo ?? ""} mono />
+                        <BasicRow label="설립등기일" value={view.basic.incorporationDate} mono />
+                        <BasicRow label="대표자" value={view.basic.ceoName} />
+                        <BasicRow label="회계연도" value={view.basic.accountingYearLabel} mono />
+                        <BasicRow
+                          label="업종"
+                          value={view.basic.industry ? `${view.basic.industry}. ${industryLabelOf(view.basic.industry)}` : ""}
+                        />
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                {/* 기본재산 */}
+                <section className="space-y-2 border-t border-[var(--border)] pt-6">
+                  <h3 className="text-sm font-semibold text-[var(--text)]">② 기본재산 변동 ⑫~⑳</h3>
+                  <p className="text-xs text-[var(--muted)]">사업주 출연·기본재산 사용은 자동 집계됩니다.</p>
+                  <BaseAssetAnnualForm
+                    year={year}
+                    record={baseAsset}
+                    autoPrevYearEndTotal={view.baseAsset.prevYearEndTotal}
+                    autoEmployerContribution={employerTotal}
+                    autoNonEmployerContribution={otherTotal}
+                    autoBaseAssetUsed={summary.totalYearlyWelfare}
+                  />
+                </section>
+
+                {/* 기금운용 */}
+                <section className="space-y-2 border-t border-[var(--border)] pt-6">
+                  <h3 className="text-sm font-semibold text-[var(--text)]">③ 기금운용</h3>
+                  <FundOperationAnnualForm
+                    year={year}
+                    record={fundOperation}
+                    expectedTotalMatch={view.baseAsset.currentYearEndTotal}
+                  />
+                </section>
+
+                {/* 기금재원 */}
+                <section className="space-y-2 border-t border-[var(--border)] pt-6">
+                  <h3 className="text-sm font-semibold text-[var(--text)]">④ 기금재원</h3>
+                  <FundSourceAnnualForm
+                    year={year}
+                    tenant={tenant}
+                    record={fundSource}
+                    contribBase={view.baseAsset.employerContribution + view.baseAsset.nonEmployerContribution}
+                    headOfficeCapital={view.basic.headOfficeCapital}
+                    currentYearEndTotal={view.baseAsset.currentYearEndTotal}
+                    prevYearEndTotal={view.baseAsset.prevYearEndTotal}
+                    autoCarryover={prevFundSource?.carryover ?? 0}
+                  />
+                </section>
+
+                {/* 사용현황 */}
+                <section className="space-y-2 border-t border-[var(--border)] pt-6">
+                  <h3 className="text-sm font-semibold text-[var(--text)]">⑤ 사용현황</h3>
+                  <ContribUsageAnnualForm
+                    year={year}
+                    record={usage}
+                    contribBase={view.baseAsset.employerContribution + view.baseAsset.nonEmployerContribution}
+                    prevYearEndTotal={view.baseAsset.prevYearEndTotal}
+                  />
+                </section>
+
+                {/* 사업실적 */}
+                <section className="space-y-2 border-t border-[var(--border)] pt-6">
+                  <h3 className="text-sm font-semibold text-[var(--text)]">⑥ 사업실적</h3>
+                  <BizResultAnnualForm
+                    year={year}
+                    record={biz}
+                    legalAllocByCode={legalAllocByCode}
+                    baseAssetUsed={summary.totalYearlyWelfare}
+                    fundSourceTotal={view.fundSource.total}
+                    loanTotal={view.fundOperation.loan}
+                    autoOptionalRecipients={autoOptionalRecipients}
+                  />
+                </section>
+
+                {/* 부동산 */}
+                <section className="space-y-2 border-t border-[var(--border)] pt-6">
+                  <h3 className="text-sm font-semibold text-[var(--text)]">⑦ 부동산 보유 현황</h3>
+                  <RealEstateHoldingsForm year={year} rows={realEstateRows} />
+                </section>
               </div>
-            ) : (
-              <p className="text-sm text-[var(--muted)]">사업체 정보가 없습니다.</p>
             ),
-          },
-          {
-            label: "기본재산",
-            content: (
-              <div className="space-y-3">
-                <p className="text-xs text-[var(--muted)]">
-                  양식 ⑫~⑳ (기본재산 변동). 사업주 출연·사업주 외 출연은 거래처 원장에서 자동 집계되며,
-                  ⑰ 기본재산 사용은 연간 지급 총액으로 고정됩니다.
-                </p>
-                <BaseAssetAnnualForm
-                  year={year}
-                  record={baseAsset}
-                  autoPrevYearEndTotal={view.baseAsset.prevYearEndTotal}
-                  autoEmployerContribution={employerTotal}
-                  autoNonEmployerContribution={otherTotal}
-                  autoBaseAssetUsed={summary.totalYearlyWelfare}
-                />
-              </div>
-            ),
-          },
-          {
-            label: "기금운용",
-            content: (
-              <FundOperationAnnualForm
-                year={year}
-                record={fundOperation}
-                expectedTotalMatch={view.baseAsset.currentYearEndTotal}
-              />
-            ),
-          },
-          {
-            label: "기금재원",
-            content: (
-              <FundSourceAnnualForm
-                year={year}
-                tenant={tenant}
-                record={fundSource}
-                contribBase={view.baseAsset.employerContribution + view.baseAsset.nonEmployerContribution}
-                headOfficeCapital={view.basic.headOfficeCapital}
-                currentYearEndTotal={view.baseAsset.currentYearEndTotal}
-                prevYearEndTotal={view.baseAsset.prevYearEndTotal}
-                autoCarryover={prevFundSource?.carryover ?? 0}
-              />
-            ),
-          },
-          {
-            label: "사용현황",
-            content: (
-              <ContribUsageAnnualForm
-                year={year}
-                record={usage}
-                contribBase={view.baseAsset.employerContribution + view.baseAsset.nonEmployerContribution}
-                prevYearEndTotal={view.baseAsset.prevYearEndTotal}
-              />
-            ),
-          },
-          {
-            label: "사업실적",
-            content: (
-              <BizResultAnnualForm
-                year={year}
-                record={biz}
-                legalAllocByCode={legalAllocByCode}
-                baseAssetUsed={summary.totalYearlyWelfare}
-                fundSourceTotal={view.fundSource.total}
-                loanTotal={view.fundOperation.loan}
-                autoOptionalRecipients={autoOptionalRecipients}
-              />
-            ),
-          },
-          {
-            label: "부동산",
-            content: <RealEstateHoldingsForm year={year} rows={realEstateRows} />,
           },
         ]}
       />
 
-      <div className="surface overflow-x-auto dash-panel-pad">
-        <h2 className="text-sm font-bold tracking-normal text-[var(--text)]">
-          연간 지급액 — 복지비 구분(자동 배분)
-        </h2>
-        <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-          정기 지급(event)·분기 항목·선택 복지를 법정 코드(57~66, 71)에{" "}
-          <strong className="text-[var(--text)]">성격에 맞게</strong> 매핑합니다. 빈 칸에 균등 배분 없이, 이미 매핑된 구분의 비율대로 가감됩니다.
-        </p>
-        <table className="mt-4 w-full min-w-[520px] border-collapse text-left text-sm">
-          <thead>
-            <tr className="border-b border-[var(--border)]">
-              <th className="dash-table-head text-left">코드</th>
-              <th className="dash-table-head text-left">구분</th>
-              <th className="dash-table-head dash-table-vline-strong text-right">금액(원)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {LEGAL_WELFARE_CATEGORY_ROWS.map((row) => (
-              <tr key={row.code} className="border-b border-[var(--border)]">
-                <td className="px-3 py-2 tabular-nums text-[var(--muted)]">{row.code}</td>
-                <td className="px-3 py-2">{row.label}</td>
-                <td className="dash-table-vline-strong px-3 py-2 text-right font-mono tabular-nums">
-                  {format(legalAllocByCode.get(row.code) ?? 0)}
-                </td>
-              </tr>
-            ))}
-            <tr className="bg-[var(--surface-hover)]/50 font-semibold">
-              <td className="px-3 py-2 text-[var(--muted)]" colSpan={2}>
-                합계
-              </td>
-              <td className="dash-table-vline-strong px-3 py-2 text-right font-mono tabular-nums">
-                {format(summary.totalYearlyWelfare)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="surface-prominent dash-panel-pad">
-          <p className="dash-eyebrow">기준 연도</p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text)]">{summary.year}</p>
-        </div>
-        <div className="surface-prominent dash-panel-pad">
-          <p className="dash-eyebrow">창립월</p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text)]">{summary.foundingMonth}월</p>
-        </div>
-        <div className="surface-prominent dash-panel-pad">
-          <p className="dash-eyebrow">등록 직원</p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text)]">{summary.employeeCount}명</p>
-        </div>
-        <div className="surface-prominent dash-panel-pad">
-          <p className="dash-eyebrow">연간 기금 합계</p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text)]">
-            {format(summary.totalYearlyWelfare)}원
-          </p>
-        </div>
-      </div>
-
-      <div className="surface overflow-x-auto dash-panel-pad">
-        <h2 className="text-sm font-bold tracking-normal text-[var(--text)]">레벨별</h2>
-        <table className="mt-4 w-full min-w-[520px] border-collapse text-left text-sm">
-          <thead>
-            <tr className="border-b border-[var(--border)]">
-              <th className="dash-table-head text-left">레벨</th>
-              <th className="dash-table-head dash-table-vline-strong text-right">인원</th>
-              <th className="dash-table-head dash-table-vline text-right">연간 기금 합계</th>
-              <th className="dash-table-head dash-table-vline text-right">목표(설정)</th>
-              <th className="dash-table-head dash-table-vline text-right">차이</th>
-            </tr>
-          </thead>
-          <tbody>
-            {summary.byLevel.map((row) => {
-              const target = targetByLevel.get(row.level) ?? 0;
-              const delta = row.yearlyWelfareSum - target;
-              const deltaCls =
-                delta > 0 ? "text-[var(--danger)]" : delta < 0 ? "text-[var(--warn)]" : "text-[var(--success)]";
-              return (
-                <tr key={row.level} className="border-b border-[var(--border)]">
-                  <td className="px-3 py-2 font-medium">{row.level}</td>
-                  <td className="dash-table-vline-strong px-3 py-2 text-right tabular-nums">{row.count}</td>
-                  <td className="dash-table-vline px-3 py-2 text-right tabular-nums">
-                    {format(row.yearlyWelfareSum)}
-                  </td>
-                  <td className="dash-table-vline px-3 py-2 text-right tabular-nums text-[var(--muted)]">
-                    {format(target)}
-                  </td>
-                  <td className={`dash-table-vline px-3 py-2 text-right font-medium tabular-nums ${deltaCls}`}>
-                    {delta > 0 ? "+" : ""}
-                    {format(delta)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
       <div className="flex flex-wrap gap-3 text-sm">
-        <Link href="/dashboard/schedule" className="text-[var(--accent)] hover:underline">
-          월별지급스케줄 →
-        </Link>
-        <Link href="/dashboard/rules" className="text-[var(--accent)] hover:underline">
-          레벨·정기지급 →
-        </Link>
-        <Link href="/dashboard/salary-inclusion-report" className="text-[var(--accent)] hover:underline">
-          급여포함신고 →
-        </Link>
-        <Link href="/dashboard/employees" className="text-[var(--accent)] hover:underline">
-          직원정보 →
-        </Link>
+        <Link href="/dashboard/schedule" className="text-[var(--accent)] hover:underline">월별지급스케줄 →</Link>
+        <Link href="/dashboard/rules" className="text-[var(--accent)] hover:underline">레벨·정기지급 →</Link>
+        <Link href="/dashboard/salary-inclusion-report" className="text-[var(--accent)] hover:underline">급여포함신고 →</Link>
+        <Link href="/dashboard/employees" className="text-[var(--accent)] hover:underline">직원정보 →</Link>
       </div>
     </div>
   );
