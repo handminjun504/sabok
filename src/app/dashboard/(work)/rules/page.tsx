@@ -149,81 +149,86 @@ export default async function PaymentRulesPage() {
     configs.length > 0 && configs.every((c) => c.paymentMonths.length <= 1);
 
   const levelTab = (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-sm leading-snug text-[var(--muted)]">
-          기준 연도 <strong className="text-[var(--text)]">{year}</strong> · 세로 레벨(1~5) · 가로 행사 · 레벨 5는 직원 상세에서 개별 조정
-        </p>
-        <MidYearChangeButton
+    <div className="space-y-6">
+      {/* ── 정기 지급 ── */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="text-sm leading-snug text-[var(--muted)]">
+            기준 연도 <strong className="text-[var(--text)]">{year}</strong> · 세로 레벨(1~5) · 가로 행사 · 레벨 5는 직원 상세에서 개별 조정
+          </p>
+          <MidYearChangeButton
+            year={year}
+            amountsByLevelEvent={amountsByLevelEventNested}
+            eventKeys={eventKeys}
+            eventLabels={eventLabels}
+            employees={employeeOptions}
+            canEdit={canEditLevels}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          {!canEditLevels && (
+            <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
+          )}
+
+          <LevelRulesMatrixForm
+            year={year}
+            eventKeys={eventKeys}
+            eventLabels={eventLabels}
+            amountsByLevelEvent={amountsByLevelEvent}
+            customEventKeys={customEventKeys}
+            rulesSignature={rulesSignature}
+          />
+
+          {canEditLevels && (
+            <form
+              action={addCustomPaymentEventFormAction}
+              className="surface flex flex-wrap items-end gap-x-3 gap-y-2 px-2 py-2 sm:px-3 sm:py-2.5"
+            >
+              <input type="hidden" name="year" value={year} />
+              <div>
+                <label className="dash-field-label text-xs sm:text-[0.8125rem]">추가 행사명</label>
+                <input
+                  name="label"
+                  required
+                  placeholder="예: 하계 휴가비"
+                  className="input w-44 text-sm"
+                />
+              </div>
+              <div>
+                <label className="dash-field-label text-xs sm:text-[0.8125rem]">귀속 월</label>
+                <select
+                  name="accrualMonth"
+                  required
+                  className="input w-[5.75rem] text-sm"
+                  defaultValue={6}
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m}>
+                      {m}월
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button type="submit" className="btn btn-outline px-3 py-2 text-sm">
+                항목 추가
+              </button>
+              <p className="m-0 w-full text-xs leading-snug text-[var(--muted)]">귀속 월 기준 스케줄 반영, 키 자동.</p>
+            </form>
+          )}
+        </div>
+      </div>
+
+      {/* ── 분기 요율 ── */}
+      <div className="space-y-2 border-t border-[var(--border)] pt-6">
+        <h2 className="text-sm font-semibold text-[var(--text)]">분기 지원 요율</h2>
+        <QuarterlyRatesMatrixForm
           year={year}
-          amountsByLevelEvent={amountsByLevelEventNested}
-          eventKeys={eventKeys}
-          eventLabels={eventLabels}
-          employees={employeeOptions}
+          rates={rates}
           canEdit={canEditLevels}
         />
       </div>
-
-      <div className="space-y-1.5">
-        {!canEditLevels && (
-          <p className="text-sm text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>
-        )}
-
-        <LevelRulesMatrixForm
-          year={year}
-          eventKeys={eventKeys}
-          eventLabels={eventLabels}
-          amountsByLevelEvent={amountsByLevelEvent}
-          customEventKeys={customEventKeys}
-          rulesSignature={rulesSignature}
-        />
-
-        {canEditLevels && (
-          <form
-            action={addCustomPaymentEventFormAction}
-            className="surface flex flex-wrap items-end gap-x-3 gap-y-2 px-2 py-2 sm:px-3 sm:py-2.5"
-          >
-            <input type="hidden" name="year" value={year} />
-            <div>
-              <label className="dash-field-label text-xs sm:text-[0.8125rem]">추가 행사명</label>
-              <input
-                name="label"
-                required
-                placeholder="예: 하계 휴가비"
-                className="input w-44 text-sm"
-              />
-            </div>
-            <div>
-              <label className="dash-field-label text-xs sm:text-[0.8125rem]">귀속 월</label>
-              <select
-                name="accrualMonth"
-                required
-                className="input w-[5.75rem] text-sm"
-                defaultValue={6}
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
-                    {m}월
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button type="submit" className="btn btn-outline px-3 py-2 text-sm">
-              항목 추가
-            </button>
-            <p className="m-0 w-full text-xs leading-snug text-[var(--muted)]">귀속 월 기준 스케줄 반영, 키 자동.</p>
-          </form>
-        )}
-      </div>
     </div>
-  );
-
-  const quarterlyRatesTab = (
-    <QuarterlyRatesMatrixForm
-      year={year}
-      rates={rates}
-      canEdit={canEditLevels}
-    />
   );
 
   const quarterlyBulkTab = (
@@ -406,8 +411,7 @@ export default async function PaymentRulesPage() {
 
       <Tabs
         tabs={[
-          { label: "정기 지급", content: levelTab },
-          { label: "분기 요율", content: quarterlyRatesTab },
+          { label: "정기 지급 · 분기 요율", content: levelTab },
           { label: "분기 체크", content: quarterlyBulkTab },
           { label: "분기 개별", content: quarterlyEmployeeTab },
         ]}
