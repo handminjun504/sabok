@@ -7,12 +7,14 @@ import {
 import { DashboardReserveStatusPanel } from "@/components/DashboardReserveStatusPanel";
 import { summarizeTenantAdditionalReserve } from "@/lib/domain/vendor-reserve";
 import { requireTenantContext } from "@/lib/tenant-context";
+import { canEditCompanySettings } from "@/lib/permissions";
 import { employeeIsInactiveForYear } from "@/lib/domain/schedule";
+import { YearSwitchPanel } from "@/components/YearSwitchPanel";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 export default async function DashboardHomePage() {
-  const { tenantId } = await requireTenantContext();
+  const { tenantId, role } = await requireTenantContext();
   const [employees, settings, tenant, vendors] = await Promise.all([
     employeeListByTenantCodeAsc(tenantId),
     companySettingsByTenant(tenantId),
@@ -86,6 +88,8 @@ export default async function DashboardHomePage() {
       </section>
 
       <DashboardReserveStatusPanel summary={reserveSummary} />
+
+      <YearSwitchPanel currentYear={year} canEdit={canEditCompanySettings(role)} />
 
       <section className="surface dash-panel-pad" aria-labelledby="quick-links">
         <h2 id="quick-links" className="text-sm font-bold text-[var(--text)]">
