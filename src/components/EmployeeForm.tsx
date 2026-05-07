@@ -309,11 +309,14 @@ export function EmployeeForm({
   surveyShowWorkerNet = false,
   existingEmployees = [],
   levelTargets = [],
+  defaultEditorOpen,
 }: {
   employee?: Employee | null;
   activeYear: number;
   foundingMonth: number;
   minimumAnnualSalaryWon: number;
+  /** 기존 직원이어도 폼을 즉시 열어 둘지. 인라인 편집 등에서 사용. 기본값: !employee */
+  defaultEditorOpen?: boolean;
   /** 전사 기본 급여포함신고 표시 방식 — 직원이 비우면 동일 적용 */
   tenantSalaryInclusionVarianceMode: SalaryInclusionVarianceMode;
   /** 전사 설정 — 꺼지면 해당 체크는 폼에 없고 저장 시 DB 값 유지 */
@@ -339,7 +342,7 @@ export function EmployeeForm({
   const router = useRouter();
   const [salaryRangeOk, setSalaryRangeOk] = useState(true);
   const isNew = !employee;
-  const [editorOpen, setEditorOpen] = useState(!employee);
+  const [editorOpen, setEditorOpen] = useState(defaultEditorOpen ?? !employee);
 
   useEffect(() => {
     if (delState?.성공) router.push("/dashboard/employees");

@@ -313,7 +313,7 @@ export function EmployeeDirectoryTable({
                           </div>
                         )}
 
-                        {/* 편집 모드 */}
+                        {/* 편집 모드 — defaultEditorOpen=true 로 요약 단계 없이 바로 폼 오픈 */}
                         {isEditMode && editContext ? (
                           <EmployeeForm
                             employee={e}
@@ -326,6 +326,7 @@ export function EmployeeDirectoryTable({
                             surveyShowWorkerNet={editContext.surveyShowWorkerNet}
                             existingEmployees={editContext.existingEmployees}
                             levelTargets={editContext.levelTargets}
+                            defaultEditorOpen
                           />
                         ) : (
                         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
