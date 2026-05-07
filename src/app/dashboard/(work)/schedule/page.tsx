@@ -36,7 +36,6 @@ import {
   welfareByScheduleDisplayMonth,
   welfareEligibleEmployees,
   welfareScheduleLinesByMonth,
-  yearlyWelfareTotal,
 } from "@/lib/domain/schedule";
 import { PAYMENT_EVENT, PAYMENT_EVENT_LABELS, QUARTERLY_ITEM_LABELS } from "@/lib/business-rules";
 import type { PaymentEventKey, QuarterlyItemKey } from "@/lib/business-rules";
@@ -292,30 +291,47 @@ export default async function SchedulePage() {
     }
 
     /**
-     * 급여분 멘트 월액:
-     *   받아야 할 금액(= baseSalary) − 실제 사복 스케줄 합 = 급여분 연간
-     *   → floor(÷ 12)
+     * 급여분 멘트 월액 — 운용 방식(operationMode)에 따라 분기.
      *
-     * 「실제 사복 스케줄 합」은 정기 + 분기 + welfareOverride 가 반영된 `yearlyWelfareTotal(br)`.
-     * baseSalary 가 비어 있거나 결과가 0 이하이면 adjustedSalary, 그것도 없으면
-     * `monthlySalaryPortion` 의 ÷12 결과로 폴백한다.
+     *   1) 「급여낮추기」 회사 (`SALARY_WELFARE`·`COMBINED`)
+     *      → adjustedSalary 가 운영자가 의도한 "실제 받는 급여" 이므로 `adjustedSalary ÷ 12`.
+     *        (`예상 사복 지급금 = baseSalary − adjustedSalary + 예상 인센` 정의의 자연스러운 귀결)
+     *   2) 그 외 (`GENERAL`·`INCENTIVE_WELFARE`)
+     *      → 급여 자체는 낮추지 않으므로 `baseSalary ÷ 12`.
+     *
+     * 어느 분기든 1순위 값이 비어 있으면 반대편 값으로 폴백, 둘 다 0이면
+     * `monthlySalaryPortion(emp) × 12` 로 폴백한다. 모두 절사(floor)한다.
      */
     const baseAnnual = Math.round(Number(emp.baseSalary) || 0);
     const adjAnnual = Math.round(Number(emp.adjustedSalary) || 0);
-    const welfareScheduleTotal = Math.max(0, Math.round(yearlyWelfareTotal(br)));
-    const fromBaseMinusActual =
-      baseAnnual > 0 ? Math.max(0, baseAnnual - welfareScheduleTotal) : 0;
-    const salaryAnnualForNotice =
-      fromBaseMinusActual > 0
-        ? fromBaseMinusActual
-        : adjAnnual > 0
-          ? adjAnnual
-          : Math.round(monthlySalaryPortion(emp) * 12);
+    const isSalaryLowering =
+      tenantOperationMode === "SALARY_WELFARE" || tenantOperationMode === "COMBINED";
+    let salaryAnnualForNotice = isSalaryLowering
+      ? adjAnnual > 0
+        ? adjAnnual
+        : baseAnnual
+      : baseAnnual > 0
+        ? baseAnnual
+        : adjAnnual;
+    if (salaryAnnualForNotice <= 0) {
+      salaryAnnualForNotice = Math.round(monthlySalaryPortion(emp) * 12);
+    }
     const monthlyFloor = Math.floor(salaryAnnualForNotice / 12);
-    const announcementSalaryByMonthList: readonly number[] = Array.from({ length: 12 }, (_, i) => {
+    /**
+     * 활성월 기본값: `monthlyFloor` (= floor(연간 급여 ÷ 12)).
+     * 중도 입·퇴사로 활성월 < 12 이면, 위에서 계산한 `loweredTrueUpApplied`
+     * (= base/12 × N − adj×N/12 − 활성 사복 합)을 마지막 근무월에 더해
+     * 「받아야 할 누적 = 실제 누적」 이 되도록 안내 멘트에서도 정산한다.
+     */
+    const announcementSalaryByMonth: number[] = Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
       return monthIsActive(empStatus, m) ? monthlyFloor : 0;
     });
+    if (loweredTrueUpApplied > 0 && loweredTrueUpMonth != null) {
+      const idx = loweredTrueUpMonth - 1;
+      announcementSalaryByMonth[idx] = (announcementSalaryByMonth[idx] ?? 0) + loweredTrueUpApplied;
+    }
+    const announcementSalaryByMonthList: readonly number[] = announcementSalaryByMonth;
 
     /**
      * 월별 개별 수정 모달 prefill — 각 월에 실제 발생하는 이벤트/분기 목록과 기본 금액·기존 override.
