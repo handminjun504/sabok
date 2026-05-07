@@ -625,7 +625,12 @@ export function EmployeeForm({
 
           <section className="space-y-3 border-t border-[var(--border)] pt-6">
             <h3 className="dash-form-section-title">기존·조정 연봉</h3>
+            {/*
+              저장 후 router.refresh() → employee props 가 새 값으로 오면 이 key 가 바뀌어
+              SalaryPairFields 가 remount 되고, useState 가 최신 DB 값으로 재초기화된다.
+            */}
             <SalaryPairFields
+              key={`salary-${employee?.baseSalary ?? 0}-${employee?.adjustedSalary ?? 0}`}
               defaultBase={employee?.baseSalary}
               defaultAdjusted={employee?.adjustedSalary}
               minimumAnnualSalaryWon={minimumAnnualSalaryWon}

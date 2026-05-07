@@ -297,11 +297,19 @@ export default async function SchedulePage() {
      * yearlyWelfareTotal(br) = br 의 totalWelfareMonth 합계 (정기+분기, welfareOverride 반영, 선택복지 노트 미포함).
      * 기존연봉이 없거나 결과가 0 이하이면 monthlySalaryPortion(조정연봉/기존연봉) 폴백.
      */
+    /**
+     * 급여분 멘트 연간:
+     *   baseSalary − yearlyWelfareTotal(br) = 받아야 할 금액 − 정기+분기 스케줄
+     * adjustedSalary 가 이보다 크면 조정급여 변경도 즉시 반영한다.
+     * (두 값 모두 0 이하면 monthlySalaryPortion(조정우선÷12) 폴백)
+     */
     const baseAnnual = Math.round(Number(emp.baseSalary) || 0);
+    const adjAnnual = Math.round(Number(emp.adjustedSalary) || 0);
     const welfareScheduleTotal = Math.round(yearlyWelfareTotal(br));
+    const fromFormula = baseAnnual > 0 ? baseAnnual - welfareScheduleTotal : 0;
     const salaryAnnualForNotice =
-      baseAnnual > 0 && baseAnnual - welfareScheduleTotal > 0
-        ? baseAnnual - welfareScheduleTotal
+      fromFormula > 0 || adjAnnual > 0
+        ? Math.max(fromFormula > 0 ? fromFormula : 0, adjAnnual)
         : monthlySalaryPortion(emp) * 12;
     const monthlyFloor = Math.floor(salaryAnnualForNotice / 12);
     const announcementSalaryByMonthList: readonly number[] = Array.from({ length: 12 }, (_, i) => {
