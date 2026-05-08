@@ -15,7 +15,8 @@ export type NavIconKey =
   | "report-tax"
   | "settings"
   | "audit"
-  | "tenant";
+  | "tenant"
+  | "announce";
 
 export type NavItem = { href: string; label: string; icon: NavIconKey };
 export type NavGroup = { title: string; items: NavItem[] };
@@ -54,6 +55,11 @@ export function getDashboardNav(opts: {
    */
   const workItems: NavItem[] = [
     { href: "/dashboard", label: "대시보드", icon: "home" },
+    /**
+     * 「월별 안내」 — 월별 스케줄에서 분리된 안내 멘트 전용 화면.
+     * 금액 입력은 모두 「월별 스케줄」에 모여 있고, 본 메뉴는 안내문 생성·복사만 담당한다.
+     */
+    { href: "/dashboard/announcement", label: "월별 안내", icon: "announce" },
     { href: "/dashboard/employees", label: "직원", icon: "users" },
     { href: "/dashboard/rules", label: "지급 규칙", icon: "rules" },
     { href: "/dashboard/schedule", label: "월별 스케줄", icon: "calendar" },

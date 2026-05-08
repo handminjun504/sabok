@@ -49,7 +49,6 @@ import {
 } from "@/lib/domain/salary-inclusion";
 import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 import {
-  additionalReserveStatus,
   summarizeTenantAdditionalReserve,
   tenantReserveTotalSumWon,
 } from "@/lib/domain/vendor-reserve";
@@ -70,7 +69,6 @@ import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
 import { ScheduleEmployeeLevelAssignments } from "@/components/ScheduleEmployeeLevelAssignments";
 import { MonthlyIncentiveAccrualGrid } from "@/components/MonthlyIncentiveAccrualGrid";
 import { ScheduleWorkTabs } from "@/components/ScheduleWorkTabs";
-import { encodeAnnouncementPanelPayloadJson } from "@/lib/domain/schedule-announcement-payload";
 import { AdjustedSalaryAuditPanel } from "@/components/AdjustedSalaryAuditPanel";
 import { computeAdjustedSalaryAuditList } from "@/lib/domain/adjusted-salary-audit";
 import {
@@ -125,12 +123,10 @@ export default async function SchedulePage() {
           vendors
         )
       : { kind: "NO_VENDORS" as const };
-  /** 거래처 타입(개인/법인) + 자본금 50% 진행도로 “현재 +20% 적립 활성?” 결정.
-   *  거래처 정보를 못 불러올 때는 보수적으로 활성(NO_VENDORS) 처리. */
-  const reserveStatus = additionalReserveStatus(
-    { clientEntityType: tenantRow?.clientEntityType ?? "INDIVIDUAL" },
-    reserveSummary,
-  );
+  /**
+   * 「현재 +20% 적립 활성?」 판정은 「월별 안내」 페이지(`/dashboard/announcement`) 가 자체적으로 수행한다.
+   * 본 화면(월별 스케줄) 은 적립 요약(`reserveSummary`) 만 적립금 탭에서 사용.
+   */
   const canEditReserveNote = canEditCompanySettings(role) && settings != null;
 
   const [rules, overrides, quarterly, notes, monthPaidStatuses] = await Promise.all([
@@ -852,8 +848,6 @@ export default async function SchedulePage() {
   /** 등록된 분기 항목 자체가 0건 — “분기가 안 보인다” 가 사실 “등록을 안 했다” 인 경우. */
   const quarterlyEmpty = quarterly.length === 0;
 
-  const announcementPayloadJson = encodeAnnouncementPanelPayloadJson(scheduleCardRows);
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -896,13 +890,6 @@ export default async function SchedulePage() {
         reserveTab={reserveTab}
         levelAssignmentTab={levelAssignmentTab}
         adjustedSalaryAuditTab={adjustedSalaryAuditTab}
-        announcementPayloadJson={announcementPayloadJson}
-        announcementYear={year}
-        announcementOperationMode={tenantOperationMode}
-        announcementReserveStatus={reserveStatus}
-        announcementMode={tenantRow?.announcementMode ?? "SINGLE"}
-        defaultBatchFromMonth={tenantRow?.announcementBatchFromMonth ?? null}
-        defaultBatchToMonth={tenantRow?.announcementBatchToMonth ?? null}
       />
     </div>
   );

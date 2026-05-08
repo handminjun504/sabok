@@ -98,6 +98,15 @@ export function NavIcon({ icon, className = "h-[18px] w-[18px] shrink-0" }: Prop
           <path d="M8 12v9M11 12v9M17 14v0M17 17v0" />
         </svg>
       );
+    case "announce":
+      /** 메가폰 — 월별 안내(멘트 생성·복사) 메뉴 식별. */
+      return (
+        <svg {...common}>
+          <path d="M3.5 10v4l11.5 5V5L3.5 10z" />
+          <path d="M15 7.5a4 4 0 0 1 0 9" />
+          <path d="M6.5 14.5l1 4.5h2.5l-1-5" />
+        </svg>
+      );
     default:
       return null;
   }
