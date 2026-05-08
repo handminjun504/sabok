@@ -11,7 +11,15 @@ export type AnnouncementRowInput = {
   welfareMonth: number;
   salaryMonth: number;
   flagRepReturn: boolean;
-  discretionaryAmount: number | null;
+  /**
+   * 「대표반환·배우자수령·알아서금액」 — 모두 안내 멘트의 직원 라인 아래
+   * `ㄴ대표님 반환` / `ㄴ배우자수령` / `ㄴ알아서금액` 줄로 출력된다.
+   * 0(또는 음수)은 표시 안 함. `flagRepReturn` 가 켜졌는데 `repReturnAmount<=0` 이면
+   * 「※ 금액은 별도 산정 후 기재」 폴백 줄을 노출.
+   */
+  repReturnAmount: number;
+  spouseReceiptAmount: number;
+  discretionaryAmount: number;
 };
 
 /**
@@ -167,10 +175,14 @@ export function buildSalaryPortionNotice(
 }
 
 export function shouldShowTransferDetailBlock(
-  rows: ReadonlyArray<Pick<AnnouncementRowInput, "flagRepReturn" | "discretionaryAmount">>
+  rows: ReadonlyArray<Pick<AnnouncementRowInput, "flagRepReturn" | "repReturnAmount" | "spouseReceiptAmount" | "discretionaryAmount">>
 ): boolean {
   return rows.some(
-    (r) => r.flagRepReturn || (r.discretionaryAmount != null && Math.round(r.discretionaryAmount) > 0)
+    (r) =>
+      r.flagRepReturn ||
+      Math.round(r.repReturnAmount ?? 0) > 0 ||
+      Math.round(r.spouseReceiptAmount ?? 0) > 0 ||
+      Math.round(r.discretionaryAmount ?? 0) > 0,
   );
 }
 
@@ -190,12 +202,16 @@ export function buildTransferAndDetailNotice(
   const sorted = sortByEmployeeCode(rows);
   const sumWelfare = sorted.reduce((s, r) => s + Math.max(0, Math.round(r.welfareMonth)), 0);
   /**
-   * 지급액·대표반환·알아서금액 어느 것도 없으면 "지급분 없음" 단문으로 반환.
-   * (대표반환 플래그/알아서금액 양수가 하나라도 있으면 기존 상세 양식 유지)
+   * 지급액·대표반환·배우자수령·알아서금액 어느 것도 없으면 "지급분 없음" 단문.
+   * 셋 중 하나라도 양수이거나 `flagRepReturn` 가 켜진 행이 있으면 상세 양식 유지.
    */
-  const hasAnything = sorted.some(
-    (r) => Math.round(r.welfareMonth) > 0 || r.flagRepReturn || (r.discretionaryAmount != null && Math.round(r.discretionaryAmount) > 0),
-  );
+  const hasAnything = sorted.some((r) => {
+    const w = Math.round(r.welfareMonth);
+    const rep = Math.round(r.repReturnAmount ?? 0);
+    const sp = Math.round(r.spouseReceiptAmount ?? 0);
+    const dec = Math.round(r.discretionaryAmount ?? 0);
+    return w > 0 || r.flagRepReturn || rep > 0 || sp > 0 || dec > 0;
+  });
   if (!hasAnything) return buildEmptyMonthNotice(month);
 
   const reserveActive = options.additionalReserveActive;
@@ -211,11 +227,18 @@ export function buildTransferAndDetailNotice(
 
   for (const r of sorted) {
     const w = Math.round(r.welfareMonth);
-    const dec = r.discretionaryAmount != null ? Math.round(r.discretionaryAmount) : 0;
-    if (w <= 0 && !r.flagRepReturn && dec <= 0) continue;
+    const rep = Math.round(r.repReturnAmount ?? 0);
+    const sp = Math.round(r.spouseReceiptAmount ?? 0);
+    const dec = Math.round(r.discretionaryAmount ?? 0);
+    if (w <= 0 && !r.flagRepReturn && rep <= 0 && sp <= 0 && dec <= 0) continue;
 
     lines.push(`${r.name} ${formatWonLine(w)} 원`);
-    if (r.flagRepReturn) {
+    if (sp > 0) {
+      lines.push(`ㄴ배우자수령: ${formatWonLine(sp)} 원`);
+    }
+    if (rep > 0) {
+      lines.push(`ㄴ대표님 반환: ${formatWonLine(rep)} 원`);
+    } else if (r.flagRepReturn) {
       lines.push(`ㄴ대표님 반환: ※ 금액은 별도 산정 후 기재`);
     }
     if (dec > 0) {

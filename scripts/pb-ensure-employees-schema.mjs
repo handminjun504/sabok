@@ -106,6 +106,13 @@ const CATALOG = {
     /** 급여포함신고·스케줄 상한 초과/미달 표시 — BOTH | OVER_ONLY | UNDER_ONLY */
     { name: "salaryInclusionVarianceMode", type: "text" },
     /**
+     * 「대표반환·배우자수령·알아서금액」 월별 금액 일정 — 월별 스케줄 ▸ 새 탭에서 입력.
+     * 구조: { 직원ID: { "1": 원금액, "3": 원금액, ... } }. 빈/0 키는 저장 시 자동 제거.
+     */
+    { name: "repReturnSchedule", type: "json" },
+    { name: "spouseReceiptSchedule", type: "json" },
+    { name: "discretionarySchedule", type: "json" },
+    /**
      * 사용 중단된 「당월 귀속·차월 지급」 토글. 모델·UI 에서는 제거되었지만, 기존 컬렉션과
      * 호환되도록 컬럼이 존재하는 경우 required(Nonempty)만 끄도록 catalog 에는 남겨 둔다.
      * 새 PB 환경에서 컬럼이 없다면 graceful skip(이 catalog 는 누락된 컬럼만 추가).
@@ -149,6 +156,10 @@ function makeNewField(spec) {
   }
   if (spec.type === "text") {
     return { ...base, min: 0, max: 0, pattern: "", autogeneratePattern: "" };
+  }
+  if (spec.type === "json") {
+    /** PocketBase JSON 필드 — 기본 maxSize 2MB 충분. */
+    return { ...base, maxSize: 2_000_000 };
   }
   return base;
 }

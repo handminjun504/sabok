@@ -885,6 +885,84 @@ export async function companySettingsUpsert(
   }
 }
 
+/**
+ * 「대표반환·배우자수령·알아서금액」 월별 금액 맵 부분 갱신.
+ * `companySettingsUpsert` 와 달리 이 세 필드만 파셜 업데이트한다(다른 설정값은 보존).
+ *
+ * PB 컬럼이 누락된 환경에서도 graceful — 전체 update 가 unknown 컬럼으로 거절되면
+ * 누락 컬럼을 페이로드에서 빼고 한 번 더 시도한다.
+ */
+type EmployeeMonthlyAmountMap = Record<string, Partial<Record<string, number>>> | null;
+export async function companySettingsUpdateMonthlySchedules(
+  tenantId: string,
+  data: {
+    repReturnSchedule?: EmployeeMonthlyAmountMap;
+    spouseReceiptSchedule?: EmployeeMonthlyAmountMap;
+    discretionarySchedule?: EmployeeMonthlyAmountMap;
+  },
+): Promise<void> {
+  const existing = await companySettingsByTenant(tenantId);
+  if (!existing?.id) {
+    throw new Error("회사 설정이 없습니다 — 먼저 「전사 설정」 탭에서 기준 연도·창립월 등 기본값을 저장하세요.");
+  }
+  const pb = await getAdminPb();
+  const payload: Record<string, unknown> = {};
+  if (Object.prototype.hasOwnProperty.call(data, "repReturnSchedule")) {
+    payload.repReturnSchedule = data.repReturnSchedule ?? null;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "spouseReceiptSchedule")) {
+    payload.spouseReceiptSchedule = data.spouseReceiptSchedule ?? null;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "discretionarySchedule")) {
+    payload.discretionarySchedule = data.discretionarySchedule ?? null;
+  }
+  if (Object.keys(payload).length === 0) return;
+
+  try {
+    await pb.collection(C.companySettings).update(existing.id, payload);
+    return;
+  } catch (e) {
+    if (!(e instanceof ClientResponseError)) {
+      logPbClientError("companySettingsUpdateMonthlySchedules", e);
+      throw e;
+    }
+    const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
+    /** 누락된 JSON 컬럼만 떼어내고 한 번 더 시도. 메타·SQLite 동기화가 깨진 컬럼은 운영자 안내로 회피. */
+    const stripIfMissing = (key: string) => {
+      if (
+        detailLower.includes(key.toLowerCase()) &&
+        (detailLower.includes("unknown") ||
+          detailLower.includes("invalid") ||
+          detailLower.includes("not found") ||
+          detailLower.includes("missing"))
+      ) {
+        delete payload[key];
+        return true;
+      }
+      return false;
+    };
+    let stripped = false;
+    stripped = stripIfMissing("spouseReceiptSchedule") || stripped;
+    stripped = stripIfMissing("discretionarySchedule") || stripped;
+    stripped = stripIfMissing("repReturnSchedule") || stripped;
+    if (!stripped || Object.keys(payload).length === 0) {
+      logPbClientError("companySettingsUpdateMonthlySchedules", e);
+      throw e;
+    }
+    try {
+      await pb.collection(C.companySettings).update(existing.id, payload);
+      console.warn(
+        "[pb] companySettingsUpdateMonthlySchedules: 일부 JSON 컬럼이 누락되어 해당 키를 제외하고 저장했습니다. " +
+          "Admin → sabok_company_settings 에 spouseReceiptSchedule·discretionarySchedule(json) 필드를 추가하세요. " +
+          "또는 `npm run pb:ensure-company-settings-schema` 실행.",
+      );
+    } catch (e2) {
+      logPbClientError("companySettingsUpdateMonthlySchedules(retry)", e2);
+      throw e2;
+    }
+  }
+}
+
 function clonePaymentEventDefs(src: PaymentEventDefsByYear | null): PaymentEventDefsByYear {
   if (!src) return {};
   const out: PaymentEventDefsByYear = {};

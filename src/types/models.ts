@@ -198,10 +198,22 @@ export type CompanySettings = {
   /**
    * 대표반환 월별 금액 일정. 키: 직원 ID → 값: { "월(1~12 문자열 키)": 원 금액 }.
    * 없는 월은 0원으로 처리. `surveyShowRepReturn`이 true 일 때만 의미가 있음.
+   * 입력 위치는 「월별 스케줄 → 대표반환·배우자수령·알아서금액」 탭.
    */
   repReturnSchedule: Record<string, Partial<Record<string, number>>> | null;
   surveyShowSpouseReceipt: boolean;
+  /**
+   * 배우자수령 월별 금액 일정 — `repReturnSchedule` 와 동일한 구조.
+   * 안내 멘트의 「ㄴ배우자수령」 라인에 사용. PB `spouseReceiptSchedule` 없으면 null.
+   */
+  spouseReceiptSchedule: Record<string, Partial<Record<string, number>>> | null;
   surveyShowWorkerNet: boolean;
+  /**
+   * 알아서금액 월별 금액 일정 — `repReturnSchedule` 와 동일한 구조.
+   * 안내 멘트의 「ㄴ알아서금액」 라인에 사용. 직원별 단일값(`Employee.discretionaryAmount`)을 대체한다.
+   * PB `discretionarySchedule` 없으면 null.
+   */
+  discretionarySchedule: Record<string, Partial<Record<string, number>>> | null;
   /** PB JSON. 없으면 null */
   paymentEventDefs: PaymentEventDefsByYear | null;
   /** 추가 적립(출연) 진행 메모 — PB `reserveProgressNote` 없으면 null */

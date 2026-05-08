@@ -342,6 +342,8 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     fixedEventMonths: parseFixedEventMonths(r.fixedEventMonths),
     quarterlyPayMonths: parseQuarterlyPayMonths(r.quarterlyPayMonths),
     repReturnSchedule: parseRepReturnSchedule(r.repReturnSchedule),
+    spouseReceiptSchedule: parseSpouseReceiptSchedule(r.spouseReceiptSchedule),
+    discretionarySchedule: parseDiscretionarySchedule(r.discretionarySchedule),
     vendorWelfareApplied: parseVendorWelfareApplied(r.vendorWelfareApplied),
     vendorWelfareRatio: parseVendorWelfareRatio(r.vendorWelfareRatio),
     incentiveNetRatioPercent: parseIncentiveNetRatioPercent(r.incentiveNetRatioPercent),
@@ -389,11 +391,13 @@ function parseVendorWelfareRatio(v: unknown): 80 | 90 | 20 | 25 | 30 | null {
  * 결과가 비면 null.
  */
 /**
- * 대표반환 월별 금액 일정.
+ * 직원×월 단위 금액 맵 파싱 — 대표반환·배우자수령·알아서금액 공통.
  * 구조: { "직원ID": { "1": 금액, "3": 금액, ... } }
  * 허용: 내부 값이 0 이하이거나 유한수가 아니면 키를 제거.
  */
-function parseRepReturnSchedule(v: unknown): Record<string, Partial<Record<string, number>>> | null {
+function parseEmployeeMonthlyAmountMap(
+  v: unknown,
+): Record<string, Partial<Record<string, number>>> | null {
   let raw: unknown = v;
   if (raw == null) return null;
   if (typeof raw === "string") {
@@ -417,6 +421,10 @@ function parseRepReturnSchedule(v: unknown): Record<string, Partial<Record<strin
   }
   return Object.keys(out).length ? out : null;
 }
+
+const parseRepReturnSchedule = parseEmployeeMonthlyAmountMap;
+const parseSpouseReceiptSchedule = parseEmployeeMonthlyAmountMap;
+const parseDiscretionarySchedule = parseEmployeeMonthlyAmountMap;
 
 export function mapBaseAssetAnnual(r: Record<string, unknown>): BaseAssetAnnual {
   return {

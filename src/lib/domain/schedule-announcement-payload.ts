@@ -12,7 +12,12 @@ export type ScheduleAnnouncementWireRow = {
   /** 멘트 배열이 깨졌을 때만 쓰는 바닥 월액(연봉÷12 내림 등) */
   salaryMonthFloor: number;
   flagRepReturn: boolean;
-  discretionaryAmount: number | null;
+  /** 길이 12 — 대표반환 직원별 월별 금액 (입력 없으면 0) */
+  repReturn12: number[];
+  /** 길이 12 — 배우자수령 직원별 월별 금액 (입력 없으면 0) */
+  spouseReceipt12: number[];
+  /** 길이 12 — 알아서금액 직원별 월별 금액 (입력 없으면 0) */
+  discretionary12: number[];
 };
 
 /** `ScheduleAnnouncementPanel` 에 넘기는 행 — 와이어를 파싱한 결과 */
@@ -23,7 +28,10 @@ export type ScheduleAnnouncementPanelRow = {
   announcementSalaryByMonthList: readonly number[];
   salaryMonth: number;
   flagRepReturn: boolean;
-  discretionaryAmount: number | null;
+  /** 직원 ID 별 1~12월 — 인덱스 m-1 = m월 금액 */
+  repReturnByMonth: Record<number, number>;
+  spouseReceiptByMonth: Record<number, number>;
+  discretionaryByMonth: Record<number, number>;
 };
 
 function coerceLength12(raw: unknown): number[] {
@@ -50,9 +58,19 @@ export function encodeAnnouncementPanelPayloadJson(
     announcementSalaryByMonthList: readonly number[];
     salaryMonth: number;
     flagRepReturn: boolean;
-    discretionaryAmount: number | null;
+    /** 인덱스 m-1 = m월 금액 — 없으면 0 */
+    repReturnByMonth?: Record<number, number>;
+    spouseReceiptByMonth?: Record<number, number>;
+    discretionaryByMonth?: Record<number, number>;
   }>,
 ): string {
+  const buildMonth12 = (src: Record<number, number> | undefined): number[] => {
+    if (!src) return Array.from({ length: 12 }, () => 0);
+    return Array.from({ length: 12 }, (_, i) => {
+      const v = src[i + 1];
+      return Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v))) : 0;
+    });
+  };
   const wire: ScheduleAnnouncementWireRow[] = rows.map((r) => {
     const w12 = Array.from({ length: 12 }, (_, i) => Math.round(r.welfareByMonth[i + 1] ?? 0));
     const sal12 = coerceLength12([...r.announcementSalaryByMonthList]);
@@ -63,10 +81,9 @@ export function encodeAnnouncementPanelPayloadJson(
       salaryNotice12: sal12,
       salaryMonthFloor: Math.round(r.salaryMonth),
       flagRepReturn: Boolean(r.flagRepReturn),
-      discretionaryAmount:
-        r.discretionaryAmount != null && Number.isFinite(Number(r.discretionaryAmount))
-          ? Math.round(Number(r.discretionaryAmount))
-          : null,
+      repReturn12: buildMonth12(r.repReturnByMonth),
+      spouseReceipt12: buildMonth12(r.spouseReceiptByMonth),
+      discretionary12: buildMonth12(r.discretionaryByMonth),
     };
   });
   return JSON.stringify(wire);
@@ -98,11 +115,9 @@ export function parseAnnouncementPanelPayloadJson(json: string): ScheduleAnnounc
       announcementSalaryByMonthList: salaryNotice12,
       salaryMonth: salaryMonthFloor,
       flagRepReturn: Boolean(o.flagRepReturn),
-      discretionaryAmount: (() => {
-        if (o.discretionaryAmount == null || o.discretionaryAmount === "") return null;
-        const n = Number(o.discretionaryAmount);
-        return Number.isFinite(n) ? Math.round(n) : null;
-      })(),
+      repReturnByMonth: welfareRecordFrom12(coerceLength12(o.repReturn12)),
+      spouseReceiptByMonth: welfareRecordFrom12(coerceLength12(o.spouseReceipt12)),
+      discretionaryByMonth: welfareRecordFrom12(coerceLength12(o.discretionary12)),
     });
   }
   return out;

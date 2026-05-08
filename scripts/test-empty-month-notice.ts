@@ -32,8 +32,8 @@ check("buildEmptyMonthRangeNotice(4,4) → 단월", buildEmptyMonthRangeNotice(4
 
 /** 단일월: 모든 직원 0 → 단문 */
 const noneRows: AnnouncementRowInput[] = [
-  { employeeCode: "A001", name: "홍길동", welfareMonth: 0, salaryMonth: 0, flagRepReturn: false, discretionaryAmount: null },
-  { employeeCode: "A002", name: "김철수", welfareMonth: 0, salaryMonth: 0, flagRepReturn: false, discretionaryAmount: null },
+  { employeeCode: "A001", name: "홍길동", welfareMonth: 0, salaryMonth: 0, flagRepReturn: false, repReturnAmount: 0, spouseReceiptAmount: 0, discretionaryAmount: 0 },
+  { employeeCode: "A002", name: "김철수", welfareMonth: 0, salaryMonth: 0, flagRepReturn: false, repReturnAmount: 0, spouseReceiptAmount: 0, discretionaryAmount: 0 },
 ];
 check(
   "buildWelfareFundNotice 합계 0 → 단문",
@@ -43,7 +43,7 @@ check(
 
 /** 단일월: 한 명이라도 양수 → 기존 양식(인사 + 통장 이체) */
 const someRows: AnnouncementRowInput[] = [
-  { employeeCode: "A001", name: "홍길동", welfareMonth: 100_000, salaryMonth: 0, flagRepReturn: false, discretionaryAmount: null },
+  { employeeCode: "A001", name: "홍길동", welfareMonth: 100_000, salaryMonth: 0, flagRepReturn: false, repReturnAmount: 0, spouseReceiptAmount: 0, discretionaryAmount: 0 },
 ];
 const someNotice = buildWelfareFundNotice(4, someRows);
 check(
@@ -73,9 +73,9 @@ check(
   true,
 );
 
-/** 통장·반환 상세: 합계 0 + 대표반환·알아서금액 모두 0 → 단문 */
+/** 통장·반환 상세: 합계 0 + 대표반환·배우자수령·알아서금액 모두 0 → 단문 */
 const transferEmptyRows: AnnouncementRowInput[] = [
-  { employeeCode: "A001", name: "홍길동", welfareMonth: 0, salaryMonth: 0, flagRepReturn: false, discretionaryAmount: null },
+  { employeeCode: "A001", name: "홍길동", welfareMonth: 0, salaryMonth: 0, flagRepReturn: false, repReturnAmount: 0, spouseReceiptAmount: 0, discretionaryAmount: 0 },
 ];
 check(
   "buildTransferAndDetailNotice 전부 0 → 단문",
@@ -83,14 +83,44 @@ check(
   "안녕하세요. 4월 사내근로복지기금 지급분은 없습니다!",
 );
 
-/** 통장·반환 상세: 합계 0 이지만 대표반환 있는 직원 → 기존 양식 유지 */
-const transferRepRows: AnnouncementRowInput[] = [
-  { employeeCode: "A001", name: "홍길동", welfareMonth: 0, salaryMonth: 0, flagRepReturn: true, discretionaryAmount: null },
+/** 통장·반환 상세: 합계 0 이지만 대표반환 플래그만 있고 금액 미입력 → 「※ 별도 산정」 폴백 */
+const transferRepFlagRows: AnnouncementRowInput[] = [
+  { employeeCode: "A001", name: "홍길동", welfareMonth: 0, salaryMonth: 0, flagRepReturn: true, repReturnAmount: 0, spouseReceiptAmount: 0, discretionaryAmount: 0 },
 ];
-const transferRepNotice = buildTransferAndDetailNotice(4, transferRepRows);
+const transferRepFlagNotice = buildTransferAndDetailNotice(4, transferRepFlagRows);
 check(
-  "buildTransferAndDetailNotice 대표반환만 있을 때 → 상세 양식 유지(단문 아님)",
-  transferRepNotice.includes("대표님 반환"),
+  "buildTransferAndDetailNotice 플래그만 있을 때 → 「별도 산정 후 기재」 줄 노출",
+  transferRepFlagNotice.includes("대표님 반환: ※ 금액은 별도 산정 후 기재"),
+  true,
+);
+
+/** 통장·반환 상세: 월별 금액(대표반환·배우자수령·알아서) 입력 → 직원 라인 아래 ㄴ 줄 3종 노출 */
+const transferDetailRows: AnnouncementRowInput[] = [
+  {
+    employeeCode: "A001",
+    name: "홍길동",
+    welfareMonth: 1_234_000,
+    salaryMonth: 0,
+    flagRepReturn: true,
+    repReturnAmount: 300_000,
+    spouseReceiptAmount: 500_000,
+    discretionaryAmount: 200_000,
+  },
+];
+const transferDetailNotice = buildTransferAndDetailNotice(4, transferDetailRows);
+check(
+  "buildTransferAndDetailNotice ㄴ배우자수령 라인",
+  transferDetailNotice.includes("ㄴ배우자수령: 500,000 원"),
+  true,
+);
+check(
+  "buildTransferAndDetailNotice ㄴ대표님 반환 라인 (금액 입력 시 폴백 텍스트 X)",
+  transferDetailNotice.includes("ㄴ대표님 반환: 300,000 원"),
+  true,
+);
+check(
+  "buildTransferAndDetailNotice ㄴ알아서금액 라인",
+  transferDetailNotice.includes("ㄴ알아서금액: 200,000 원"),
   true,
 );
 

@@ -170,7 +170,6 @@ export function EmployeeDirectoryGrid({
                   />
                 </>
               ) : null}
-              <Row label="알아서금액" value={won(e.discretionaryAmount)} />
               {payrollYearContext != null ? (
                 <>
                   <Row label={`${payrollYearContext.activeYear}년 연간 사복`} value={won(welfareY)} />

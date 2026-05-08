@@ -628,10 +628,6 @@ export function EmployeeForm({
               <td><LabeledCommaWon name="incentiveAmount" label="" defaultValue={employee?.incentiveAmount ?? undefined} optional /></td>
             </tr>
             <tr>
-              <th>알아서금액</th>
-              <td><LabeledCommaWon name="discretionaryAmount" label="" defaultValue={employee?.discretionaryAmount ?? undefined} optional /></td>
-            </tr>
-            <tr>
               <th>전기 더받은<br/>사복(차감)</th>
               <td><LabeledCommaWon name="priorOverpaidWelfareWon" label="" defaultValue={employee?.priorOverpaidWelfareWon ?? undefined} optional /></td>
             </tr>

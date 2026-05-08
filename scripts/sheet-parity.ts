@@ -157,6 +157,8 @@ if (fs.existsSync(snapPath)) {
     fixedEventMonths: null,
     quarterlyPayMonths: null,
     repReturnSchedule: null,
+    spouseReceiptSchedule: null,
+    discretionarySchedule: null,
     incentiveNetRatioPercent: null,
   };
   const lines = fs.readFileSync(snapPath, "utf8").split(/\r?\n/).filter((l) => l.length > 0);

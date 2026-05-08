@@ -1,6 +1,5 @@
 import {
   companySettingsByTenant,
-  employeeListByTenantCodeAsc,
   tenantGetById,
 } from "@/lib/pb/repository";
 import { requireTenantContext } from "@/lib/tenant-context";
@@ -39,9 +38,8 @@ function tenantProfileFormKey(t: Tenant): string {
 
 export default async function SettingsPage() {
   const { tenantId, role } = await requireTenantContext();
-  const [s, allEmployees, tenant] = await Promise.all([
+  const [s, tenant] = await Promise.all([
     companySettingsByTenant(tenantId),
-    employeeListByTenantCodeAsc(tenantId),
     tenantGetById(tenantId),
   ]);
   const canEdit = canEditCompanySettings(role);
@@ -59,14 +57,6 @@ export default async function SettingsPage() {
   const quarterlyPayMonths = (s?.quarterlyPayMonths ?? null) as
     | Partial<Record<string, number[]>>
     | null;
-  const repReturnSchedule = s?.repReturnSchedule ?? null;
-  /**
-   * 대표반환 입력 행 — `flagRepReturn` 이 켜진 직원이지만, 사복 미대상자는 사복 화면 자체에서 빠지므로
-   * 여기서도 함께 제외해 양식 일관성을 유지한다.
-   */
-  const repReturnEmployees = allEmployees
-    .filter((e) => e.flagRepReturn && !e.flagWelfareIneligible)
-    .map((e) => ({ id: e.id, employeeCode: e.employeeCode, name: e.name }));
 
   const companySettingsTab = (
     <>
@@ -100,8 +90,6 @@ export default async function SettingsPage() {
             surveyShowWorkerNet={surveyWorker}
             fixedEventMonths={fixedEventMonths ?? undefined}
             quarterlyPayMonths={quarterlyPayMonths ?? undefined}
-            repReturnSchedule={repReturnSchedule}
-            repReturnEmployees={repReturnEmployees}
             incentiveNetRatioPercent={s?.incentiveNetRatioPercent ?? null}
           />
         </CollapsibleEditorPanel>

@@ -44,7 +44,6 @@ export type ScheduleTableRow = {
   yearlyWelfare: number;
   salaryMonth: number;
   flagRepReturn: boolean;
-  discretionaryAmount: number | null;
   capBlocks: ScheduleCapBlock[];
   showCapOver: boolean;
   showCapUnder: boolean;

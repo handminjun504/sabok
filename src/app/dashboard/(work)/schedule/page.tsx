@@ -79,6 +79,7 @@ import {
   type ScheduleTableRow,
 } from "@/components/ScheduleEmployeeTable";
 import { ScheduleReserveTab } from "@/components/ScheduleReserveTab";
+import { MonthlySchedulesPanel } from "@/components/MonthlySchedulesPanel";
 import { Alert } from "@/components/ui/Alert";
 import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
@@ -513,6 +514,26 @@ export default async function SchedulePage() {
 
   const canNote = canEditEmployees(role);
 
+  /**
+   * 직원×월 단위 보조 금액 맵을 헬퍼 한 방으로 추출.
+   * `CompanySettings.{rep|spouse|disc}Schedule` 은 `{ empId: { "1": 금액, ... } }` 모양이라 그대로 1~12 인덱스로 정규화.
+   */
+  const monthlyRecordFor = (
+    schedule: Record<string, Partial<Record<string, number>>> | null | undefined,
+    employeeId: string,
+  ): Record<number, number> => {
+    const out: Record<number, number> = {};
+    const row = schedule?.[employeeId];
+    for (let m = 1; m <= 12; m++) {
+      const v = row?.[String(m)];
+      out[m] = typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.round(v) : 0;
+    }
+    return out;
+  };
+  const repReturnSchedule = settings?.repReturnSchedule ?? null;
+  const spouseReceiptSchedule = settings?.spouseReceiptSchedule ?? null;
+  const discretionarySchedule = settings?.discretionarySchedule ?? null;
+
   const scheduleCardRows = rows.map((r) => {
     const welfareByMonth: Record<number, number> = {};
     const linesByMonth: Record<number, { label: string; amount: number; kind?: "regular" | "quarterly" | "note" }[]> = {};
@@ -537,7 +558,9 @@ export default async function SchedulePage() {
       salaryByMonth: r.salaryByMonth,
       announcementSalaryByMonthList: r.announcementSalaryByMonthList,
       flagRepReturn: r.emp.flagRepReturn,
-      discretionaryAmount: r.emp.discretionaryAmount,
+      repReturnByMonth: monthlyRecordFor(repReturnSchedule, r.emp.id),
+      spouseReceiptByMonth: monthlyRecordFor(spouseReceiptSchedule, r.emp.id),
+      discretionaryByMonth: monthlyRecordFor(discretionarySchedule, r.emp.id),
       showCapOver: salaryInclusionShowOverage(eff),
       showCapUnder: salaryInclusionShowShortfall(eff),
       capBlocks: r.capBlocks.map((b) => ({
@@ -650,6 +673,31 @@ export default async function SchedulePage() {
         canEdit={canNote}
       />
     </div>
+  );
+
+  /**
+   * 「대표반환·배우자수령·알아서금액」 탭 — 직원×1~12월 그리드 3종을 한 폼에 묶어 관리.
+   * 데이터는 `CompanySettings.{repReturn|spouseReceipt|discretionary}Schedule` 에 JSON 으로 저장.
+   * `canEdit` 은 전사 설정 권한과 동일하게 가져간다(기존 대표반환 입력이 있던 위치와 같은 권한).
+   */
+  const canEditMonthlySchedules = canEditCompanySettings(role);
+  const monthlySchedulesTab = (
+    <MonthlySchedulesPanel
+      activeYear={year}
+      employees={employees.map((e) => ({
+        id: e.id,
+        employeeCode: e.employeeCode,
+        name: e.name,
+        position: e.position,
+        flagRepReturn: e.flagRepReturn,
+        flagSpouseReceipt: e.flagSpouseReceipt,
+        flagAutoAmount: e.flagAutoAmount,
+      }))}
+      repReturn={settings?.repReturnSchedule ?? {}}
+      spouseReceipt={settings?.spouseReceiptSchedule ?? {}}
+      discretionary={settings?.discretionarySchedule ?? {}}
+      canEdit={canEditMonthlySchedules}
+    />
   );
 
   /**
@@ -775,6 +823,7 @@ export default async function SchedulePage() {
       <ScheduleWorkTabs
         scheduleTab={scheduleTab}
         monthlyNoteTab={monthlyNoteTab}
+        monthlySchedulesTab={monthlySchedulesTab}
         reserveTab={reserveTab}
         levelAssignmentTab={levelAssignmentTab}
         adjustedSalaryAuditTab={adjustedSalaryAuditTab}

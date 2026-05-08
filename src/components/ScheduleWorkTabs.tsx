@@ -16,6 +16,7 @@ import type { AdditionalReserveStatus } from "@/lib/domain/vendor-reserve";
 export function ScheduleWorkTabs({
   scheduleTab,
   monthlyNoteTab,
+  monthlySchedulesTab,
   reserveTab,
   levelAssignmentTab,
   adjustedSalaryAuditTab,
@@ -29,6 +30,7 @@ export function ScheduleWorkTabs({
 }: {
   scheduleTab: ReactNode;
   monthlyNoteTab: ReactNode;
+  monthlySchedulesTab: ReactNode;
   reserveTab: ReactNode;
   levelAssignmentTab: ReactNode;
   adjustedSalaryAuditTab: ReactNode;
@@ -63,6 +65,7 @@ export function ScheduleWorkTabs({
         { label: "스케줄", content: scheduleTab },
         { label: "안내", content: announcementTab },
         { label: "메모·인센", content: monthlyNoteTab },
+        { label: "대표반환·배우자·알아서", content: monthlySchedulesTab },
         { label: "적립금", content: reserveTab },
         { label: "예정액", content: levelAssignmentTab },
         { label: "연봉 점검", content: adjustedSalaryAuditTab },

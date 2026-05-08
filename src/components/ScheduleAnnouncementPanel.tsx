@@ -146,7 +146,9 @@ export function ScheduleAnnouncementPanel({
         return r.salaryMonth;
       })(),
       flagRepReturn: r.flagRepReturn,
-      discretionaryAmount: r.discretionaryAmount,
+      repReturnAmount: r.repReturnByMonth[focusMonth] ?? 0,
+      spouseReceiptAmount: r.spouseReceiptByMonth[focusMonth] ?? 0,
+      discretionaryAmount: r.discretionaryByMonth[focusMonth] ?? 0,
     }));
   }, [rows, focusMonth]);
 
@@ -200,6 +202,22 @@ export function ScheduleAnnouncementPanel({
     if (!shouldShowTransferDetailBlock(announcementInputs)) return "";
     return buildTransferAndDetailNotice(focusMonth, announcementInputs, reserveOptions);
   }, [focusMonth, announcementInputs, reserveOptions]);
+
+  /**
+   * 「통장 이체·반환·알아서금액」 복사블록 노출 여부 — 어떤 직원이든 1년 어느 달에 보조 항목이 있으면 표시.
+   * panel row 의 월별 맵을 한 번 훑어 boolean 으로 환원한다.
+   */
+  const showTransferDetailCopyBlock = useMemo(() => {
+    return rows.some((r) => {
+      if (r.flagRepReturn) return true;
+      for (let m = 1; m <= 12; m++) {
+        if ((r.repReturnByMonth[m] ?? 0) > 0) return true;
+        if ((r.spouseReceiptByMonth[m] ?? 0) > 0) return true;
+        if ((r.discretionaryByMonth[m] ?? 0) > 0) return true;
+      }
+      return false;
+    });
+  }, [rows]);
 
   const filterBtn = (m: number | null, label: string) => {
     const active = focusMonth === m;
@@ -371,7 +389,7 @@ export function ScheduleAnnouncementPanel({
               disabled={focusMonth == null || !salaryNotice}
             />
           ) : null}
-          {shouldShowTransferDetailBlock(rows) ? (
+          {showTransferDetailCopyBlock ? (
             <CopyTextBlock
               title={`${batchedPreferred ? "4)" : "3)"} 통장 이체·반환·알아서금액`}
               body={transferNotice}
@@ -380,7 +398,7 @@ export function ScheduleAnnouncementPanel({
           ) : null}
           {!batchedPreferred ? (
             <CopyTextBlock
-              title={`${shouldShowTransferDetailBlock(rows) ? "4)" : "3)"} ${Math.min(batchFrom, batchTo)}월~${Math.max(batchFrom, batchTo)}월 묶음 안내`}
+              title={`${showTransferDetailCopyBlock ? "4)" : "3)"} ${Math.min(batchFrom, batchTo)}월~${Math.max(batchFrom, batchTo)}월 묶음 안내`}
               body={batchedWelfareNotice}
               disabled={rows.length === 0}
             />

@@ -63,7 +63,6 @@ export type ScheduleCardRow = {
   announcementSalaryByMonthList?: readonly number[];
   /** 조사표·안내 멘트용 */
   flagRepReturn: boolean;
-  discretionaryAmount: number | null;
   capBlocks: ScheduleCapBlock[];
   showCapOver: boolean;
   showCapUnder: boolean;

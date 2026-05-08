@@ -381,7 +381,6 @@ export function EmployeeDirectoryTable({
                                 />
                               </>
                             ) : null}
-                            <Row label="알아서금액" value={`${won(e.discretionaryAmount)}원`} />
                             <Row label="예상 인센" value={`${won(e.incentiveAmount)}원`} />
                             {hasCtx ? (
                               <>
