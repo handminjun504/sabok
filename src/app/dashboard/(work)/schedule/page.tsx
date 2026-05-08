@@ -807,14 +807,18 @@ export default async function SchedulePage() {
               </div>
               <div>
                 <label className="dash-field-label">월</label>
-                <input
+                <select
                   name="month"
-                  type="number"
-                  min={1}
-                  max={12}
-                  className="input w-[4.5rem] text-xs"
+                  defaultValue=""
+                  className="input w-[5.5rem] text-xs"
                   required
-                />
+                  aria-label="대상 월 선택 (1~12월)"
+                >
+                  <option value="" disabled>—</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
+                    <option key={m} value={m}>{m}월</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="dash-field-label">선택적 복지 금액</label>

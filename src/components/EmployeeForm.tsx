@@ -298,6 +298,96 @@ function Cell({
   );
 }
 
+/**
+ * 「월(1~12)」 select 셀 — Cell 과 동일한 외형(label + numCellClass) 을 유지하되
+ * 직접 타이핑 대신 12개 선택지를 노출. `allowEmpty` 가 true 면 빈 옵션 「—」 을 추가해 「미입력」 시맨틱을 보존.
+ */
+function MonthSelectCell({
+  label,
+  name,
+  defaultValue,
+  allowEmpty = true,
+}: {
+  label: string;
+  name: string;
+  defaultValue?: number | null;
+  allowEmpty?: boolean;
+}) {
+  const inputId = useId();
+  return (
+    <div className="min-w-0">
+      <label className={fieldLabelClass} htmlFor={inputId}>
+        {label}
+      </label>
+      <select
+        id={inputId}
+        className={numCellClass}
+        name={name}
+        defaultValue={defaultValue != null ? String(defaultValue) : ""}
+        aria-label={`${label} (1~12월)`}
+      >
+        {allowEmpty ? <option value="">—</option> : null}
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
+          <option key={m} value={m}>
+            {m}월
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/**
+ * 「연도」 select 셀 — Cell 과 동일한 외형. 옵션은 호출자가 산출(보통 활성 연도 ±5).
+ * 빈 옵션 「—」 은 「미입력(미퇴사 등)」 을 의미.
+ */
+function YearSelectCell({
+  label,
+  name,
+  defaultValue,
+  options,
+  allowEmpty = true,
+}: {
+  label: string;
+  name: string;
+  defaultValue?: number | null;
+  options: readonly number[];
+  allowEmpty?: boolean;
+}) {
+  const inputId = useId();
+  return (
+    <div className="min-w-0">
+      <label className={fieldLabelClass} htmlFor={inputId}>
+        {label}
+      </label>
+      <select
+        id={inputId}
+        className={numCellClass}
+        name={name}
+        defaultValue={defaultValue != null ? String(defaultValue) : ""}
+        aria-label={label}
+      >
+        {allowEmpty ? <option value="">—</option> : null}
+        {options.map((y) => (
+          <option key={y} value={y}>
+            {y}년
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** 「퇴사 연도」 옵션 — 활성 연도 ±5 + 시스템 연도 ±5 합쳐 「현실적 범위」. 활성 연도 보장. */
+function makeYearOptions(activeYear: number): number[] {
+  const now = new Date().getFullYear();
+  const lo = Math.min(activeYear - 5, now - 5);
+  const hi = Math.max(activeYear + 5, now + 5);
+  const out: number[] = [];
+  for (let y = lo; y <= hi; y++) out.push(y);
+  return out;
+}
+
 export function EmployeeForm({
   employee,
   activeYear,
@@ -677,7 +767,7 @@ export function EmployeeForm({
               <th>입사월 / 급여일</th>
               <td>
                 <div className="flex flex-wrap gap-3">
-                  <Cell label="입사월" name="hireMonth" type="number" defaultValue={employee?.hireMonth ?? ""} />
+                  <MonthSelectCell label="입사월" name="hireMonth" defaultValue={employee?.hireMonth ?? null} />
                   <Cell label="급여일" name="payDay" type="number" defaultValue={employee?.payDay ?? ""} />
                 </div>
               </td>
@@ -686,8 +776,13 @@ export function EmployeeForm({
               <th>퇴사</th>
               <td>
                 <div className="flex flex-wrap items-end gap-3">
-                  <Cell label="연도" name="resignYear" type="number" defaultValue={employee?.resignYear ?? ""} />
-                  <Cell label="월" name="resignMonth" type="number" defaultValue={employee?.resignMonth ?? ""} />
+                  <YearSelectCell
+                    label="연도"
+                    name="resignYear"
+                    defaultValue={employee?.resignYear ?? null}
+                    options={makeYearOptions(activeYear)}
+                  />
+                  <MonthSelectCell label="월" name="resignMonth" defaultValue={employee?.resignMonth ?? null} />
                   <label className="flex cursor-pointer items-center gap-1.5 pb-2 text-xs">
                     <input type="checkbox" name="flagPayWelfareOnResignMonth" defaultChecked={employee?.flagPayWelfareOnResignMonth ?? false} />
                     퇴사월 사복 지급
@@ -699,8 +794,8 @@ export function EmployeeForm({
               <th>생일·결혼월</th>
               <td>
                 <div className="flex flex-wrap gap-3">
-                  <Cell label="생일월" name="birthMonth" type="number" defaultValue={employee?.birthMonth ?? ""} />
-                  <Cell label="결혼기념월" name="weddingMonth" type="number" defaultValue={employee?.weddingMonth ?? ""} />
+                  <MonthSelectCell label="생일월" name="birthMonth" defaultValue={employee?.birthMonth ?? null} />
+                  <MonthSelectCell label="결혼기념월" name="weddingMonth" defaultValue={employee?.weddingMonth ?? null} />
                 </div>
               </td>
             </tr>

@@ -14,6 +14,16 @@ export default async function GlPage() {
   const year = settings?.activeYear ?? new Date().getFullYear();
   const jobs = await glSyncJobListByTenant(tenantId, 50);
 
+  /** 연도 옵션 — 활성 연도 ±5 + 시스템 연도 ±5 합쳐 「현실적 범위」 만 노출. */
+  const yearOptions = (() => {
+    const now = new Date().getFullYear();
+    const lo = Math.min(year - 5, now - 5);
+    const hi = Math.max(year + 5, now + 5);
+    const out: number[] = [];
+    for (let y = lo; y <= hi; y++) out.push(y);
+    return out;
+  })();
+
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
@@ -24,11 +34,28 @@ export default async function GlPage() {
       <form action={requestGlSyncFormAction} className="surface dash-panel-pad space-y-4">
         <div>
           <label className="text-xs text-[var(--muted)]">연도</label>
-          <input name="year" type="number" defaultValue={year} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2" />
+          <select
+            name="year"
+            defaultValue={String(year)}
+            className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2"
+          >
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>{y}년</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="text-xs text-[var(--muted)]">월 (선택, 비우면 연간)</label>
-          <input name="month" type="number" min={1} max={12} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2" />
+          <select
+            name="month"
+            defaultValue=""
+            className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2"
+          >
+            <option value="">연간 (월 미선택)</option>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
+              <option key={m} value={m}>{m}월</option>
+            ))}
+          </select>
         </div>
         <button type="submit" className="rounded-lg bg-[var(--accent)] px-4 py-2 text-white">
           동기화 요청 등록
