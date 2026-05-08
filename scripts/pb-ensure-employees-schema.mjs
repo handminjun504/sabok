@@ -113,11 +113,33 @@ const CATALOG = {
     { name: "spouseReceiptSchedule", type: "json" },
     { name: "discretionarySchedule", type: "json" },
     /**
+     * 「+ 반환 추가」 사용자 정의 반환 카테고리 — `{ categories: [{ key, label, byEmployeeMonth }] }`.
+     * 안내 멘트 ㄴ 줄 + 수수료 base A 차감에 사용.
+     */
+    { name: "customReturnsSchedule", type: "json" },
+    /**
+     * 사복기금 운영 수수료 요율(%) — 비면 거래처 구분(개인 10/법인 2) 디폴트로 폴백.
+     */
+    { name: "feeRatePercent", type: "number" },
+    /**
+     * 수수료 청구 방식 — `EVEN_12` | `ON_PAY_MONTH`. 비면 EVEN_12.
+     */
+    { name: "feeBillingMode", type: "text" },
+    /**
      * 사용 중단된 「당월 귀속·차월 지급」 토글. 모델·UI 에서는 제거되었지만, 기존 컬렉션과
      * 호환되도록 컬럼이 존재하는 경우 required(Nonempty)만 끄도록 catalog 에는 남겨 둔다.
      * 새 PB 환경에서 컬럼이 없다면 graceful skip(이 catalog 는 누락된 컬럼만 추가).
      */
     { name: "accrualCurrentMonthPayNext", type: "bool" },
+  ],
+  sabok_tenants: [
+    /**
+     * 「현재 통장 잔고」 — 신규 적립금 입력 경로(원).
+     * null 이면 구 데이터(`reserveMonthlyByYearJson` / `accumulatedReserveTotalWon`) 폴백 활성.
+     */
+    { name: "reserveBalanceWon", type: "number" },
+    /** 잔고 기준월 — `YYYY-MM` (예: `2026-05`). UI 표시용. */
+    { name: "reserveBalanceAsOfYearMonth", type: "text" },
   ],
 };
 

@@ -1,18 +1,19 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   saveMonthlySchedulesAction,
   type MonthlySchedulesState,
 } from "@/app/actions/monthly-schedules";
 import { CommaWonInput } from "@/components/CommaWonInput";
+import type { CustomReturnsSchedule } from "@/types/models";
 
 /**
- * 직원×월 단위로 금액을 입력하는 그리드 — 「대표반환」「배우자수령」「알아서금액」 3종을 한 폼에서 관리.
+ * 직원×월 단위로 금액을 입력하는 그리드 — 「대표반환」「배우자수령」「알아서금액」 3종 + 사용자 정의 「반환 추가」 카테고리를 한 폼에서 관리.
  * - 각 직원 행 끝에 연간 합계가 실시간 표시된다.
  * - 첫 마운트 시 외부 prop 으로 표시값을 채우고, 사용자가 손댄 뒤에는 그 입력을 신뢰한다.
- * - 저장하면 `companySettingsUpdateMonthlySchedules` 가 세 JSON 필드를 한 번에 partial-update.
+ * - 저장하면 `companySettingsUpdateMonthlySchedules` 가 네 JSON 필드를 한 번에 partial-update.
  */
 
 type MonthlyMap = Record<string, Partial<Record<string, number>>>;
@@ -36,9 +37,34 @@ type Props = {
   repReturn: MonthlyMap;
   spouseReceipt: MonthlyMap;
   discretionary: MonthlyMap;
+  /** 「+ 반환 추가」 사용자 정의 반환 카테고리 — null/undefined 면 빈 배열로 시작 */
+  customReturns?: CustomReturnsSchedule | null;
   /** 권한 — false 이면 모든 입력이 disabled, 저장 버튼도 숨김 */
   canEdit: boolean;
 };
+
+type CustomReturnLocalCategory = {
+  key: string;
+  label: string;
+  byEmployeeMonth: MonthlyMap;
+};
+
+function makeCustomReturnKey(): string {
+  /** `r_<ts>_<rand>` — 충돌 방지 8자리 랜덤. 폼 name 에 그대로 들어가므로 「영문/숫자/_」 만 사용. */
+  const rand = Math.random().toString(36).slice(2, 10);
+  return `r_${Date.now().toString(36)}_${rand}`;
+}
+
+function cloneCustomReturns(
+  src: CustomReturnsSchedule | null | undefined,
+): CustomReturnLocalCategory[] {
+  if (!src || !Array.isArray(src.categories)) return [];
+  return src.categories.map((c) => ({
+    key: c.key,
+    label: c.label,
+    byEmployeeMonth: cloneMap(c.byEmployeeMonth),
+  }));
+}
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
@@ -87,6 +113,7 @@ export function MonthlySchedulesPanel({
   repReturn,
   spouseReceipt,
   discretionary,
+  customReturns,
   canEdit,
 }: Props) {
   const router = useRouter();
@@ -100,6 +127,9 @@ export function MonthlySchedulesPanel({
     spouseReceipt: cloneMap(spouseReceipt),
     discretionary: cloneMap(discretionary),
   }));
+  const [customCategories, setCustomCategories] = useState<CustomReturnLocalCategory[]>(() =>
+    cloneCustomReturns(customReturns ?? null),
+  );
 
   /** PB 값이 외부에서 갱신되면(연도 전환 등) 입력을 동기화. */
   useEffect(() => {
@@ -109,6 +139,9 @@ export function MonthlySchedulesPanel({
       discretionary: cloneMap(discretionary),
     });
   }, [repReturn, spouseReceipt, discretionary]);
+  useEffect(() => {
+    setCustomCategories(cloneCustomReturns(customReturns ?? null));
+  }, [customReturns]);
 
   useEffect(() => {
     if (state?.성공) router.refresh();
@@ -138,6 +171,12 @@ export function MonthlySchedulesPanel({
     };
   }, [maps]);
 
+  const customCategoryTotals = useMemo<number[]>(() => {
+    return customCategories.map((c) =>
+      Object.values(c.byEmployeeMonth).reduce((s, row) => s + rowSum(row), 0),
+    );
+  }, [customCategories]);
+
   function setCell(section: SectionKey, empId: string, month: number, value: number) {
     setMaps((prev) => {
       const next = { ...prev };
@@ -153,6 +192,49 @@ export function MonthlySchedulesPanel({
     });
   }
 
+  const setCustomCell = useCallback(
+    (key: string, empId: string, month: number, value: number) => {
+      setCustomCategories((prev) => {
+        const next = prev.slice();
+        const idx = next.findIndex((c) => c.key === key);
+        if (idx < 0) return prev;
+        const cat = next[idx];
+        const sec = cloneMap(cat.byEmployeeMonth);
+        const row = sec[empId] ? { ...sec[empId] } : {};
+        const v = Math.max(0, Math.round(Number.isFinite(value) ? value : 0));
+        if (v <= 0) delete row[String(month)];
+        else row[String(month)] = v;
+        if (Object.keys(row).length === 0) delete sec[empId];
+        else sec[empId] = row;
+        next[idx] = { ...cat, byEmployeeMonth: sec };
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleAddCustomReturn = useCallback(() => {
+    const label = window.prompt("새 반환 카테고리 이름을 입력하세요 (예: 「경조금 반환」)")?.trim();
+    if (!label) return;
+    setCustomCategories((prev) => [
+      ...prev,
+      { key: makeCustomReturnKey(), label, byEmployeeMonth: {} },
+    ]);
+  }, []);
+
+  const handleRenameCustomReturn = useCallback((key: string, currentLabel: string) => {
+    const next = window.prompt("반환 카테고리 이름을 수정하세요.", currentLabel)?.trim();
+    if (!next || next === currentLabel) return;
+    setCustomCategories((prev) =>
+      prev.map((c) => (c.key === key ? { ...c, label: next } : c)),
+    );
+  }, []);
+
+  const handleRemoveCustomReturn = useCallback((key: string, label: string) => {
+    if (!window.confirm(`「${label}」 반환 카테고리를 삭제할까요? 입력했던 직원·월별 금액도 함께 사라집니다.`)) return;
+    setCustomCategories((prev) => prev.filter((c) => c.key !== key));
+  }, []);
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -161,13 +243,23 @@ export function MonthlySchedulesPanel({
             대표반환·배우자수령·알아서금액 — {activeYear}년
           </h2>
           <p className="mt-1 text-xs text-[var(--muted)]">
-            저장된 월별 금액은 안내 멘트의 직원 라인 아래에 자동으로 들어갑니다.
+            저장된 월별 금액은 안내 멘트의 직원 라인 아래에 자동으로 들어갑니다. 「+ 반환 추가」 로 사용자 정의 반환 항목도 만들 수 있습니다.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
           <span>대표반환 합계 <strong className="tabular-nums text-[var(--text)]">{fmt(sectionTotals.repReturn)}</strong>원</span>
           <span>배우자수령 합계 <strong className="tabular-nums text-[var(--text)]">{fmt(sectionTotals.spouseReceipt)}</strong>원</span>
           <span>알아서금액 합계 <strong className="tabular-nums text-[var(--text)]">{fmt(sectionTotals.discretionary)}</strong>원</span>
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={handleAddCustomReturn}
+              className="btn btn-ghost btn-xs"
+              aria-label="반환 카테고리 추가"
+            >
+              + 반환 추가
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -258,6 +350,119 @@ export function MonthlySchedulesPanel({
             </div>
           );
         })}
+
+        {customCategories.length > 0 ? (
+          <div className="space-y-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-xs font-semibold text-[var(--muted)]">추가 반환 — 사용자 정의</p>
+              <p className="text-[10px] text-[var(--muted)]">
+                안내 멘트의 직원 줄 아래 「ㄴ카테고리명: 금액」 으로 노출됩니다.
+              </p>
+            </div>
+            {customCategories.map((cat, catIdx) => {
+              const total = customCategoryTotals[catIdx] ?? 0;
+              return (
+                <div key={cat.key} className="surface overflow-hidden">
+                  <div className="dash-panel-toolbar border-b border-[var(--border)] bg-[var(--surface-hover)]/40">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-sm font-semibold text-[var(--text)]">
+                        {cat.label}
+                        <span className="ml-2 text-[10px] font-normal text-[var(--muted)]">
+                          전 직원 대상 — 0 원이면 저장하지 않습니다.
+                        </span>
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                        <span>
+                          합계 <strong className="tabular-nums text-[var(--text)]">{fmt(total)}</strong>원
+                        </span>
+                        {canEdit ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleRenameCustomReturn(cat.key, cat.label)}
+                              className="btn btn-ghost btn-xs"
+                            >
+                              이름 변경
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCustomReturn(cat.key, cat.label)}
+                              className="btn btn-ghost btn-xs text-[var(--danger,#991b1b)]"
+                            >
+                              삭제
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                  {/** 라벨은 hidden 으로 동봉 — 서버 액션이 카테고리 라벨까지 한 번에 받는다. */}
+                  <input
+                    type="hidden"
+                    name={`customReturnLabel_${cat.key}`}
+                    value={cat.label}
+                  />
+                  <div className="overflow-x-auto">
+                    <table className="min-w-max border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] bg-[var(--surface-sunken)]">
+                          <th className="sticky left-0 z-[1] bg-[var(--surface-sunken)] px-2 py-2 text-left text-[var(--muted)] shadow-[2px_0_0_var(--border)]">
+                            직원
+                          </th>
+                          {MONTHS.map((m) => (
+                            <th key={m} className="px-1.5 py-2 text-center tabular-nums text-[var(--muted)]">
+                              {m}월
+                            </th>
+                          ))}
+                          <th className="px-2 py-2 text-right text-[var(--muted)]">연 합계</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {employees.map((emp) => {
+                          const row = cat.byEmployeeMonth[emp.id] ?? {};
+                          const empTotal = rowSum(row);
+                          return (
+                            <tr key={emp.id} className="border-b border-[var(--border)]/60">
+                              <td className="sticky left-0 z-[1] bg-[var(--surface)] px-2 py-1.5 align-middle whitespace-nowrap shadow-[2px_0_0_var(--border)]">
+                                <span className="mr-1 font-mono text-[0.65rem] text-[var(--muted)]">
+                                  {emp.employeeCode}
+                                </span>
+                                <span className="text-sm font-semibold text-[var(--text)]">{emp.name}</span>
+                              </td>
+                              {MONTHS.map((m) => {
+                                const saved = row[String(m)];
+                                return (
+                                  <td key={m} className="px-1 py-1">
+                                    <CommaWonInput
+                                      name={`customReturn_${cat.key}_${emp.id}_${m}`}
+                                      defaultValue={saved ?? null}
+                                      placeholder="—"
+                                      disabled={!canEdit}
+                                      className="input w-[6rem] px-2 py-1 text-right text-xs tabular-nums"
+                                      onUserChange={(v) => setCustomCell(cat.key, emp.id, m, v)}
+                                    />
+                                  </td>
+                                );
+                              })}
+                              <td
+                                className={
+                                  "px-2 py-1.5 text-right font-bold tabular-nums " +
+                                  (empTotal > 0 ? "text-[var(--accent)]" : "text-[var(--muted)]")
+                                }
+                              >
+                                {fmt(empTotal)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
 
         {canEdit ? (
           <div className="flex flex-wrap items-center justify-end gap-2">

@@ -40,6 +40,10 @@ const schema = z.object({
    * 폼에서 비워 두면 null 로 저장되어 그리드는 사용자가 적은 값을 그대로 보존한다.
    */
   incentiveNetRatioPercent: z.number().int().min(1).max(100).nullable(),
+  /** 사복 운영 수수료 요율(%) — 0.1~100. null 이면 거래처 디폴트로 폴백. */
+  feeRatePercent: z.number().min(0.1).max(100).nullable(),
+  /** 수수료 청구 방식. */
+  feeBillingMode: z.enum(["EVEN_12", "ON_PAY_MONTH"]),
 });
 
 const QUARTERLY_ITEM_KEYS = [
@@ -118,6 +122,24 @@ function pickIncentiveNetRatioPercent(formData: FormData): number | null {
   return n;
 }
 
+/** 폼에서 수수료 요율(%)을 읽어 0.1~100 범위 안의 1자리 소수까지 정규화. 빈값/범위 외 → null(거래처 디폴트). */
+function pickFeeRatePercent(formData: FormData): number | null {
+  const raw = formData.get("feeRatePercent");
+  if (raw == null) return null;
+  const t = String(raw).trim();
+  if (!t) return null;
+  const n = Number(t);
+  if (!Number.isFinite(n)) return null;
+  const r = Math.round(n * 10) / 10;
+  if (r < 0.1 || r > 100) return null;
+  return r;
+}
+
+function pickFeeBillingMode(formData: FormData): "EVEN_12" | "ON_PAY_MONTH" {
+  const raw = String(formData.get("feeBillingMode") ?? "").trim().toUpperCase();
+  return raw === "ON_PAY_MONTH" ? "ON_PAY_MONTH" : "EVEN_12";
+}
+
 function pickFixedEventMonths(formData: FormData): Record<string, number> | null {
   const out: Record<string, number> = {};
   for (const k of Object.keys(FIXED_EVENT_DEFAULTS) as (keyof typeof FIXED_EVENT_DEFAULTS)[]) {
@@ -153,6 +175,8 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     quarterlyPayMonths,
     repReturnSchedule,
     incentiveNetRatioPercent: pickIncentiveNetRatioPercent(formData),
+    feeRatePercent: pickFeeRatePercent(formData),
+    feeBillingMode: pickFeeBillingMode(formData),
   });
   if (!parsed.success) {
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };

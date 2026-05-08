@@ -344,10 +344,80 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     repReturnSchedule: parseRepReturnSchedule(r.repReturnSchedule),
     spouseReceiptSchedule: parseSpouseReceiptSchedule(r.spouseReceiptSchedule),
     discretionarySchedule: parseDiscretionarySchedule(r.discretionarySchedule),
+    customReturnsSchedule: parseCustomReturnsSchedule(r.customReturnsSchedule),
     vendorWelfareApplied: parseVendorWelfareApplied(r.vendorWelfareApplied),
     vendorWelfareRatio: parseVendorWelfareRatio(r.vendorWelfareRatio),
     incentiveNetRatioPercent: parseIncentiveNetRatioPercent(r.incentiveNetRatioPercent),
+    feeRatePercent: parseFeeRatePercent(r.feeRatePercent),
+    feeBillingMode: parseFeeBillingMode(r.feeBillingMode),
   };
+}
+
+/**
+ * 사복기금 운영 수수료 요율(%) 파싱.
+ * 1~100 정수만 허용. 그 외는 null → 호출 시 거래처 구분(개인 10 / 법인 2) 디폴트로 폴백.
+ */
+function parseFeeRatePercent(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  /** 소수점 1자리까지 반올림 — 운영자가 「2.5%」 같은 값을 쓸 수 있도록. */
+  const r = Math.round(n * 10) / 10;
+  if (r < 0.1 || r > 100) return null;
+  return r;
+}
+
+function parseFeeBillingMode(v: unknown): import("@/types/models").FeeBillingMode {
+  const s = typeof v === "string" ? v.trim().toUpperCase() : "";
+  if (s === "ON_PAY_MONTH") return "ON_PAY_MONTH";
+  return "EVEN_12";
+}
+
+/**
+ * 「+ 반환 추가」 카테고리 배열 파싱.
+ * 상위 wrapper 는 `{ categories: [...] }` 또는 곧장 배열 형식 모두 허용(graceful).
+ * 각 항목은 `{ key, label, byEmployeeMonth }` — 라벨이 비거나 byEmployeeMonth 가 모두 0 이면 제거.
+ * 같은 `key` 가 두 번 나오면 마지막 값으로 머지(라벨은 앞 값 유지).
+ */
+function parseCustomReturnsSchedule(v: unknown): import("@/types/models").CustomReturnsSchedule | null {
+  let raw: unknown = v;
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    if (!t) return null;
+    try { raw = JSON.parse(t) as unknown; } catch { return null; }
+  }
+  let arr: unknown[] = [];
+  if (Array.isArray(raw)) {
+    arr = raw;
+  } else if (typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    if (Array.isArray(o.categories)) arr = o.categories;
+    else return null;
+  } else {
+    return null;
+  }
+  const seen = new Map<string, import("@/types/models").CustomReturnCategory>();
+  for (const item of arr) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const key = typeof o.key === "string" ? o.key.trim() : "";
+    const label = typeof o.label === "string" ? o.label.trim() : "";
+    if (!key || !label) continue;
+    const byEmp = parseEmployeeMonthlyAmountMap(o.byEmployeeMonth);
+    if (!byEmp) continue;
+    const exist = seen.get(key);
+    if (exist) {
+      /** 같은 key 중복 시 byEmployeeMonth 만 머지(라벨은 처음 값 유지) */
+      for (const [eid, months] of Object.entries(byEmp)) {
+        exist.byEmployeeMonth[eid] = { ...(exist.byEmployeeMonth[eid] ?? {}), ...months };
+      }
+    } else {
+      seen.set(key, { key, label, byEmployeeMonth: byEmp });
+    }
+  }
+  if (seen.size === 0) return null;
+  return { categories: [...seen.values()] };
 }
 
 /**

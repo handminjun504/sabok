@@ -205,6 +205,25 @@ function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
           return Number.isFinite(n) && n >= 0 ? n : null;
         })();
   const reserveMonthly = tenantReserveMonthlyMapFromUnknown(r.reserveMonthlyByYearJson);
+  /**
+   * 「현재 통장 잔고」 — 컬럼 누락 환경에서도 graceful 하도록 `r.reserveBalanceWon` 미존재 시 null.
+   * 0 원 명시 입력은 유효(자본금 0 적립 = 모자람). 음수·비유한수만 null.
+   */
+  const reserveBalanceRaw = r.reserveBalanceWon;
+  const reserveBalanceWon =
+    reserveBalanceRaw == null || reserveBalanceRaw === ""
+      ? null
+      : (() => {
+          const n = Math.round(Number(reserveBalanceRaw));
+          return Number.isFinite(n) && n >= 0 ? n : null;
+        })();
+  /** `YYYY-MM` 형식만 보존(미준수 입력은 null 로). 화면에서 자동 표시에만 쓰이므로 strict. */
+  const reserveBalanceAsOfYearMonth = (() => {
+    const v = r.reserveBalanceAsOfYearMonth;
+    if (v == null || v === "") return null;
+    const s = String(v).trim();
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(s) ? s : null;
+  })();
   const accStart = r.accountingYearStartMonth == null || r.accountingYearStartMonth === ""
     ? null
     : (() => {
@@ -230,6 +249,8 @@ function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
     headOfficeCapital: Number.isFinite(cap) ? cap : null,
     accumulatedReserveTotalWon: reserve,
     reserveMonthlyByYearWon: reserveMonthly,
+    reserveBalanceWon,
+    reserveBalanceAsOfYearMonth,
     announcementMode: parseAnnouncementMode(r.announcementMode),
     announcementBatchFromMonth: tenantMonthOrNull(r, "announcementBatchFromMonth"),
     announcementBatchToMonth: tenantMonthOrNull(r, "announcementBatchToMonth"),
@@ -518,6 +539,87 @@ export async function tenantUpdateReserveMonthlyForYear(
   return tenantFromPbRecord(r);
 }
 
+/**
+ * 「현재 통장 잔고」 + 기준월(`YYYY-MM`) 갱신 — 신규 입력 경로.
+ *
+ * 운영자는 통장에서 확인한 잔고를 그대로 입력하고 그 시점(YYYY년 M월) 을 적는다.
+ * 누적 적립 산정의 권위(authoritative) 값으로 쓰여 기존 월별 입력(`reserveMonthlyByYearJson`)과
+ * 호환 단일값(`accumulatedReserveTotalWon`) 을 모두 무시한다.
+ *
+ * PB 컬럼이 누락된 환경에서는 graceful — 누락 컬럼만 떼고 한 번 더 시도하며,
+ * 누락 사실을 콘솔에 안내한다(운영자는 `npm run pb:ensure-tenants-schema` 실행 권장).
+ */
+export async function tenantUpdateReserveBalance(
+  tenantId: string,
+  args: {
+    /** 잔고(원) — null 이면 「잔고 미입력」 으로 초기화(구 데이터 폴백 활성). */
+    balanceWon: number | null;
+    /** 기준월 `YYYY-MM` — null 이면 표시 전용 라벨 없음. */
+    asOfYearMonth: string | null;
+  },
+): Promise<Tenant> {
+  const balance = (() => {
+    if (args.balanceWon == null) return null;
+    const n = Math.round(Number(args.balanceWon));
+    if (!Number.isFinite(n) || n < 0) return null;
+    return n;
+  })();
+  const asOf = (() => {
+    if (!args.asOfYearMonth) return null;
+    const s = String(args.asOfYearMonth).trim();
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(s) ? s : null;
+  })();
+
+  const pb = await getAdminPb();
+  const payload: Record<string, unknown> = {
+    reserveBalanceWon: balance,
+    reserveBalanceAsOfYearMonth: asOf,
+  };
+
+  const stripIfMissing = (detailLower: string, key: keyof typeof payload): boolean => {
+    if (
+      detailLower.includes(String(key).toLowerCase()) &&
+      (detailLower.includes("unknown") ||
+        detailLower.includes("invalid") ||
+        detailLower.includes("not found") ||
+        detailLower.includes("missing"))
+    ) {
+      delete payload[key];
+      return true;
+    }
+    return false;
+  };
+
+  try {
+    const r = asRecord(await pb.collection(C.tenants).update(tenantId, payload));
+    return tenantFromPbRecord(r);
+  } catch (e) {
+    if (!(e instanceof ClientResponseError)) {
+      logPbClientError("tenantUpdateReserveBalance", e);
+      throw e;
+    }
+    const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
+    let stripped = false;
+    stripped = stripIfMissing(detailLower, "reserveBalanceWon") || stripped;
+    stripped = stripIfMissing(detailLower, "reserveBalanceAsOfYearMonth") || stripped;
+    if (!stripped || Object.keys(payload).length === 0) {
+      logPbClientError("tenantUpdateReserveBalance", e);
+      throw e;
+    }
+    try {
+      const r = asRecord(await pb.collection(C.tenants).update(tenantId, payload));
+      console.warn(
+        "[pb] tenantUpdateReserveBalance: sabok_tenants 의 reserveBalanceWon / reserveBalanceAsOfYearMonth 컬럼이 일부 누락되어 해당 키를 빼고 저장했습니다. " +
+          "Admin → sabok_tenants 에 number / text 필드를 추가하세요. 또는 `npm run pb:ensure-tenants-schema` 실행.",
+      );
+      return tenantFromPbRecord(r);
+    } catch (e2) {
+      logPbClientError("tenantUpdateReserveBalance(retry)", e2);
+      throw e2;
+    }
+  }
+}
+
 /** --- Users --- */
 export async function userFindByEmail(email: string): Promise<UserRow | null> {
   const r = await firstByFilter(C.users, `email="${esc(email)}"`);
@@ -604,6 +706,39 @@ export async function userTenantListWithTenantsForUser(userId: string): Promise<
 export async function companySettingsByTenant(tenantId: string): Promise<CompanySettings | null> {
   const r = await firstByFilter(C.companySettings, `tenantId="${esc(tenantId)}"`);
   return r ? mapCompanySettings(r) : null;
+}
+
+/**
+ * 여러 거래처의 `activeYear` 만 한 번에 조회 — 거래처 선택 화면에서 카드별 연도 표시에 사용.
+ *
+ * 결과 맵에는 PB 에서 활성 연도를 명시한 거래처만 키가 존재한다.
+ * 키가 없으면 호출자가 적절한 디폴트(보통 현재 달력 연도)를 사용한다.
+ *
+ * 빈 입력은 빈 객체를 반환. 조회 실패는 빈 객체 + 콘솔 로그(거래처 선택 화면이 빈 카드도 그릴 수 있도록 graceful).
+ */
+export async function companySettingsActiveYearsByTenants(
+  tenantIds: readonly string[],
+): Promise<Record<string, number>> {
+  if (tenantIds.length === 0) return {};
+  const out: Record<string, number> = {};
+  try {
+    const pb = await getAdminPb();
+    const filter = tenantIds.map((id) => `tenantId="${esc(id)}"`).join(" || ");
+    const items = await pb
+      .collection(C.companySettings)
+      .getFullList({ filter, fields: "tenantId,activeYear" });
+    for (const r of items) {
+      const rec = asRecord(r);
+      const tid = String(rec.tenantId ?? "").trim();
+      const yr = Math.round(Number(rec.activeYear));
+      if (tid && Number.isFinite(yr) && yr >= 1900 && yr <= 9999) {
+        out[tid] = yr;
+      }
+    }
+  } catch (e) {
+    console.error("[pb] companySettingsActiveYearsByTenants", e);
+  }
+  return out;
 }
 
 /**
@@ -788,6 +923,10 @@ export async function companySettingsUpsert(
      * 폼에서 명시적으로 받지 않은 경우 undefined 로 두면 기존 값 유지(payload 에서 제외).
      */
     incentiveNetRatioPercent?: number | null;
+    /** 사복 운영 수수료 요율(%) — null 이면 거래처 구분 디폴트(개인 10/법인 2). */
+    feeRatePercent?: number | null;
+    /** 수수료 청구 방식 — `EVEN_12`(균등÷12) | `ON_PAY_MONTH`(지급월만). */
+    feeBillingMode?: import("@/types/models").FeeBillingMode;
   }
 ): Promise<void> {
   const existing = await companySettingsByTenant(tenantId);
@@ -798,6 +937,18 @@ export async function companySettingsUpsert(
     void _omit;
     return rest;
   };
+  /** 수수료 옵션 두 컬럼이 누락된 환경에서 retry. */
+  const stripFeeOptions = (payload: Record<string, unknown>): Record<string, unknown> => {
+    const { feeRatePercent: _r, feeBillingMode: _m, ...rest } = payload;
+    void _r;
+    void _m;
+    return rest;
+  };
+  const feeOptionMissing = (detailLower: string) =>
+    (detailLower.includes("feeratepercent") || detailLower.includes("feebillingmode")) &&
+    (detailLower.includes("unknown") ||
+      detailLower.includes("invalid") ||
+      detailLower.includes("not found"));
   /**
    * 사용 중단된 `accrualCurrentMonthPayNext` PB 컬럼이 남아 있는 환경 호환을 위해 false 를 항상 동봉.
    * 이미 컬럼이 삭제된 환경에서는 unknown 컬럼 응답을 받아 자동으로 키를 빼고 다시 시도한다.
@@ -837,6 +988,14 @@ export async function companySettingsUpsert(
         );
         return;
       }
+      if (feeOptionMissing(detailLower)) {
+        await pb.collection(C.companySettings).update(existing.id, stripFeeOptions(dataWithLegacy));
+        console.warn(
+          "[pb] companySettingsUpsert(update): feeRatePercent / feeBillingMode 컬럼 누락으로 해당 필드를 빼고 저장했습니다. " +
+            "`npm run pb:ensure-company-settings-schema` 로 number / text 필드를 추가하세요.",
+        );
+        return;
+      }
       throw e;
     }
     return;
@@ -856,7 +1015,8 @@ export async function companySettingsUpsert(
       detailLower.includes("incentivenetratiopercent") &&
       (detailLower.includes("unknown") || detailLower.includes("invalid") || detailLower.includes("not found"));
     const salaryVarianceMissing = salaryVarianceUnknownColumnIssue(detailLower);
-    if (!legacyAccrualMissing && !incentiveColMissing && !salaryVarianceMissing) {
+    const feeMissing = feeOptionMissing(detailLower);
+    if (!legacyAccrualMissing && !incentiveColMissing && !salaryVarianceMissing && !feeMissing) {
       logPbClientError("companySettingsUpsert(create)", e);
       throw e;
     }
@@ -865,6 +1025,7 @@ export async function companySettingsUpsert(
       if (legacyAccrualMissing) retryPayload = stripLegacyAccrual(retryPayload);
       if (incentiveColMissing) retryPayload = stripIncentiveRatio(retryPayload);
       if (salaryVarianceMissing) retryPayload = stripSalaryInclusionVarianceMode(retryPayload);
+      if (feeMissing) retryPayload = stripFeeOptions(retryPayload);
       await pb.collection(C.companySettings).create(retryPayload);
       if (incentiveColMissing) {
         console.warn(
@@ -876,6 +1037,12 @@ export async function companySettingsUpsert(
         console.warn(
           "[pb] companySettingsUpsert(create): salaryInclusionVarianceMode 컬럼 누락으로 해당 필드를 빼고 생성했습니다. " +
             "`npm run pb:ensure-company-settings-schema` 로 text 필드를 추가하세요.",
+        );
+      }
+      if (feeMissing) {
+        console.warn(
+          "[pb] companySettingsUpsert(create): feeRatePercent / feeBillingMode 컬럼 누락으로 해당 필드를 빼고 생성했습니다. " +
+            "`npm run pb:ensure-company-settings-schema` 로 number / text 필드를 추가하세요.",
         );
       }
     } catch (e2) {
@@ -899,6 +1066,11 @@ export async function companySettingsUpdateMonthlySchedules(
     repReturnSchedule?: EmployeeMonthlyAmountMap;
     spouseReceiptSchedule?: EmployeeMonthlyAmountMap;
     discretionarySchedule?: EmployeeMonthlyAmountMap;
+    /**
+     * 「+ 반환 추가」 사용자 정의 카테고리 — `{ categories: [...] }` 또는 null(=초기화).
+     * 카테고리 라벨 trim·중복 key 머지·전 셀 0 인 카테고리 제거는 호출자(server action) 에서 수행.
+     */
+    customReturnsSchedule?: import("@/types/models").CustomReturnsSchedule | null;
   },
 ): Promise<void> {
   const existing = await companySettingsByTenant(tenantId);
@@ -915,6 +1087,9 @@ export async function companySettingsUpdateMonthlySchedules(
   }
   if (Object.prototype.hasOwnProperty.call(data, "discretionarySchedule")) {
     payload.discretionarySchedule = data.discretionarySchedule ?? null;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "customReturnsSchedule")) {
+    payload.customReturnsSchedule = data.customReturnsSchedule ?? null;
   }
   if (Object.keys(payload).length === 0) return;
 
@@ -945,6 +1120,7 @@ export async function companySettingsUpdateMonthlySchedules(
     stripped = stripIfMissing("spouseReceiptSchedule") || stripped;
     stripped = stripIfMissing("discretionarySchedule") || stripped;
     stripped = stripIfMissing("repReturnSchedule") || stripped;
+    stripped = stripIfMissing("customReturnsSchedule") || stripped;
     if (!stripped || Object.keys(payload).length === 0) {
       logPbClientError("companySettingsUpdateMonthlySchedules", e);
       throw e;
@@ -953,7 +1129,7 @@ export async function companySettingsUpdateMonthlySchedules(
       await pb.collection(C.companySettings).update(existing.id, payload);
       console.warn(
         "[pb] companySettingsUpdateMonthlySchedules: 일부 JSON 컬럼이 누락되어 해당 키를 제외하고 저장했습니다. " +
-          "Admin → sabok_company_settings 에 spouseReceiptSchedule·discretionarySchedule(json) 필드를 추가하세요. " +
+          "Admin → sabok_company_settings 에 spouseReceiptSchedule·discretionarySchedule·customReturnsSchedule(json) 필드를 추가하세요. " +
           "또는 `npm run pb:ensure-company-settings-schema` 실행.",
       );
     } catch (e2) {

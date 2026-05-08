@@ -165,6 +165,7 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
           accumulatedReserveTotalWon: tenantReserveTotalSumWon(
             tenant.reserveMonthlyByYearWon,
             tenant.accumulatedReserveTotalWon,
+            tenant.reserveBalanceWon,
           ),
         },
         vendors,

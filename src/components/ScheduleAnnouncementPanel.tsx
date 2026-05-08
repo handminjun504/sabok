@@ -149,6 +149,10 @@ export function ScheduleAnnouncementPanel({
       repReturnAmount: r.repReturnByMonth[focusMonth] ?? 0,
       spouseReceiptAmount: r.spouseReceiptByMonth[focusMonth] ?? 0,
       discretionaryAmount: r.discretionaryByMonth[focusMonth] ?? 0,
+      customReturns: (r.customReturnsByMonth ?? []).map((c) => ({
+        label: c.label,
+        amount: c.byMonth[focusMonth] ?? 0,
+      })),
     }));
   }, [rows, focusMonth]);
 
@@ -214,6 +218,11 @@ export function ScheduleAnnouncementPanel({
         if ((r.repReturnByMonth[m] ?? 0) > 0) return true;
         if ((r.spouseReceiptByMonth[m] ?? 0) > 0) return true;
         if ((r.discretionaryByMonth[m] ?? 0) > 0) return true;
+      }
+      for (const c of r.customReturnsByMonth ?? []) {
+        for (let m = 1; m <= 12; m++) {
+          if ((c.byMonth[m] ?? 0) > 0) return true;
+        }
       }
       return false;
     });

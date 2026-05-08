@@ -27,15 +27,17 @@ Admin UI → Collections에서 **Base** 타입으로 생성한다. 인증은 사
 | approvalNumber     | text | no   | 인가번호 등 위탁·등록 식별 문자열 |
 | businessRegNo      | text | no   | 사업자등록번호(표시·검색용, 형식 자유) |
 | headOfficeCapital  | number | no | 본사 자본금(원). 미입력 시 null |
-| accumulatedReserveTotalWon | number | no | (호환) 과거 단일 누적 추가 적립금. 신규 입력 경로는 `reserveMonthlyByYearJson` 이며, 이 칼럼은 합산에만 포함되고 폼에 노출되지 않는다. 미입력 시 null |
-| reserveMonthlyByYearJson | json | no | 연도별 1~12월 적립금(원) 배열 맵. 예: `{"2025":[100000,100000,...],"2026":[...]}`. 길이 12 강제, 각 원소는 0 이상 정수. 설정 ▸ 적립금 탭에서 갱신. 누적 한도 진행도는 모든 연도 합 + 호환 단일값으로 산정 |
+| accumulatedReserveTotalWon | number | no | (호환) 과거 단일 누적 추가 적립금. 우선순위 가장 낮음. 미입력 시 null |
+| reserveMonthlyByYearJson | json | no | (호환) 연도별 1~12월 적립금(원) 배열 맵. 예: `{"2025":[100000,...],"2026":[...]}`. 신규 입력은 `reserveBalanceWon` 으로 일원화되었으며 이 맵은 마이그레이션 전 입력값 보존용. 폼에 노출되지 않는다 |
+| reserveBalanceWon | number | no | **현재 통장 잔고(원)**. 적립 누적 산정의 권위(authoritative) 값. null 이면 구버전 폴백(`reserveMonthlyByYearJson` → `accumulatedReserveTotalWon`) 사용. 설정 ▸ 적립금 탭에서 입력 |
+| reserveBalanceAsOfYearMonth | text | no | 잔고 기준월 `YYYY-MM` (예: `2026-05`). UI 표시 전용("2026년 5월 기준"). `reserveBalanceWon` 이 null 이면 의미 없음 |
 | announcementMode   | text | no   | 안내 멘트 기본 모드. `SINGLE`(매 달 하나씩) \| `BATCHED`(여러 달 한 번에). 없으면 `SINGLE` 로 동작 |
 | announcementBatchFromMonth | number | no | 묶음 모드 기본 시작 월(1~12). 없으면 UI 기본 1 |
 | announcementBatchToMonth   | number | no | 묶음 모드 기본 끝 월(1~12). 없으면 UI 기본 3 |
 
 **도메인**: 테넌트 1건 ≈ 사업장·기금 1단위(기금 1개/사업장). 코드: `fund-site-model.ts`.
 
-앱은 PB에 필드가 없어도 **조회 시** 기본값(개인·일반운영)으로 동작하지만, **신규 업체 등록(create)** 은 `clientEntityType`, `operationMode`가 컬렉션에 있어야 합니다. 선택 필드 `approvalNumber`, `businessRegNo`, `headOfficeCapital`을 폼에서 내려면 Admin에서 동일 이름으로 필드를 추가하세요(없으면 create 시 400). 적립금 월별 입력(설정 ▸ 적립금 탭)을 사용하려면 `reserveMonthlyByYearJson`(JSON 타입)을 PB 어드민 → `sabok_tenants` → 「+ New field」 → JSON 으로 추가하세요. 컬럼이 없으면 적립금 저장 시 PB 가 400 을 반환합니다.
+앱은 PB에 필드가 없어도 **조회 시** 기본값(개인·일반운영)으로 동작하지만, **신규 업체 등록(create)** 은 `clientEntityType`, `operationMode`가 컬렉션에 있어야 합니다. 선택 필드 `approvalNumber`, `businessRegNo`, `headOfficeCapital`을 폼에서 내려면 Admin에서 동일 이름으로 필드를 추가하세요(없으면 create 시 400). 적립금 통장 잔고(설정 ▸ 적립금 탭)를 사용하려면 `reserveBalanceWon`(number) + `reserveBalanceAsOfYearMonth`(text) 를 PB 어드민 → `sabok_tenants` → 「+ New field」 로 추가하거나 `npm run pb:ensure-tenants-schema` 를 실행하세요. 컬럼이 없으면 잔고 저장 시 PB 가 400 을 반환합니다(앱은 graceful 하게 누락 컬럼만 떼고 재시도).
 
 ## `sabok_users`
 

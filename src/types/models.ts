@@ -250,6 +250,41 @@ export type CompanySettings = {
    * PB `incentiveNetRatioPercent` 필드. 없으면 null.
    */
   incentiveNetRatioPercent: number | null;
+  /**
+   * 사복기금 운영 수수료 요율(%). 1~100. null 이면 거래처 구분(개인 10 / 법인 2)의 디폴트 사용.
+   * PB `feeRatePercent`. 없으면 null.
+   */
+  feeRatePercent: number | null;
+  /**
+   * 수수료 청구 방식.
+   * - `EVEN_12`: 연 수수료(=총 base × 요율) ÷ 12 → 매월 동일 금액 청구
+   * - `ON_PAY_MONTH`: 그 달 사복 지급 base × 요율 → 지급액 있는 달만 청구
+   * PB `feeBillingMode`(text). 없으면 `EVEN_12`.
+   */
+  feeBillingMode: FeeBillingMode;
+  /**
+   * 「대표반환」 외 사용자 정의 반환 카테고리. 안내 멘트 ㄴ 줄 + 수수료 base A 차감에 사용.
+   * 구조: `{ categories: [{ key, label, byEmployeeMonth: { 직원ID: { "1~12": 원금액 } } }] }`.
+   * PB `customReturnsSchedule`(json). 없으면 null.
+   */
+  customReturnsSchedule: CustomReturnsSchedule | null;
+};
+
+/** 「전사 설정」 의 수수료 청구 방식 — 매월 균등(/12) vs 지급월 청구 */
+export type FeeBillingMode = "EVEN_12" | "ON_PAY_MONTH";
+
+/** 「대표반환」 외 사용자 정의 반환 카테고리 한 건 */
+export type CustomReturnCategory = {
+  /** 안정 ID — 카테고리 추가 시 클라이언트가 `r_<ts>_<rand>` 형태로 생성 */
+  key: string;
+  /** 사용자 표시 라벨(예: 「경조금 반환」) — 안내 멘트 ㄴ 줄에 그대로 노출 */
+  label: string;
+  /** `repReturnSchedule` 와 동일한 구조 — { 직원ID: { "1~12": 원금액 } } */
+  byEmployeeMonth: Record<string, Partial<Record<string, number>>>;
+};
+
+export type CustomReturnsSchedule = {
+  categories: CustomReturnCategory[];
 };
 
 export type Tenant = {
@@ -269,18 +304,29 @@ export type Tenant = {
   /** PB `headOfficeCapital` (원) — 없으면 null */
   headOfficeCapital: number | null;
   /**
-   * PB `accumulatedReserveTotalWon` (원) — 호환 폴백.
-   * 신규 입력 경로(설정 ▸ 적립금 탭)는 `reserveMonthlyByYearWon` 을 사용하며,
-   * 이 단일 필드는 과거 입력값 보존 차원에서 합산에만 포함된다(폼에서는 미노출).
+   * PB `accumulatedReserveTotalWon` (원) — 호환 폴백(legacy).
+   * 우선순위: `reserveBalanceWon` (신규) > `reserveMonthlyByYearWon` (구) > 이 값.
+   * 폼에서는 미노출. 누적 산정에서만 폴백으로 합산된다.
    */
   accumulatedReserveTotalWon: number | null;
   /**
-   * PB `reserveMonthlyByYearJson` — 연도별 1~12월 적립금(원) 배열 맵.
+   * PB `reserveMonthlyByYearJson` — 연도별 1~12월 적립금(원) 배열 맵(구버전 입력 양식).
    *   { 2025: [m1..m12], 2026: [m1..m12] }
-   * 설정 ▸ 적립금 탭에서 활성 연도를 입력하면 해당 키 배열이 갱신된다.
-   * 자본금 50% 한도 진행도는 모든 연도의 12개월 합 + 호환 단일값으로 산정.
+   * 신규 입력은 `reserveBalanceWon` 으로 일원화되었으며, 이 맵은 마이그레이션 전 데이터 보존용.
+   * `reserveBalanceWon` 이 null 일 때만 누적 산정의 1차 폴백으로 사용된다.
    */
   reserveMonthlyByYearWon: Record<number, readonly number[]> | null;
+  /**
+   * PB `reserveBalanceWon` (원) — 「현재 통장 잔고」. 운영자가 통장에서 확인한 시점의 잔고를 그대로 입력.
+   * 누적 적립 산정의 권위(authoritative) 값. null 이면 구버전 폴백 (`reserveMonthlyByYearWon` → `accumulatedReserveTotalWon`) 사용.
+   */
+  reserveBalanceWon: number | null;
+  /**
+   * PB `reserveBalanceAsOfYearMonth` — 「잔고 기준월」, `YYYY-MM` 문자열(예: `2026-05`).
+   * 잔고 산정 자체에는 영향 없고 UI 표시 전용("YYYY년 M월 기준 통장 잔고").
+   * `reserveBalanceWon` 이 null 이면 의미 없음.
+   */
+  reserveBalanceAsOfYearMonth: string | null;
   /** 안내 멘트 기본 모드 — PB `announcementMode` 없으면 "SINGLE" */
   announcementMode: AnnouncementMode;
   /** 묶음 안내 기본 시작 월(1~12) — 없으면 null (UI 기본 1) */

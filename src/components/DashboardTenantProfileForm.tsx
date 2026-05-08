@@ -98,9 +98,9 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             <label className="dash-eyebrow mb-1 block">② 인가번호</label>
             <MaskedInput
               name="approvalNumber"
-              pattern="DDDD-DDDD-D"
+              pattern="DDDD-DDDD-DD?"
               defaultValue={tenant.approvalNumber ?? ""}
-              placeholder="2020-2020-4"
+              placeholder="2020-2020-4 또는 2020-2020-04"
               disabled={fieldsLocked}
             />
           </div>

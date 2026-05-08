@@ -91,13 +91,25 @@ type ReserveTenantInput = {
 };
 
 /**
- * 연도별 12개월 적립금 맵 + 호환 단일 필드를 합산해 누적 적립금(원)을 산정.
+ * 누적 적립금(원) 산정 — 우선순위는 다음과 같다.
+ *
+ *   1) `balanceWon` (현재 통장 잔고, 신규 단일 입력) 이 비어 있지 않으면 그 값을 그대로 사용.
+ *   2) 비어 있으면 `byYear` 12개월 맵 합 + `legacy` 단일값 합산(구버전 폴백).
+ *
  * 음수·NaN 은 0으로 보정한다. 결과는 항상 정수.
+ *
+ * `balanceWon === 0` 은 「잔고가 0원으로 확인됨」 의 명시적 입력으로, 폴백을 활성화하지 않는다.
+ * 잔고 미입력 상태로 되돌리려면 호출자가 `null` 을 넘긴다.
  */
 export function tenantReserveTotalSumWon(
   byYear: Record<number, readonly number[]> | null | undefined,
   legacy: number | null | undefined,
+  balanceWon?: number | null | undefined,
 ): number {
+  if (balanceWon != null && Number.isFinite(balanceWon)) {
+    const b = Math.round(Number(balanceWon));
+    if (b >= 0) return b;
+  }
   let s = 0;
   if (byYear) {
     for (const arr of Object.values(byYear)) {
@@ -112,6 +124,17 @@ export function tenantReserveTotalSumWon(
     s += Math.round(legacy);
   }
   return s;
+}
+
+/**
+ * 「잔고 기준월」 라벨 — `YYYY-MM` 을 「YYYY년 M월」 한국어 표시로 바꾼다.
+ * 비유효 입력은 빈 문자열을 반환한다.
+ */
+export function tenantReserveBalanceAsOfLabel(asOf: string | null | undefined): string {
+  if (!asOf) return "";
+  const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(asOf).trim());
+  if (!m) return "";
+  return `${m[1]}년 ${Number(m[2])}월 기준`;
 }
 
 type ReserveVendorInput = {

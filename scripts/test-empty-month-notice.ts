@@ -124,5 +124,72 @@ check(
   true,
 );
 
+/** 「+ 반환 추가」 사용자 정의 카테고리 — ㄴ{라벨}: {금액} 원 노출 + 라벨 가나다 정렬 */
+const transferCustomReturnsRows: AnnouncementRowInput[] = [
+  {
+    employeeCode: "A001",
+    name: "홍길동",
+    welfareMonth: 1_000_000,
+    salaryMonth: 0,
+    flagRepReturn: false,
+    repReturnAmount: 0,
+    spouseReceiptAmount: 0,
+    discretionaryAmount: 0,
+    customReturns: [
+      { label: "퇴직 반환", amount: 250_000 },
+      { label: "경조금 반환", amount: 100_000 },
+      { label: "0원 카테고리", amount: 0 },
+    ],
+  },
+];
+const transferCustomReturnsNotice = buildTransferAndDetailNotice(5, transferCustomReturnsRows);
+check(
+  "buildTransferAndDetailNotice 커스텀 반환 ㄴ경조금 반환 라인",
+  transferCustomReturnsNotice.includes("ㄴ경조금 반환: 100,000 원"),
+  true,
+);
+check(
+  "buildTransferAndDetailNotice 커스텀 반환 ㄴ퇴직 반환 라인",
+  transferCustomReturnsNotice.includes("ㄴ퇴직 반환: 250,000 원"),
+  true,
+);
+check(
+  "buildTransferAndDetailNotice 커스텀 반환 0 원 카테고리는 노출하지 않음",
+  transferCustomReturnsNotice.includes("0원 카테고리"),
+  false,
+);
+/** 가나다 정렬: 「경조금 반환」 → 「퇴직 반환」 순으로 등장해야 한다. */
+check(
+  "buildTransferAndDetailNotice 커스텀 반환 라벨 한국어 정렬",
+  transferCustomReturnsNotice.indexOf("ㄴ경조금 반환") < transferCustomReturnsNotice.indexOf("ㄴ퇴직 반환"),
+  true,
+);
+
+/** 사복 0 원 + 커스텀 반환만 있어도 단문 폴백이 아닌 상세 양식이 나와야 한다(기금 base A 차감 안내). */
+const transferOnlyCustomRows: AnnouncementRowInput[] = [
+  {
+    employeeCode: "A001",
+    name: "홍길동",
+    welfareMonth: 0,
+    salaryMonth: 0,
+    flagRepReturn: false,
+    repReturnAmount: 0,
+    spouseReceiptAmount: 0,
+    discretionaryAmount: 0,
+    customReturns: [{ label: "기타 반환", amount: 50_000 }],
+  },
+];
+const transferOnlyCustomNotice = buildTransferAndDetailNotice(5, transferOnlyCustomRows);
+check(
+  "buildTransferAndDetailNotice 커스텀 반환만 있어도 단문 폴백 X",
+  transferOnlyCustomNotice.startsWith("5월 사내근로복지기금 안내드립니다."),
+  true,
+);
+check(
+  "buildTransferAndDetailNotice 커스텀 반환만 있을 때 ㄴ기타 반환 라인",
+  transferOnlyCustomNotice.includes("ㄴ기타 반환: 50,000 원"),
+  true,
+);
+
 console.log(`\n결과: ${passed} 통과 / ${failed} 실패`);
 if (failed > 0) process.exit(1);

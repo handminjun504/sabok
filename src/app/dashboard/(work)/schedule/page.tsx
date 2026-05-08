@@ -118,6 +118,7 @@ export default async function SchedulePage() {
             accumulatedReserveTotalWon: tenantReserveTotalSumWon(
               tenantRow.reserveMonthlyByYearWon,
               tenantRow.accumulatedReserveTotalWon,
+              tenantRow.reserveBalanceWon,
             ),
           },
           vendors
@@ -533,6 +534,28 @@ export default async function SchedulePage() {
   const repReturnSchedule = settings?.repReturnSchedule ?? null;
   const spouseReceiptSchedule = settings?.spouseReceiptSchedule ?? null;
   const discretionarySchedule = settings?.discretionarySchedule ?? null;
+  const customReturnsCategories = settings?.customReturnsSchedule?.categories ?? [];
+
+  /**
+   * 직원별 「+ 반환 추가」 카테고리 — 카테고리 단위로 라벨·1~12 월 금액 맵을 만든 뒤,
+   * 모든 칸이 0 인 카테고리는 제외해 안내 멘트 출력에서 빈 줄이 생기지 않도록 한다.
+   */
+  const customReturnsByMonthFor = (
+    employeeId: string,
+  ): Array<{ label: string; byMonth: Record<number, number> }> => {
+    if (customReturnsCategories.length === 0) return [];
+    const out: Array<{ label: string; byMonth: Record<number, number> }> = [];
+    for (const cat of customReturnsCategories) {
+      const byMonth = monthlyRecordFor(cat.byEmployeeMonth, employeeId);
+      let any = false;
+      for (let m = 1; m <= 12; m++) {
+        if ((byMonth[m] ?? 0) > 0) { any = true; break; }
+      }
+      if (!any) continue;
+      out.push({ label: cat.label, byMonth });
+    }
+    return out;
+  };
 
   const scheduleCardRows = rows.map((r) => {
     const welfareByMonth: Record<number, number> = {};
@@ -561,6 +584,7 @@ export default async function SchedulePage() {
       repReturnByMonth: monthlyRecordFor(repReturnSchedule, r.emp.id),
       spouseReceiptByMonth: monthlyRecordFor(spouseReceiptSchedule, r.emp.id),
       discretionaryByMonth: monthlyRecordFor(discretionarySchedule, r.emp.id),
+      customReturnsByMonth: customReturnsByMonthFor(r.emp.id),
       showCapOver: salaryInclusionShowOverage(eff),
       showCapUnder: salaryInclusionShowShortfall(eff),
       capBlocks: r.capBlocks.map((b) => ({
@@ -696,6 +720,7 @@ export default async function SchedulePage() {
       repReturn={settings?.repReturnSchedule ?? {}}
       spouseReceipt={settings?.spouseReceiptSchedule ?? {}}
       discretionary={settings?.discretionarySchedule ?? {}}
+      customReturns={settings?.customReturnsSchedule ?? null}
       canEdit={canEditMonthlySchedules}
     />
   );

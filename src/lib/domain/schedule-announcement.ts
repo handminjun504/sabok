@@ -20,6 +20,12 @@ export type AnnouncementRowInput = {
   repReturnAmount: number;
   spouseReceiptAmount: number;
   discretionaryAmount: number;
+  /**
+   * 「+ 반환 추가」 사용자 정의 카테고리 — 라벨·금액. 0 원은 표시 안 함.
+   * 출력 위치: `ㄴ배우자수령` → `ㄴ대표님 반환` → 「커스텀 반환들」 → `ㄴ알아서금액` 사이.
+   * 라벨은 한국어 가나다 순으로 정렬해 안정 출력.
+   */
+  customReturns?: ReadonlyArray<{ label: string; amount: number }>;
 };
 
 /**
@@ -175,15 +181,25 @@ export function buildSalaryPortionNotice(
 }
 
 export function shouldShowTransferDetailBlock(
-  rows: ReadonlyArray<Pick<AnnouncementRowInput, "flagRepReturn" | "repReturnAmount" | "spouseReceiptAmount" | "discretionaryAmount">>
+  rows: ReadonlyArray<Pick<AnnouncementRowInput, "flagRepReturn" | "repReturnAmount" | "spouseReceiptAmount" | "discretionaryAmount" | "customReturns">>
 ): boolean {
   return rows.some(
     (r) =>
       r.flagRepReturn ||
       Math.round(r.repReturnAmount ?? 0) > 0 ||
       Math.round(r.spouseReceiptAmount ?? 0) > 0 ||
-      Math.round(r.discretionaryAmount ?? 0) > 0,
+      Math.round(r.discretionaryAmount ?? 0) > 0 ||
+      (r.customReturns ?? []).some((c) => Math.round(c.amount ?? 0) > 0),
   );
+}
+
+function customReturnsSorted(
+  customReturns: ReadonlyArray<{ label: string; amount: number }> | undefined,
+): { label: string; amount: number }[] {
+  if (!customReturns || customReturns.length === 0) return [];
+  return [...customReturns]
+    .filter((c) => c.label && Math.round(c.amount ?? 0) > 0)
+    .sort((a, b) => a.label.localeCompare(b.label, "ko", { numeric: true }));
 }
 
 /**
@@ -210,7 +226,8 @@ export function buildTransferAndDetailNotice(
     const rep = Math.round(r.repReturnAmount ?? 0);
     const sp = Math.round(r.spouseReceiptAmount ?? 0);
     const dec = Math.round(r.discretionaryAmount ?? 0);
-    return w > 0 || r.flagRepReturn || rep > 0 || sp > 0 || dec > 0;
+    const customs = customReturnsSorted(r.customReturns);
+    return w > 0 || r.flagRepReturn || rep > 0 || sp > 0 || dec > 0 || customs.length > 0;
   });
   if (!hasAnything) return buildEmptyMonthNotice(month);
 
@@ -230,7 +247,17 @@ export function buildTransferAndDetailNotice(
     const rep = Math.round(r.repReturnAmount ?? 0);
     const sp = Math.round(r.spouseReceiptAmount ?? 0);
     const dec = Math.round(r.discretionaryAmount ?? 0);
-    if (w <= 0 && !r.flagRepReturn && rep <= 0 && sp <= 0 && dec <= 0) continue;
+    const customs = customReturnsSorted(r.customReturns);
+    if (
+      w <= 0 &&
+      !r.flagRepReturn &&
+      rep <= 0 &&
+      sp <= 0 &&
+      dec <= 0 &&
+      customs.length === 0
+    ) {
+      continue;
+    }
 
     lines.push(`${r.name} ${formatWonLine(w)} 원`);
     if (sp > 0) {
@@ -240,6 +267,9 @@ export function buildTransferAndDetailNotice(
       lines.push(`ㄴ대표님 반환: ${formatWonLine(rep)} 원`);
     } else if (r.flagRepReturn) {
       lines.push(`ㄴ대표님 반환: ※ 금액은 별도 산정 후 기재`);
+    }
+    for (const c of customs) {
+      lines.push(`ㄴ${c.label}: ${formatWonLine(c.amount)} 원`);
     }
     if (dec > 0) {
       lines.push(`ㄴ알아서금액: ${formatWonLine(dec)} 원`);

@@ -4,7 +4,9 @@ import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { saveCompanySettingsAction, type SettingsState } from "@/app/actions/settings";
 import { SALARY_INCLUSION_VARIANCE_MODES } from "@/lib/domain/salary-inclusion-display";
-import type { SalaryInclusionVarianceMode } from "@/types/models";
+import { defaultFeeRate } from "@/lib/domain/fee-billing";
+import type { TenantClientEntityType } from "@/lib/domain/tenant-profile";
+import type { FeeBillingMode, SalaryInclusionVarianceMode } from "@/types/models";
 
 type QuarterlyItemKey = "INFANT_SCHOLARSHIP" | "PRESCHOOL_SCHOLARSHIP" | "TEEN_SCHOLARSHIP" | "PARENT_SUPPORT" | "HEALTH_INSURANCE" | "HOUSING_INTEREST" | "HOUSING_RENT";
 
@@ -36,6 +38,12 @@ type Props = {
   quarterlyPayMonths?: Partial<Record<QuarterlyItemKey, number[]>>;
   /** 월별 발생 인센 자동 변환 비율(세후 비율, %) — 1~100, null=비활성. */
   incentiveNetRatioPercent?: number | null;
+  /** 거래처 구분 — 수수료 디폴트 요율(개인 10/법인 2) placeholder 안내에만 사용. */
+  clientEntityType: TenantClientEntityType;
+  /** 사복 운영 수수료 요율(%) — null 이면 거래처 디폴트로 폴백. 0.1~100. */
+  feeRatePercent?: number | null;
+  /** 수수료 청구 방식 — `EVEN_12` | `ON_PAY_MONTH`. */
+  feeBillingMode?: FeeBillingMode;
 };
 
 const FIXED_EVENT_FIELDS: { key: "NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV"; label: string; defaultMonth: number }[] = [
@@ -60,6 +68,9 @@ export function CompanySettingsForm({
   fixedEventMonths,
   quarterlyPayMonths,
   incentiveNetRatioPercent = null,
+  clientEntityType,
+  feeRatePercent = null,
+  feeBillingMode = "EVEN_12",
 }: Props) {
   const router = useRouter();
   const [state, formAction] = useActionState<SettingsState, FormData>(saveCompanySettingsAction, null);
@@ -89,6 +100,8 @@ export function CompanySettingsForm({
           fixedEventMonths?.YEAR_END_NOV ?? "",
           JSON.stringify(quarterlyPayMonths ?? {}),
           incentiveNetRatioPercent ?? "",
+          feeRatePercent ?? "",
+          feeBillingMode,
         ].join("|")}
         action={formAction}
         className="space-y-3"
@@ -262,6 +275,65 @@ export function CompanySettingsForm({
               </div>
             );
           })}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
+        <p className="dash-field-label mb-2">사복 운영 수수료</p>
+        <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
+          요율(%) 을 비우면 거래처 구분 디폴트(개인 10% / 법인 2%) 가 적용됩니다.
+          청구 방식은 「매월 균등(연 수수료 ÷ 12)」 또는 「지급월 청구(그 달 사복 지급 base × 요율)」 중 선택.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
+          <div>
+            <label className="dash-field-label" htmlFor="feeRatePercent">수수료 요율 (%)</label>
+            <input
+              id="feeRatePercent"
+              name="feeRatePercent"
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              defaultValue={feeRatePercent ?? ""}
+              placeholder={`디폴트 ${defaultFeeRate(clientEntityType)}`}
+              className="input w-full text-sm tabular-nums"
+            />
+          </div>
+          <div>
+            <span className="dash-field-label">청구 방식</span>
+            <div className="mt-1 space-y-2">
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-hover)] p-2.5">
+                <input
+                  type="radio"
+                  name="feeBillingMode"
+                  value="EVEN_12"
+                  defaultChecked={feeBillingMode === "EVEN_12"}
+                  className="mt-1"
+                />
+                <span className="min-w-0">
+                  <span className="font-medium text-[var(--text)]">매월 균등 (연 수수료 ÷ 12)</span>
+                  <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                    연 base × 요율을 12 등분해 매월 동일 청구. 가장 일반적인 방식.
+                  </span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-hover)] p-2.5">
+                <input
+                  type="radio"
+                  name="feeBillingMode"
+                  value="ON_PAY_MONTH"
+                  defaultChecked={feeBillingMode === "ON_PAY_MONTH"}
+                  className="mt-1"
+                />
+                <span className="min-w-0">
+                  <span className="font-medium text-[var(--text)]">지급월 청구 (그 달 base × 요율)</span>
+                  <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                    사복 지급액이 있는 달에만 그 달 base × 요율 만큼 청구. 무지급 월은 0 원.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 

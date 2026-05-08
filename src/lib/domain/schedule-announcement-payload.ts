@@ -18,6 +18,11 @@ export type ScheduleAnnouncementWireRow = {
   spouseReceipt12: number[];
   /** 길이 12 — 알아서금액 직원별 월별 금액 (입력 없으면 0) */
   discretionary12: number[];
+  /**
+   * 「+ 반환 추가」 사용자 정의 카테고리 — 직원별 라벨·길이 12 금액 배열.
+   * 라벨이 비거나 12 칸 모두 0 인 카테고리는 직렬화 시 제외.
+   */
+  customReturns12: Array<{ label: string; amounts: number[] }>;
 };
 
 /** `ScheduleAnnouncementPanel` 에 넘기는 행 — 와이어를 파싱한 결과 */
@@ -32,6 +37,11 @@ export type ScheduleAnnouncementPanelRow = {
   repReturnByMonth: Record<number, number>;
   spouseReceiptByMonth: Record<number, number>;
   discretionaryByMonth: Record<number, number>;
+  /**
+   * 「+ 반환 추가」 사용자 정의 카테고리 — 직원별 라벨·{ 1~12 월 금액 } 맵.
+   * 빈 배열은 「표시할 줄 없음」.
+   */
+  customReturnsByMonth: ReadonlyArray<{ label: string; byMonth: Record<number, number> }>;
 };
 
 function coerceLength12(raw: unknown): number[] {
@@ -62,6 +72,8 @@ export function encodeAnnouncementPanelPayloadJson(
     repReturnByMonth?: Record<number, number>;
     spouseReceiptByMonth?: Record<number, number>;
     discretionaryByMonth?: Record<number, number>;
+    /** 「+ 반환 추가」 사용자 정의 카테고리 — 카테고리 단위 라벨·12-칸 배열 */
+    customReturnsByMonth?: ReadonlyArray<{ label: string; byMonth: Record<number, number> }>;
   }>,
 ): string {
   const buildMonth12 = (src: Record<number, number> | undefined): number[] => {
@@ -70,6 +82,21 @@ export function encodeAnnouncementPanelPayloadJson(
       const v = src[i + 1];
       return Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v))) : 0;
     });
+  };
+  const buildCustomReturns12 = (
+    src: ReadonlyArray<{ label: string; byMonth: Record<number, number> }> | undefined,
+  ): Array<{ label: string; amounts: number[] }> => {
+    if (!src || src.length === 0) return [];
+    const out: Array<{ label: string; amounts: number[] }> = [];
+    for (const c of src) {
+      const label = typeof c.label === "string" ? c.label.trim() : "";
+      if (!label) continue;
+      const amounts = buildMonth12(c.byMonth);
+      const allZero = amounts.every((v) => v <= 0);
+      if (allZero) continue;
+      out.push({ label, amounts });
+    }
+    return out;
   };
   const wire: ScheduleAnnouncementWireRow[] = rows.map((r) => {
     const w12 = Array.from({ length: 12 }, (_, i) => Math.round(r.welfareByMonth[i + 1] ?? 0));
@@ -84,6 +111,7 @@ export function encodeAnnouncementPanelPayloadJson(
       repReturn12: buildMonth12(r.repReturnByMonth),
       spouseReceipt12: buildMonth12(r.spouseReceiptByMonth),
       discretionary12: buildMonth12(r.discretionaryByMonth),
+      customReturns12: buildCustomReturns12(r.customReturnsByMonth),
     };
   });
   return JSON.stringify(wire);
@@ -118,7 +146,30 @@ export function parseAnnouncementPanelPayloadJson(json: string): ScheduleAnnounc
       repReturnByMonth: welfareRecordFrom12(coerceLength12(o.repReturn12)),
       spouseReceiptByMonth: welfareRecordFrom12(coerceLength12(o.spouseReceipt12)),
       discretionaryByMonth: welfareRecordFrom12(coerceLength12(o.discretionary12)),
+      customReturnsByMonth: parseCustomReturns12(o.customReturns12),
     });
+  }
+  return out;
+}
+
+/**
+ * 와이어 customReturns12 → 패널 행의 `customReturnsByMonth`.
+ * 라벨 trim·빈 라벨 제외·12 칸 정규화. 라벨 정렬은 빌더가 출력 시점에 적용한다.
+ */
+function parseCustomReturns12(
+  raw: unknown,
+): { label: string; byMonth: Record<number, number> }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { label: string; byMonth: Record<number, number> }[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const label = typeof o.label === "string" ? o.label.trim() : "";
+    if (!label) continue;
+    const amounts = coerceLength12(o.amounts);
+    const allZero = amounts.every((v) => v <= 0);
+    if (allZero) continue;
+    out.push({ label, byMonth: welfareRecordFrom12(amounts) });
   }
   return out;
 }

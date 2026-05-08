@@ -1,6 +1,10 @@
 import {
   companySettingsByTenant,
   employeeListByTenantCodeAsc,
+  level5OverrideListByEmployeeIdsYear,
+  levelPaymentRuleList,
+  monthlyNoteListByTenantYear,
+  quarterlyEmployeeConfigListByTenantYear,
   tenantGetById,
   vendorListByTenant,
 } from "@/lib/pb/repository";
@@ -11,12 +15,25 @@ import {
 } from "@/lib/domain/vendor-reserve";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditCompanySettings } from "@/lib/permissions";
-import { employeeIsInactiveForYear } from "@/lib/domain/schedule";
+import { employeeIsInactiveForYear, welfareEligibleEmployees } from "@/lib/domain/schedule";
+import {
+  computeWelfareTotalsForYear,
+  sumWelfareByMonth,
+} from "@/lib/domain/welfare-totals";
+import {
+  computeFeeBilling,
+  feeBillingModeLabel,
+  resolveFeeRate,
+} from "@/lib/domain/fee-billing";
 import { YearSwitchPanel } from "@/components/YearSwitchPanel";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { NavIcon } from "@/components/ui/NavIcon";
-import type { NavIconKey } from "@/lib/dashboard-nav";
+
+const KOREAN_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+
+function fmtWon(n: number): string {
+  return Math.round(Math.max(0, n)).toLocaleString("ko-KR");
+}
 
 export default async function DashboardHomePage() {
   const { tenantId, role } = await requireTenantContext();
@@ -29,6 +46,46 @@ export default async function DashboardHomePage() {
   const year = settings?.activeYear ?? new Date().getFullYear();
   const activeCount = employees.filter((e) => !employeeIsInactiveForYear(e, year)).length;
   const inactiveCount = employees.length - activeCount;
+
+  /**
+   * 사복 집행 합계는 「사복 대상 직원」 만 대상. 노트는 미대상자도 포함해야 인센·메모 그리드 정합이 깨지지 않지만,
+   * 대시보드 합계는 사복 대상 직원의 노트만 합산해야 직원 명부와 일치한다.
+   */
+  const eligible = welfareEligibleEmployees(employees);
+  const eligibleIds = eligible.map((e) => e.id);
+  const [rules, overrides, quarterly, notes] = await Promise.all([
+    levelPaymentRuleList(tenantId, year),
+    level5OverrideListByEmployeeIdsYear(eligibleIds, year),
+    quarterlyEmployeeConfigListByTenantYear(tenantId, year, eligibleIds),
+    monthlyNoteListByTenantYear(tenantId, year, eligibleIds),
+  ]);
+  const totals = computeWelfareTotalsForYear({
+    employees: eligible,
+    year,
+    settings: settings ?? null,
+    rules,
+    overrides,
+    quarterly,
+    notes,
+  });
+  const scheduleAnnualWon = sumWelfareByMonth(totals.scheduleByMonth);
+  const optionalAnnualWon = sumWelfareByMonth(totals.optionalByMonth);
+
+  const clientEntityType = tenant?.clientEntityType ?? "INDIVIDUAL";
+  const feeRate = resolveFeeRate(settings?.feeRatePercent ?? null, clientEntityType);
+  const feeMode = settings?.feeBillingMode ?? "EVEN_12";
+  const feeA = computeFeeBilling(totals.baseAWithOptionalByMonth, feeRate, feeMode);
+  const feeB = computeFeeBilling(totals.baseBScheduleOnlyByMonth, feeRate, feeMode);
+  /** 「현재 달 청구」 — 활성 연도와 시스템 시계의 연도가 같을 때만 의미가 있다. 다르면 1월(인덱스 0). */
+  const currentMonthIdx = (() => {
+    const now = new Date();
+    if (now.getFullYear() !== year) return 0;
+    return now.getMonth();
+  })();
+  const feeAThisMonth = feeA.monthlyFees[currentMonthIdx] ?? 0;
+  const feeBThisMonth = feeB.monthlyFees[currentMonthIdx] ?? 0;
+  const feeBillingLabel = feeBillingModeLabel(feeMode);
+
   const reserveSummary = tenant
     ? summarizeTenantAdditionalReserve(
         {
@@ -37,6 +94,7 @@ export default async function DashboardHomePage() {
           accumulatedReserveTotalWon: tenantReserveTotalSumWon(
             tenant.reserveMonthlyByYearWon,
             tenant.accumulatedReserveTotalWon,
+            tenant.reserveBalanceWon,
           ),
         },
         vendors,
@@ -44,15 +102,6 @@ export default async function DashboardHomePage() {
     : { kind: "NO_VENDORS" as const };
 
   const canEdit = canEditCompanySettings(role);
-
-  const quickLinks: Array<{ href: string; label: string; desc: string; icon: NavIconKey }> = [
-    { href: "/dashboard/employees", label: "직원", desc: "기본정보·급여·복지", icon: "users" },
-    { href: "/dashboard/rules", label: "지급 규칙", desc: "정기·분기 요율", icon: "rules" },
-    { href: "/dashboard/schedule", label: "월별 스케줄", desc: "월·직원별 안내", icon: "calendar" },
-    { href: "/dashboard/operating-report", label: "운영 보고", desc: "요약·미리보기", icon: "report" },
-    { href: "/dashboard/salary-inclusion-report", label: "급여 포함 신고", desc: "월별 신고 내역", icon: "report-tax" },
-    { href: "/dashboard/settings", label: "전사 설정", desc: "거래처·창립월·연도", icon: "settings" },
-  ];
 
   return (
     <div className="space-y-10">
@@ -118,22 +167,114 @@ export default async function DashboardHomePage() {
         </div>
       </section>
 
-      {/* 빠른 가기 ─ 카드 + 아이콘 */}
-      <section aria-labelledby="quick-links">
-        <h2 id="quick-links" className="section-title mb-3">바로 가기</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {quickLinks.map((q) => (
-            <Link key={q.href} href={q.href} className="quick-tile">
-              <span className="quick-tile-icon">
-                <NavIcon icon={q.icon} className="h-[18px] w-[18px]" />
+      {/* 사복 집행·수수료 KPI 4종 */}
+      <section aria-labelledby="dash-fee">
+        <h2 id="dash-fee" className="section-title mb-3">사복 집행 및 수수료</h2>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Link href="/dashboard/schedule" className="kpi-card group">
+            <p className="kpi-card-label">사복 총 집행 ({year}년)</p>
+            <p className="kpi-card-value">
+              <span className="tabular-nums">{fmtWon(scheduleAnnualWon)}</span>
+              <span className="kpi-card-suffix">원</span>
+            </p>
+            <div className="kpi-card-foot">
+              <span>정기·분기 합 — 선택적복지·대표반환 제외</span>
+              <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
+                스케줄 →
               </span>
-              <span className="flex flex-col min-w-0">
-                <span className="text-[var(--text)]">{q.label}</span>
-                <span className="mt-0.5 text-[11px] font-normal text-[var(--muted)] truncate">{q.desc}</span>
+            </div>
+          </Link>
+
+          <Link href="/dashboard/schedule" className="kpi-card group">
+            <p className="kpi-card-label">선택적복지 합계 ({year}년)</p>
+            <p className="kpi-card-value">
+              <span className="tabular-nums">{fmtWon(optionalAnnualWon)}</span>
+              <span className="kpi-card-suffix">원</span>
+            </p>
+            <div className="kpi-card-foot">
+              <span>월별 노트의 선택적 복지 입력 합</span>
+              <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
+                메모·인센 →
               </span>
-              <span className="quick-tile-arrow" aria-hidden>→</span>
-            </Link>
-          ))}
+            </div>
+          </Link>
+
+          <Link href="/dashboard/settings" className="kpi-card group">
+            <p className="kpi-card-label">수수료 A · 선택적복지 포함</p>
+            <p className="kpi-card-value">
+              <span className="tabular-nums">{fmtWon(feeA.annualFee)}</span>
+              <span className="kpi-card-suffix">원/년</span>
+            </p>
+            <div className="kpi-card-foot">
+              <span>
+                {feeBillingLabel} · {feeRate}% · 이번 달 {fmtWon(feeAThisMonth)}원
+              </span>
+              <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
+                설정 →
+              </span>
+            </div>
+          </Link>
+
+          <Link href="/dashboard/settings" className="kpi-card group">
+            <p className="kpi-card-label">수수료 B · 정기·분기만</p>
+            <p className="kpi-card-value">
+              <span className="tabular-nums">{fmtWon(feeB.annualFee)}</span>
+              <span className="kpi-card-suffix">원/년</span>
+            </p>
+            <div className="kpi-card-foot">
+              <span>
+                {feeBillingLabel} · {feeRate}% · 이번 달 {fmtWon(feeBThisMonth)}원
+              </span>
+              <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
+                설정 →
+              </span>
+            </div>
+          </Link>
+        </div>
+
+        {/* 월별 청구액 미니 표 — 균등/지급월 모드별 1~12월 한 줄 비교 */}
+        <div className="surface mt-4 overflow-x-auto p-3">
+          <table className="min-w-max border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-[var(--border)] bg-[var(--surface-sunken)]">
+                <th className="px-2 py-2 text-left text-[var(--muted)]">청구 월</th>
+                {KOREAN_MONTHS.map((m) => (
+                  <th key={m} className="px-2 py-2 text-right tabular-nums text-[var(--muted)]">
+                    {m}월
+                  </th>
+                ))}
+                <th className="px-2 py-2 text-right text-[var(--muted)]">연 합계</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-[var(--border)]/60">
+                <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-[var(--text)]">
+                  수수료 A
+                </td>
+                {KOREAN_MONTHS.map((m) => (
+                  <td key={m} className="px-2 py-1.5 text-right tabular-nums text-[var(--text)]">
+                    {fmtWon(feeA.monthlyFees[m - 1] ?? 0)}
+                  </td>
+                ))}
+                <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[var(--accent)]">
+                  {fmtWon(feeA.annualFee)}
+                </td>
+              </tr>
+              <tr>
+                <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-[var(--text)]">
+                  수수료 B
+                </td>
+                {KOREAN_MONTHS.map((m) => (
+                  <td key={m} className="px-2 py-1.5 text-right tabular-nums text-[var(--text)]">
+                    {fmtWon(feeB.monthlyFees[m - 1] ?? 0)}
+                  </td>
+                ))}
+                <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[var(--accent)]">
+                  {fmtWon(feeB.annualFee)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
