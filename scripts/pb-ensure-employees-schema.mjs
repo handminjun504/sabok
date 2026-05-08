@@ -140,6 +140,13 @@ const CATALOG = {
     { name: "reserveBalanceWon", type: "number" },
     /** 잔고 기준월 — `YYYY-MM` (예: `2026-05`). UI 표시용. */
     { name: "reserveBalanceAsOfYearMonth", type: "text" },
+    /**
+     * 근로자 대부금 현재 잔고(원) — 적립금과 동일한 자본금 50% 한도 트랙(별도 컬럼).
+     * null 이면 「대부금 미입력」 상태(진행도/한도 표시는 0원).
+     */
+    { name: "workerLoanBalanceWon", type: "number" },
+    /** 대부금 잔고 기준월 — `YYYY-MM`. UI 표시용. */
+    { name: "workerLoanBalanceAsOfYearMonth", type: "text" },
   ],
 };
 

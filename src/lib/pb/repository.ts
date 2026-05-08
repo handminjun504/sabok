@@ -224,6 +224,24 @@ function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
     const s = String(v).trim();
     return /^\d{4}-(0[1-9]|1[0-2])$/.test(s) ? s : null;
   })();
+  /**
+   * 「근로자 대부금 잔고」 — 적립금과 동일하게 컬럼 누락 환경에서 graceful 하도록 미존재 시 null.
+   * 음수·비유한수만 null 로, 0원 명시는 유효 입력으로 보존한다.
+   */
+  const workerLoanBalanceRaw = r.workerLoanBalanceWon;
+  const workerLoanBalanceWon =
+    workerLoanBalanceRaw == null || workerLoanBalanceRaw === ""
+      ? null
+      : (() => {
+          const n = Math.round(Number(workerLoanBalanceRaw));
+          return Number.isFinite(n) && n >= 0 ? n : null;
+        })();
+  const workerLoanBalanceAsOfYearMonth = (() => {
+    const v = r.workerLoanBalanceAsOfYearMonth;
+    if (v == null || v === "") return null;
+    const s = String(v).trim();
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(s) ? s : null;
+  })();
   const accStart = r.accountingYearStartMonth == null || r.accountingYearStartMonth === ""
     ? null
     : (() => {
@@ -251,6 +269,8 @@ function tenantFromPbRecord(r: Record<string, unknown>): Tenant {
     reserveMonthlyByYearWon: reserveMonthly,
     reserveBalanceWon,
     reserveBalanceAsOfYearMonth,
+    workerLoanBalanceWon,
+    workerLoanBalanceAsOfYearMonth,
     announcementMode: parseAnnouncementMode(r.announcementMode),
     announcementBatchFromMonth: tenantMonthOrNull(r, "announcementBatchFromMonth"),
     announcementBatchToMonth: tenantMonthOrNull(r, "announcementBatchToMonth"),
@@ -617,6 +637,86 @@ export async function tenantUpdateReserveBalance(
       return tenantFromPbRecord(r);
     } catch (e2) {
       logPbClientError("tenantUpdateReserveBalance(retry)", e2);
+      throw e2;
+    }
+  }
+}
+
+/**
+ * 「근로자 대부금 현재 잔고」 + 기준월(`YYYY-MM`) 갱신 — 적립금과 동일한 패턴.
+ *
+ * 적립금과 완전히 동일한 취급(자본금 50% 한도)을 받는 별도 트랙이며, 데이터·저장 경로만 분리한다.
+ * 운영자는 통장에서 확인한 대부금 잔고를 그대로 입력하고 그 시점(YYYY년 M월) 을 적는다.
+ *
+ * PB 컬럼이 누락된 환경에서는 graceful — 누락 컬럼만 떼고 한 번 더 시도하며,
+ * 누락 사실을 콘솔에 안내한다(운영자는 `npm run pb:ensure-tenants-schema` 실행 권장).
+ */
+export async function tenantUpdateWorkerLoanBalance(
+  tenantId: string,
+  args: {
+    /** 잔고(원) — null 이면 「대부금 미입력」 상태로 초기화. */
+    balanceWon: number | null;
+    /** 기준월 `YYYY-MM` — null 이면 표시 전용 라벨 없음. */
+    asOfYearMonth: string | null;
+  },
+): Promise<Tenant> {
+  const balance = (() => {
+    if (args.balanceWon == null) return null;
+    const n = Math.round(Number(args.balanceWon));
+    if (!Number.isFinite(n) || n < 0) return null;
+    return n;
+  })();
+  const asOf = (() => {
+    if (!args.asOfYearMonth) return null;
+    const s = String(args.asOfYearMonth).trim();
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(s) ? s : null;
+  })();
+
+  const pb = await getAdminPb();
+  const payload: Record<string, unknown> = {
+    workerLoanBalanceWon: balance,
+    workerLoanBalanceAsOfYearMonth: asOf,
+  };
+
+  const stripIfMissing = (detailLower: string, key: keyof typeof payload): boolean => {
+    if (
+      detailLower.includes(String(key).toLowerCase()) &&
+      (detailLower.includes("unknown") ||
+        detailLower.includes("invalid") ||
+        detailLower.includes("not found") ||
+        detailLower.includes("missing"))
+    ) {
+      delete payload[key];
+      return true;
+    }
+    return false;
+  };
+
+  try {
+    const r = asRecord(await pb.collection(C.tenants).update(tenantId, payload));
+    return tenantFromPbRecord(r);
+  } catch (e) {
+    if (!(e instanceof ClientResponseError)) {
+      logPbClientError("tenantUpdateWorkerLoanBalance", e);
+      throw e;
+    }
+    const detailLower = pocketBaseRecordErrorMessage(e).toLowerCase();
+    let stripped = false;
+    stripped = stripIfMissing(detailLower, "workerLoanBalanceWon") || stripped;
+    stripped = stripIfMissing(detailLower, "workerLoanBalanceAsOfYearMonth") || stripped;
+    if (!stripped || Object.keys(payload).length === 0) {
+      logPbClientError("tenantUpdateWorkerLoanBalance", e);
+      throw e;
+    }
+    try {
+      const r = asRecord(await pb.collection(C.tenants).update(tenantId, payload));
+      console.warn(
+        "[pb] tenantUpdateWorkerLoanBalance: sabok_tenants 의 workerLoanBalanceWon / workerLoanBalanceAsOfYearMonth 컬럼이 일부 누락되어 해당 키를 빼고 저장했습니다. " +
+          "Admin → sabok_tenants 에 number / text 필드를 추가하세요. 또는 `npm run pb:ensure-tenants-schema` 실행.",
+      );
+      return tenantFromPbRecord(r);
+    } catch (e2) {
+      logPbClientError("tenantUpdateWorkerLoanBalance(retry)", e2);
       throw e2;
     }
   }

@@ -66,6 +66,20 @@ const FIXED_EVENT_FIELDS: { key: "NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" |
 ];
 
 /**
+ * 「기준 연도」 select 의 옵션 범위 — 활성 연도 ±5 + 현재 연도 보정.
+ * 직접 타이핑이 아닌 선택지 방식으로 만들 때 「현실적인 범위」 만 보이도록 좁힌다.
+ * 활성 연도가 매우 과거/미래여도 그 연도가 옵션에 반드시 포함되도록 보장한다.
+ */
+function yearSelectOptions(activeYear: number): number[] {
+  const nowYear = new Date().getFullYear();
+  const lo = Math.min(activeYear - 5, nowYear - 5);
+  const hi = Math.max(activeYear + 5, nowYear + 5);
+  const out: number[] = [];
+  for (let y = lo; y <= hi; y++) out.push(y);
+  return out;
+}
+
+/**
  * 저장 후 서버 데이터와 동기화: `defaultValue`는 리마운트 시에만 반영되므로
  * 부모가 넘기는 `key`(설정 스냅샷)로 리프레시 시 폼을 다시 붙인다.
  */
@@ -173,15 +187,18 @@ export function CompanySettingsForm({
           </div>
         ))}
       <div>
-        <label className="dash-field-label">회사 창립월 (1~12)</label>
-        <input
+        <label className="dash-field-label">회사 창립월</label>
+        <select
           name="foundingMonth"
-          type="number"
-          min={1}
-          max={12}
-          defaultValue={foundingMonth}
+          defaultValue={String(foundingMonth)}
           className="input max-w-[8rem] text-xs"
-        />
+        >
+          {MONTHS_1_12.map((m) => (
+            <option key={m} value={m}>
+              {m}월
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label className="dash-field-label">기본 급여일 (1~31)</label>
@@ -196,12 +213,17 @@ export function CompanySettingsForm({
       </div>
       <div>
         <label className="dash-field-label">기준 연도</label>
-        <input
+        <select
           name="activeYear"
-          type="number"
-          defaultValue={activeYear}
+          defaultValue={String(activeYear)}
           className="input max-w-[10rem] text-xs"
-        />
+        >
+          {yearSelectOptions(activeYear).map((y) => (
+            <option key={y} value={y}>
+              {y}년
+            </option>
+          ))}
+        </select>
       </div>
       <fieldset className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
         <legend className="dash-field-label px-1">월별 발생 인센 — 세후 자동 변환 비율 (%)</legend>
@@ -238,18 +260,19 @@ export function CompanySettingsForm({
             return (
               <div key={f.key} className="min-w-0">
                 <label className="dash-field-label whitespace-nowrap text-[0.7rem]">{f.label}</label>
-                <div className="flex items-baseline gap-1">
-                  <input
-                    name={`fixedEventMonth_${f.key}`}
-                    type="number"
-                    min={1}
-                    max={12}
-                    placeholder={`${f.defaultMonth}`}
-                    defaultValue={cur ?? ""}
-                    className="input w-[5rem] text-xs"
-                  />
-                  <span className="text-[0.7rem] text-[var(--muted)]">월</span>
-                </div>
+                <select
+                  name={`fixedEventMonth_${f.key}`}
+                  defaultValue={cur != null ? String(cur) : ""}
+                  className="input w-full text-xs"
+                  aria-label={`${f.label} 월 선택 (기본 ${f.defaultMonth}월)`}
+                >
+                  <option value="">기본 ({f.defaultMonth}월)</option>
+                  {MONTHS_1_12.map((m) => (
+                    <option key={m} value={m}>
+                      {m}월
+                    </option>
+                  ))}
+                </select>
                 <p className="mt-1 text-[0.65rem] text-[var(--muted)]">기본 {f.defaultMonth}월</p>
               </div>
             );

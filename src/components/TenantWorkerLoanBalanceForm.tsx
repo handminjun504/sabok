@@ -3,15 +3,14 @@
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  updateTenantReserveBalanceAction,
-  type TenantReserveState,
-} from "@/app/actions/tenant-reserve";
+  updateTenantWorkerLoanBalanceAction,
+  type TenantWorkerLoanState,
+} from "@/app/actions/tenant-worker-loan";
 import { CommaWonInput } from "@/components/CommaWonInput";
 import {
   CORPORATE_RESERVE_CAP_RATIO_OF_CAPITAL,
   tenantReserveBalanceAsOfLabel,
   tenantReserveTotalSumWon,
-  tenantWorkerLoanBalanceWonOrZero,
 } from "@/lib/domain/vendor-reserve";
 import type { Tenant } from "@/types/models";
 
@@ -20,15 +19,15 @@ function fmt(n: number): string {
 }
 
 /**
- * 「현재 통장 잔고」 + 기준(연·월) 입력 폼.
+ * 「근로자 대부금 — 현재 잔고」 입력 폼.
  *
- * 운영자는 SABOK 통장에서 확인한 잔고를 그대로 입력하고 그 시점(YYYY년 M월) 을 적는다.
- * 자본금 50% 한도(법인)에 비추어 「얼마나 더 적립해야 하는가」 를 즉각 보여 준다.
+ * 데이터/회계 처리 모두 적립금(`TenantReserveBalanceForm`) 과 완전히 동일한 패리티로,
+ * 운영자는 통장에서 확인한 대부금 잔고를 그대로 입력하고 그 시점(YYYY년 M월) 을 적는다.
+ * 자본금 50% 한도(법인) 에 비추어 「얼마나 더 적립해야 하는가」 를 즉각 보여 준다.
  *
- * 마이그레이션 호환: tenant.reserveBalanceWon === null 이면 구버전 월별 입력
- * (`reserveMonthlyByYearWon`) + 호환 단일값(`accumulatedReserveTotalWon`) 합산을 보여 준다.
+ * 적립금과 별도 컬럼/엔드포인트로 트래킹되며, 한도 산식·UI 패턴은 1:1 동일.
  */
-export function TenantReserveBalanceForm({
+export function TenantWorkerLoanBalanceForm({
   tenant,
   /** UI 디폴트 연·월(잔고 미입력 신규 테넌트용). 보통 대시보드의 활성 연도. */
   defaultYear,
@@ -39,8 +38,8 @@ export function TenantReserveBalanceForm({
   defaultMonth: number;
 }) {
   const router = useRouter();
-  const [state, formAction] = useActionState<TenantReserveState, FormData>(
-    updateTenantReserveBalanceAction,
+  const [state, formAction] = useActionState<TenantWorkerLoanState, FormData>(
+    updateTenantWorkerLoanBalanceAction,
     null,
   );
   const [editing, setEditing] = useState(false);
@@ -69,23 +68,25 @@ export function TenantReserveBalanceForm({
     }
   }, [state?.성공, router]);
 
-  /** 화면 표시 적립금 잔고(자체) — 편집 중이면 입력 잔고, 비편집 모드면 저장값 우선(없으면 폴백). */
-  const displayedAccumulated = useMemo(() => {
+  /** 화면 표시 대부금 잔고(자체) — 편집 중이면 입력값, 비편집 모드면 저장값(없으면 0). */
+  const displayedBalance = useMemo(() => {
     if (editing) return Math.max(0, Math.round(balance));
-    return tenantReserveTotalSumWon(
-      tenant.reserveMonthlyByYearWon,
-      tenant.accumulatedReserveTotalWon,
-      tenant.reserveBalanceWon,
-    );
-  }, [editing, balance, tenant]);
+    const v = tenant.workerLoanBalanceWon;
+    if (v != null && Number.isFinite(v) && v >= 0) return Math.round(v);
+    return 0;
+  }, [editing, balance, tenant.workerLoanBalanceWon]);
 
   /**
    * 「자본금 50% 한도」 도달 판정에 쓰이는 합산 잔고 — 적립금 + 근로자 대부금.
-   * 운영자 정책상 대부금은 적립금과 동일한 자산으로 취급되므로 한도 비교는 항상 합산값으로 한다.
-   * 예) 한도 2,500만 + 대부금 5,000만 → 적립금 잔고가 0 이어도 합산 5,000만 ≥ 2,500만 → 완료.
+   * 대부금 카드도 적립금 카드와 동일한 합산 정책으로 진행도/완료를 판정한다.
+   * 적립금 잔고는 폼 외부에서 수정될 수 있으므로 prop(`tenant.reserveBalanceWon`) 의 저장값 + legacy 폴백으로 산정.
    */
-  const workerLoanWon = tenantWorkerLoanBalanceWonOrZero(tenant.workerLoanBalanceWon);
-  const combinedTotal = displayedAccumulated + workerLoanWon;
+  const reserveWon = tenantReserveTotalSumWon(
+    tenant.reserveMonthlyByYearWon,
+    tenant.accumulatedReserveTotalWon,
+    tenant.reserveBalanceWon,
+  );
+  const combinedTotal = displayedBalance + reserveWon;
 
   const isCorporate = tenant.clientEntityType === "CORPORATE";
   const capWon =
@@ -100,13 +101,7 @@ export function TenantReserveBalanceForm({
   const isComplete = capWon != null && capWon > 0 && combinedTotal >= capWon;
   const remaining = capWon != null ? Math.max(0, capWon - combinedTotal) : null;
 
-  const savedAsOfLabel = tenantReserveBalanceAsOfLabel(tenant.reserveBalanceAsOfYearMonth);
-  const usingLegacyFallback =
-    tenant.reserveBalanceWon == null &&
-    tenantReserveTotalSumWon(
-      tenant.reserveMonthlyByYearWon,
-      tenant.accumulatedReserveTotalWon,
-    ) > 0;
+  const savedAsOfLabel = tenantReserveBalanceAsOfLabel(tenant.workerLoanBalanceAsOfYearMonth);
 
   function cancelEdit() {
     setEditing(false);
@@ -116,19 +111,14 @@ export function TenantReserveBalanceForm({
   }
 
   return (
-    <section className="surface-prominent dash-panel-pad" aria-labelledby="reserve-balance-heading">
+    <section className="surface-prominent dash-panel-pad" aria-labelledby="worker-loan-balance-heading">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 id="reserve-balance-heading" className="text-sm font-bold text-[var(--text)]">
-            적립금 — 현재 통장 잔고
+          <h2 id="worker-loan-balance-heading" className="text-sm font-bold text-[var(--text)]">
+            근로자 대부금 — 현재 잔고
           </h2>
-          {!editing && tenant.reserveBalanceWon != null && savedAsOfLabel ? (
+          {!editing && tenant.workerLoanBalanceWon != null && savedAsOfLabel ? (
             <p className="mt-0.5 text-xs text-[var(--muted)]">{savedAsOfLabel} 잔고</p>
-          ) : null}
-          {!editing && usingLegacyFallback ? (
-            <p className="mt-0.5 text-xs text-[var(--warn,#b45309)]">
-              구버전 월별 입력값을 표시 중입니다. 「수정」 으로 통장 잔고 단일 값으로 전환하세요.
-            </p>
           ) : null}
         </div>
         {!editing ? (
@@ -142,7 +132,7 @@ export function TenantReserveBalanceForm({
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2.5">
           <p className="dash-eyebrow">현재 잔고</p>
           <p className="mt-1 font-bold tabular-nums text-[var(--accent)]">
-            {fmt(displayedAccumulated)}원
+            {fmt(displayedBalance)}원
           </p>
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2.5">
@@ -170,9 +160,9 @@ export function TenantReserveBalanceForm({
           ) : (
             <p className="mt-1 text-xs text-[var(--muted)]">—</p>
           )}
-          {isCorporate && !cannotAssess && workerLoanWon > 0 ? (
+          {isCorporate && !cannotAssess && reserveWon > 0 ? (
             <p className="mt-1 text-[0.65rem] leading-tight text-[var(--muted)]">
-              ㄴ 대부금 {fmt(workerLoanWon)}원 합산 (총 {fmt(combinedTotal)}원)
+              ㄴ 적립금 {fmt(reserveWon)}원 합산 (총 {fmt(combinedTotal)}원)
             </p>
           ) : null}
         </div>
@@ -186,9 +176,9 @@ export function TenantReserveBalanceForm({
               <span className="mx-1">/</span>
               <span className="tabular-nums">{fmt(capWon!)}</span>
               <span className="ml-1">원</span>
-              {workerLoanWon > 0 ? (
+              {reserveWon > 0 ? (
                 <span className="ml-1 text-[var(--muted)]">
-                  (적립 {fmt(displayedAccumulated)} + 대부 {fmt(workerLoanWon)})
+                  (대부 {fmt(displayedBalance)} + 적립 {fmt(reserveWon)})
                 </span>
               ) : null}
               {remaining != null && remaining > 0 ? (
@@ -258,13 +248,13 @@ export function TenantReserveBalanceForm({
             </select>
           </label>
           <label className="flex flex-col gap-1">
-            <span className="dash-eyebrow">통장 잔고 (원)</span>
+            <span className="dash-eyebrow">대부금 잔고 (원)</span>
             <CommaWonInput
               name="balanceWon"
               defaultValue={balance}
               className="input w-full"
               onUserChange={(v) => setBalance(Math.max(0, Math.round(v)))}
-              placeholder="예) 12,500,000"
+              placeholder="예) 5,000,000"
             />
           </label>
         </fieldset>
@@ -291,15 +281,11 @@ export function TenantReserveBalanceForm({
 
 function deriveInitial(tenant: Tenant, defaultYear: number, defaultMonth: number) {
   const balance = (() => {
-    const v = tenant.reserveBalanceWon;
+    const v = tenant.workerLoanBalanceWon;
     if (v != null && Number.isFinite(v) && v >= 0) return Math.round(v);
-    /** 잔고 미입력이면 구버전 합산값을 입력 디폴트로 채워 줘서 1회 저장만으로 마이그레이션. */
-    return tenantReserveTotalSumWon(
-      tenant.reserveMonthlyByYearWon,
-      tenant.accumulatedReserveTotalWon,
-    );
+    return 0;
   })();
-  const asOf = tenant.reserveBalanceAsOfYearMonth;
+  const asOf = tenant.workerLoanBalanceAsOfYearMonth;
   const m = asOf ? /^(\d{4})-(0[1-9]|1[0-2])$/.exec(asOf) : null;
   const year = m ? Number(m[1]) : Math.max(1900, Math.min(9999, Math.round(defaultYear)));
   const month = m ? Number(m[2]) : Math.max(1, Math.min(12, Math.round(defaultMonth)));

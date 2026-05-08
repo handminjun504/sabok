@@ -356,6 +356,19 @@ export type Tenant = {
    * `reserveBalanceWon` 이 null 이면 의미 없음.
    */
   reserveBalanceAsOfYearMonth: string | null;
+  /**
+   * PB `workerLoanBalanceWon` (원) — 「근로자 대부금 현재 잔고」.
+   * 적립금과 완전히 동일한 취급(자본금 50% 한도, 진행도 / 추가 필요액)을 받는 별도 트랙으로,
+   * 운영자가 통장에서 확인한 시점의 대부금 잔고를 그대로 입력한다. 0원 명시 입력은 유효하며,
+   * null 이면 「대부금 미입력」 상태(진행도/한도 표시는 0원으로 취급).
+   */
+  workerLoanBalanceWon: number | null;
+  /**
+   * PB `workerLoanBalanceAsOfYearMonth` — 대부금 잔고 기준월, `YYYY-MM` 문자열(예: `2026-05`).
+   * 잔고 산정 자체에는 영향 없고 UI 표시 전용("YYYY년 M월 기준 대부금 잔고").
+   * `workerLoanBalanceWon` 이 null 이면 의미 없음.
+   */
+  workerLoanBalanceAsOfYearMonth: string | null;
   /** 안내 멘트 기본 모드 — PB `announcementMode` 없으면 "SINGLE" */
   announcementMode: AnnouncementMode;
   /** 묶음 안내 기본 시작 월(1~12) — 없으면 null (UI 기본 1) */

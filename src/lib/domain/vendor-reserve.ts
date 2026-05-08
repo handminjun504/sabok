@@ -137,6 +137,44 @@ export function tenantReserveBalanceAsOfLabel(asOf: string | null | undefined): 
   return `${m[1]}년 ${Number(m[2])}월 기준`;
 }
 
+/**
+ * 근로자 대부금 잔고 정규화 — 음수·NaN·undefined 는 0 으로 보정, 0원 명시는 0 으로 보존.
+ * 적립금과 똑같은 「자본금 50% 한도」 트랙에 합산되는 값으로 사용된다.
+ */
+export function tenantWorkerLoanBalanceWonOrZero(v: number | null | undefined): number {
+  if (v == null || !Number.isFinite(v)) return 0;
+  const n = Math.round(Number(v));
+  return n > 0 ? n : 0;
+}
+
+/**
+ * 「자본금 50% 한도」 도달 판정에 쓰이는 합산 잔고(원).
+ *
+ * 운영자의 정책상 근로자 대부금은 적립금과 동일한 자산으로 취급되므로,
+ * 한도 진행도·추가 필요액 산정에는 항상 두 잔고의 합을 사용해야 한다.
+ *
+ * 예) 자본금 5,000만 → 한도 2,500만. 적립금 1,500만 + 대부금 5,000만 = 6,500만 → 「전부 적립한 취급」(완료).
+ *
+ * 인자:
+ *  - `reserveBalanceWon`: 적립금 잔고(원). null/0 도 그대로 반영.
+ *  - `workerLoanBalanceWon`: 대부금 잔고(원). null/0 도 그대로 반영.
+ *  - `legacy`: 적립금 컬럼이 비었을 때만 폴백으로 사용되는 구버전 입력 — `tenantReserveTotalSumWon` 와 동일 우선순위.
+ */
+export function tenantReserveCombinedTotalWon(args: {
+  reserveBalanceWon: number | null | undefined;
+  workerLoanBalanceWon: number | null | undefined;
+  legacyMonthlyByYear?: Record<number, readonly number[]> | null;
+  legacyAccumulated?: number | null;
+}): number {
+  const reserve = tenantReserveTotalSumWon(
+    args.legacyMonthlyByYear,
+    args.legacyAccumulated,
+    args.reserveBalanceWon,
+  );
+  const loan = tenantWorkerLoanBalanceWonOrZero(args.workerLoanBalanceWon);
+  return reserve + loan;
+}
+
 type ReserveVendorInput = {
   active: boolean;
   workplaceCapital: number;

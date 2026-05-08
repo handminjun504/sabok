@@ -230,17 +230,25 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             />
           </div>
           <div>
-            <label className="dash-eyebrow mb-1 block">⑥ 회계연도 시작 월(1~12)</label>
-            <input
+            <label className="dash-eyebrow mb-1 block">⑥ 회계연도 시작 월</label>
+            <select
               name="accountingYearStartMonth"
-              type="number"
-              min={1}
-              max={12}
+              defaultValue={
+                tenant.accountingYearStartMonth != null
+                  ? String(tenant.accountingYearStartMonth)
+                  : ""
+              }
               className="input w-full text-xs"
-              defaultValue={tenant.accountingYearStartMonth ?? ""}
               disabled={fieldsLocked}
-              placeholder="기본 1"
-            />
+              aria-label="회계연도 시작 월 선택 (기본 1월)"
+            >
+              <option value="">기본 (1월)</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
+                <option key={m} value={m}>
+                  {m}월
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="dash-eyebrow mb-1 block">⑦ 대표자</label>

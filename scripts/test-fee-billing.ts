@@ -14,6 +14,7 @@
 
 import {
   FEE_VAT_RATE_PERCENT,
+  buildFeeBaseEmployeeOverridesForYear,
   computeFeeBilling,
   defaultFeeRate,
   expandFeeRateSegments,
@@ -645,6 +646,95 @@ check(
 check("feeBillingModeLabel(EVEN_12) = 매월 균등(÷12)", feeBillingModeLabel("EVEN_12"), "매월 균등(÷12)");
 check("feeBillingModeLabel(ON_PAY_MONTH) = 지급월 청구", feeBillingModeLabel("ON_PAY_MONTH"), "지급월 청구");
 check("feeBillingModeLabel(YEAR_END_LUMP) = 연말 일시(12월)", feeBillingModeLabel("YEAR_END_LUMP"), "연말 일시(12월)");
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 수수료 base 동결 — 연중 퇴사로 줄지 않도록 12개월 풀 시뮬레이션
+ * ──────────────────────────────────────────────────────────────────────────── */
+console.log("\n=== 수수료 base 동결 helper (buildFeeBaseEmployeeOverridesForYear) ===");
+
+type EmpForFee = { id: string; resignMonth: number | null; resignYear: number | null };
+
+const fb1 = buildFeeBaseEmployeeOverridesForYear<EmpForFee>(
+  [
+    { id: "a", resignMonth: 7, resignYear: 2026 },
+    { id: "b", resignMonth: null, resignYear: null },
+    { id: "c", resignMonth: 12, resignYear: 2025 },
+    { id: "d", resignMonth: null, resignYear: 2024 },
+    { id: "e", resignMonth: null, resignYear: 2027 },
+  ],
+  2026,
+);
+check("동결 · 활성 연도 전 퇴사자(c, d) 는 제외 — 길이 3", fb1.length, 3);
+check("동결 · 남은 직원 ID = [a, b, e]", fb1.map((x) => x.id), ["a", "b", "e"]);
+check(
+  "동결 · 모든 남은 직원의 resignMonth 가 null 로 무력화",
+  fb1.every((x) => x.resignMonth == null),
+  true,
+);
+check(
+  "동결 · 모든 남은 직원의 resignYear 가 null 로 무력화",
+  fb1.every((x) => x.resignYear == null),
+  true,
+);
+
+const fb2 = buildFeeBaseEmployeeOverridesForYear<EmpForFee>(
+  [
+    { id: "x", resignMonth: null, resignYear: null },
+    { id: "y", resignMonth: 6, resignYear: 2026 },
+  ],
+  2026,
+);
+check("동결 · 미퇴사 직원도 사본화(원본 변형 X)", fb2.length, 2);
+
+/** 원본 보존 — 사본이지 mutate 하지 않는다. */
+const original: EmpForFee[] = [
+  { id: "z", resignMonth: 4, resignYear: 2026 },
+];
+const derived = buildFeeBaseEmployeeOverridesForYear(original, 2026);
+check("동결 · 원본 직원 객체는 mutate 되지 않음 (resignMonth 보존)", original[0].resignMonth, 4);
+check("동결 · 원본 직원 객체는 mutate 되지 않음 (resignYear 보존)", original[0].resignYear, 2026);
+check("동결 · 사본은 새 객체 — 참조 비교 X", derived[0] === original[0], false);
+
+/** 빈 입력 / 모두 활성 연도 전 퇴사 → 빈 배열 */
+check(
+  "동결 · 빈 입력 → 빈 배열",
+  buildFeeBaseEmployeeOverridesForYear<EmpForFee>([], 2026).length,
+  0,
+);
+check(
+  "동결 · 모두 이전 퇴사자 → 빈 배열",
+  buildFeeBaseEmployeeOverridesForYear<EmpForFee>(
+    [
+      { id: "a", resignMonth: 5, resignYear: 2024 },
+      { id: "b", resignMonth: 12, resignYear: 2025 },
+    ],
+    2026,
+  ).length,
+  0,
+);
+
+/**
+ * 통합 시나리오 — 두 직원이 사복기준 동등하게 발생하는 단일 노트 입력에서, 한 직원이 활성 연도 중 퇴사할 때
+ * 「실 집행 base」(active 가드 적용) vs 「수수료 base」(동결 사본) 의 차이를 직관적으로 검증.
+ *
+ * 노트는 직원 status 와 무관하게 합산되므로 base A(선택적복지) 는 동결과 무관하게 동일.
+ * 본 helper 는 base B(정기·분기) 의 산출에 차이를 만든다 — 정기·분기는 `welfare-totals` 가 status 가드 적용.
+ *
+ * 여기서는 helper 의 호출 결과 자체만 단위 검증한다(통합은 dashboard 페이지에서 enforced).
+ */
+const integrationEmps = buildFeeBaseEmployeeOverridesForYear<EmpForFee>(
+  [
+    { id: "alpha", resignMonth: 6, resignYear: 2026 },
+    { id: "beta", resignMonth: null, resignYear: null },
+  ],
+  2026,
+);
+check("통합 · 연중 퇴사자 + 미퇴사자 = 각각 풀로 잡힘 (length=2)", integrationEmps.length, 2);
+check(
+  "통합 · alpha 의 resignMonth 가 무력화돼 12개월 풀로 잡힘",
+  integrationEmps.find((x) => x.id === "alpha")?.resignMonth,
+  null,
+);
 
 console.log(`\n결과: ${passed} 통과 / ${failed} 실패`);
 if (failed > 0) process.exit(1);

@@ -21,6 +21,7 @@ import {
   sumWelfareByMonth,
 } from "@/lib/domain/welfare-totals";
 import {
+  buildFeeBaseEmployeeOverridesForYear,
   computeFeeBilling,
   feeBillingModeLabel,
   resolveFeeRate,
@@ -71,6 +72,29 @@ export default async function DashboardHomePage() {
   const scheduleAnnualWon = sumWelfareByMonth(totals.scheduleByMonth);
   const optionalAnnualWon = sumWelfareByMonth(totals.optionalByMonth);
 
+  /**
+   * 「수수료 base 동결」 정책 — 연중 퇴사로 사복 집행액이 줄어도 수수료는 줄이지 않는다.
+   * 활성 연도 시작에 재직 중이거나 연중 퇴사 예정인 직원의 `resignMonth/resignYear` 를 무력화한
+   * 사본 명단으로 base 만 다시 계산. KPI 의 「사복 총 집행」·「선택적복지 합계」 같은 실 집행액 표시는
+   * 그대로 `totals` 를 사용하므로 영향 없음 — 오직 fee A/B 청구액에만 적용된다.
+   */
+  const feeBaseEmployees = buildFeeBaseEmployeeOverridesForYear(eligible, year);
+  const feeBaseTotals = computeWelfareTotalsForYear({
+    employees: feeBaseEmployees,
+    year,
+    settings: settings ?? null,
+    rules,
+    overrides,
+    quarterly,
+    notes,
+  });
+  const feeBaseFrozenApplied = feeBaseEmployees.length !== eligible.length
+    || feeBaseEmployees.some((e, i) => {
+      const orig = eligible[i];
+      if (!orig) return true;
+      return orig.resignMonth != null || orig.resignYear != null;
+    });
+
   const clientEntityType = tenant?.clientEntityType ?? "INDIVIDUAL";
   const feeRate = resolveFeeRate(settings?.feeRatePercent ?? null, clientEntityType);
   const feeMode = settings?.feeBillingMode ?? "EVEN_12";
@@ -79,9 +103,10 @@ export default async function DashboardHomePage() {
   /**
    * 수수료 A(선택적복지) 는 정책상 항상 「연말 12월 일시 청구」 — 운영자 설정(`feeMode`) 과 무관하게 고정.
    * 수수료 B(정기·분기) 는 운영자 설정(EVEN_12 / ON_PAY_MONTH) 그대로 따른다.
+   * 둘 다 base 는 「수수료 base 동결」 사본(`feeBaseTotals`) 으로 산정 — 연중 퇴사로 줄지 않음.
    */
-  const feeA = computeFeeBilling(totals.baseAOptionalOnlyByMonth, feeRate, "YEAR_END_LUMP", feeBreakpoints);
-  const feeB = computeFeeBilling(totals.baseBScheduleOnlyByMonth, feeRate, feeMode, feeBreakpoints);
+  const feeA = computeFeeBilling(feeBaseTotals.baseAOptionalOnlyByMonth, feeRate, "YEAR_END_LUMP", feeBreakpoints);
+  const feeB = computeFeeBilling(feeBaseTotals.baseBScheduleOnlyByMonth, feeRate, feeMode, feeBreakpoints);
   /** 「현재 달 청구」 — 활성 연도와 시스템 시계의 연도가 같을 때만 의미가 있다. 다르면 1월(인덱스 0). */
   const currentMonthIdx = (() => {
     const now = new Date();
@@ -275,6 +300,12 @@ export default async function DashboardHomePage() {
             <span className="font-semibold text-[var(--text)]">수수료 A</span>(선택적복지) 는 정책상 항상
             「연말 일시(12월) 청구」 로 1~11월 0원 · 12월에 연 합계가 일시 발생합니다.
             <span className="font-semibold text-[var(--text)]"> 수수료 B</span>(정기·분기) 는 운영자 설정({feeBBillingLabel}) 그대로 적용됩니다.
+            {feeBaseFrozenApplied ? (
+              <>
+                {" "}수수료 base 는 「연중 퇴사가 발생해도 줄어들지 않도록」 활성 연도 시작 시점 재직자가
+                12개월 풀로 일했다고 가정한 시뮬레이션 값으로 동결되어 청구됩니다.
+              </>
+            ) : null}
             {feeA.segments.length > 1 ? (
               <>
                 {" "}구간별 요율: <span className="text-[var(--text)]">{feeRateLabel}</span> — EVEN_12 모드는 각 구간을

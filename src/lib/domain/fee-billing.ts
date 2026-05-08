@@ -4,6 +4,33 @@ import type { WelfareTotalsByMonth } from "@/lib/domain/welfare-totals";
 import { sumWelfareByMonth } from "@/lib/domain/welfare-totals";
 
 /**
+ * 「수수료 base 동결 정책」 — 활성 연도 중 퇴사가 발생해도 수수료가 줄지 않도록,
+ * `computeWelfareTotalsForYear` 에 넘길 직원 명단을 「12개월 풀 시뮬레이션」용으로 사본화한다.
+ *
+ *  - **포함 기준**: 활성 연도 시작 시점에 이미 퇴사한 직원(`resignYear < year`) 만 제외.
+ *    그 외(연중 퇴사 예정 / 미퇴사 / 미래 퇴사) 는 모두 포함.
+ *  - **풀 시뮬레이션**: 포함된 직원의 `resignMonth` / `resignYear` 를 모두 `null` 로 덮어 사본화 →
+ *    `employeeStatusForYear` 가 `ACTIVE_FULL_YEAR` 로 판정해 1~12 월이 모두 활성으로 잡힌다.
+ *  - **입사월(`hireMonth`)** 은 손대지 않는다 — 사용자 요구는 「퇴사로 줄이지 마」이며,
+ *    중간 입사로 인한 base 증가는 자연스러운 정합으로 유지.
+ *
+ * 본 helper 는 「수수료 base」(=`feeBaseTotals`) 산정에만 쓰이며, KPI 의 「사복 총 집행」·「선택적복지 합계」
+ * 같은 실제 집행액 표시는 그대로 실(實)데이터(`totals`) 를 사용한다.
+ */
+export function buildFeeBaseEmployeeOverridesForYear<
+  T extends { resignMonth: number | null; resignYear: number | null },
+>(employees: ReadonlyArray<T>, year: number): T[] {
+  const out: T[] = [];
+  for (const e of employees) {
+    /** 활성 연도 시작 전(=resignYear < year) 에 이미 퇴사한 직원은 base 풀 시뮬에서도 제외. */
+    if (e.resignYear != null && e.resignYear < year) continue;
+    /** 그 외엔 12개월 풀로 일했다고 가정 — resign* 만 무력화한 사본. */
+    out.push({ ...e, resignMonth: null, resignYear: null });
+  }
+  return out;
+}
+
+/**
  * 거래처 구분별 수수료 디폴트 요율 — 「전사 설정」 의 `feeRatePercent` 가 비어 있을 때 폴백.
  *  - INDIVIDUAL(개인): 10%
  *  - CORPORATE(법인): 2%

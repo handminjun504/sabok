@@ -14,7 +14,9 @@
 
 import {
   tenantReserveBalanceAsOfLabel,
+  tenantReserveCombinedTotalWon,
   tenantReserveTotalSumWon,
+  tenantWorkerLoanBalanceWonOrZero,
 } from "../src/lib/domain/vendor-reserve";
 
 let passed = 0;
@@ -58,6 +60,81 @@ check("null", tenantReserveBalanceAsOfLabel(null), "");
 check("undefined", tenantReserveBalanceAsOfLabel(undefined), "");
 check("빈 문자열", tenantReserveBalanceAsOfLabel(""), "");
 check("쓰레기 문자열", tenantReserveBalanceAsOfLabel("foo"), "");
+
+console.log("\n=== vendor-reserve: tenantWorkerLoanBalanceWonOrZero ===");
+check("null → 0", tenantWorkerLoanBalanceWonOrZero(null), 0);
+check("undefined → 0", tenantWorkerLoanBalanceWonOrZero(undefined), 0);
+check("NaN → 0", tenantWorkerLoanBalanceWonOrZero(Number.NaN), 0);
+check("음수 → 0(보정)", tenantWorkerLoanBalanceWonOrZero(-100), 0);
+check("0 → 0", tenantWorkerLoanBalanceWonOrZero(0), 0);
+check("양의 정수 → 그대로", tenantWorkerLoanBalanceWonOrZero(50_000_000), 50_000_000);
+check("양의 소수 → 반올림", tenantWorkerLoanBalanceWonOrZero(12_345.6), 12_346);
+
+console.log("\n=== vendor-reserve: tenantReserveCombinedTotalWon ===");
+
+/** 사용자 시나리오 — 자본금 5천만 → 한도 2,500만. 적립금 0, 대부금 5,000만 → 합산 5,000만 ≥ 2,500만 「전부 적립한 취급」(완료). */
+check(
+  "사용자 시나리오 · 적립 0 + 대부 5,000만 → 합산 5,000만",
+  tenantReserveCombinedTotalWon({
+    reserveBalanceWon: 0,
+    workerLoanBalanceWon: 50_000_000,
+  }),
+  50_000_000,
+);
+check(
+  "적립 1,500만 + 대부 5,000만 → 합산 6,500만 (한도 2,500만 초과 → 호출 측에서 캡)",
+  tenantReserveCombinedTotalWon({
+    reserveBalanceWon: 15_000_000,
+    workerLoanBalanceWon: 50_000_000,
+  }),
+  65_000_000,
+);
+check(
+  "적립 0 + 대부 0 → 0",
+  tenantReserveCombinedTotalWon({ reserveBalanceWon: 0, workerLoanBalanceWon: 0 }),
+  0,
+);
+check(
+  "적립 null + 대부 null → 0",
+  tenantReserveCombinedTotalWon({ reserveBalanceWon: null, workerLoanBalanceWon: null }),
+  0,
+);
+check(
+  "적립 null + legacy 폴백 동작 + 대부 1,000만 합산",
+  tenantReserveCombinedTotalWon({
+    reserveBalanceWon: null,
+    workerLoanBalanceWon: 10_000_000,
+    legacyAccumulated: 7_000_000,
+  }),
+  17_000_000,
+);
+check(
+  "적립 null + 월별 맵(legacyMonthlyByYear) 폴백 + 대부 0",
+  tenantReserveCombinedTotalWon({
+    reserveBalanceWon: null,
+    workerLoanBalanceWon: 0,
+    legacyMonthlyByYear: { 2026: [100_000, 200_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  }),
+  300_000,
+);
+check(
+  "대부 음수는 0 보정 (적립 1,000만 + 대부 -100만 → 1,000만)",
+  tenantReserveCombinedTotalWon({
+    reserveBalanceWon: 10_000_000,
+    workerLoanBalanceWon: -1_000_000,
+  }),
+  10_000_000,
+);
+check(
+  "적립 잔고가 「잔고 우선」으로 byYear 무시 + 대부 합산",
+  tenantReserveCombinedTotalWon({
+    reserveBalanceWon: 8_000_000,
+    workerLoanBalanceWon: 5_000_000,
+    legacyMonthlyByYear: { 2026: [999_999, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    legacyAccumulated: 999_999,
+  }),
+  13_000_000,
+);
 
 console.log(`\n${passed} passed · ${failed} failed`);
 if (failed > 0) process.exit(1);

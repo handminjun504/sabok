@@ -162,15 +162,20 @@ export function TenantCreateForm({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-[var(--muted)]">⑥ 회계연도 시작 월(1~12)</label>
-                <input
+                <label className="mb-1 block text-sm font-medium text-[var(--muted)]">⑥ 회계연도 시작 월</label>
+                <select
                   name="accountingYearStartMonth"
-                  type="number"
-                  min={1}
-                  max={12}
+                  defaultValue=""
                   className="input w-full text-sm"
-                  placeholder="예: 1"
-                />
+                  aria-label="회계연도 시작 월 선택 (기본 1월)"
+                >
+                  <option value="">기본 (1월)</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
+                    <option key={m} value={m}>
+                      {m}월
+                    </option>
+                  ))}
+                </select>
                 <p className="mt-1 text-[11px] leading-4 text-[var(--muted)]">
                   비어 있으면 1월 시작(1.1~12.31)로 간주됩니다.
                 </p>
