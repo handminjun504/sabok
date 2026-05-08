@@ -405,6 +405,7 @@ function parseFeeRatePercent(v: unknown): number | null {
 function parseFeeBillingMode(v: unknown): import("@/types/models").FeeBillingMode {
   const s = typeof v === "string" ? v.trim().toUpperCase() : "";
   if (s === "ON_PAY_MONTH") return "ON_PAY_MONTH";
+  if (s === "YEAR_END_LUMP") return "YEAR_END_LUMP";
   return "EVEN_12";
 }
 

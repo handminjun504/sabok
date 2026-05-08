@@ -348,8 +348,13 @@ export function CompanySettingsForm({
         <p className="dash-field-label mb-2">사복 운영 수수료</p>
         <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
           요율(%) 을 비우면 거래처 구분 디폴트(개인 10% / 법인 2%) 가 적용됩니다.
-          청구 방식은 「매월 균등(연 수수료 ÷ 12)」 또는 「지급월 청구(그 달 사복 지급 base × 요율)」 중 선택.
           연중에 사복 금액이 바뀌어 청구액이 달라지면, 아래 「수수료 변경점」에 「N월부터 X%」을 추가해 구간별로 적용됩니다.
+        </p>
+        <p className="mb-3 rounded-lg bg-[var(--surface)] px-2.5 py-1.5 text-[0.7rem] leading-relaxed text-[var(--muted)]">
+          <span className="font-semibold text-[var(--text)]">청구 방식 안내 —</span>{" "}
+          <span className="font-semibold text-[var(--text)]">수수료 A</span>(선택적복지) 는 정책상
+          항상 <span className="text-[var(--text)]">연말 12월 일시 청구</span> 로 고정됩니다.
+          아래 청구 방식 선택은 <span className="font-semibold text-[var(--text)]">수수료 B</span>(정기·분기) 에만 적용됩니다.
         </p>
         <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
           <div>
@@ -367,7 +372,7 @@ export function CompanySettingsForm({
             />
           </div>
           <div>
-            <span className="dash-field-label">청구 방식</span>
+            <span className="dash-field-label">청구 방식 (수수료 B 전용)</span>
             <div className="mt-1 space-y-2">
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-hover)] p-2.5">
                 <input

@@ -143,6 +143,8 @@ export type FeeBillingResult = {
  *    잔여 1 원 단위 오차는 12 개월 합과 「연 base × 요율」 사이에 최대 11 원 차이가 날 수 있으나,
  *    회계 실무상 매달 동일 금액 청구가 우선이라 그대로 둔다.
  *  - `ON_PAY_MONTH`: 각 달 base × 요율(소수점 절사). 그 달 base ≤ 0 이면 0 원.
+ *  - `YEAR_END_LUMP`: 1~11월 0원, 12월에 연 base × 요율 합을 일시 청구.
+ *    수수료 A(선택적복지) 의 고정 정책. breakpoints 가 있으면 「구간 base × 구간 요율」 합을 12월에 모은다.
  *
  * 음수 base 가 들어오면 그대로 0 원으로 클램프(상위 `welfare-totals` 에서도 클램프됨).
  */
@@ -187,6 +189,23 @@ export function computeFeeBilling(
       }
       return arr;
     }
+    if (mode === "YEAR_END_LUMP") {
+      /**
+       * 연말 일시 — 모든 구간의 「구간 base × 구간 요율」 을 합산해 12월(인덱스 11) 한 셀에만 배치.
+       * 1~11월은 0원. breakpoints 가 비어 있으면 단일 segment(1~12) 가 적용되어 (annualBase × rate) 와 동일.
+       */
+      const arr = new Array<number>(12).fill(0);
+      let totalFee = 0;
+      for (const seg of segments) {
+        let segBase = 0;
+        for (let m = seg.fromMonth; m <= seg.toMonth; m++) {
+          segBase += Math.max(0, Number(byMonth[m - 1]) || 0);
+        }
+        totalFee += Math.floor(Math.max(0, segBase) * (seg.ratePercent / 100));
+      }
+      arr[11] = totalFee;
+      return arr;
+    }
     /** ON_PAY_MONTH — 매달 base × (그 달이 속한 구간의 요율). */
     return Array.from({ length: 12 }, (_, i) => {
       const base = Math.max(0, Number(byMonth[i]) || 0);
@@ -220,5 +239,7 @@ export function computeFeeBilling(
 
 /** 청구 방식 한국어 라벨 — 카드·라디오 라벨에 동일하게 사용 */
 export function feeBillingModeLabel(mode: FeeBillingMode): string {
-  return mode === "ON_PAY_MONTH" ? "지급월 청구" : "매월 균등(÷12)";
+  if (mode === "ON_PAY_MONTH") return "지급월 청구";
+  if (mode === "YEAR_END_LUMP") return "연말 일시(12월)";
+  return "매월 균등(÷12)";
 }

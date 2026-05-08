@@ -76,7 +76,11 @@ export default async function DashboardHomePage() {
   const feeMode = settings?.feeBillingMode ?? "EVEN_12";
   /** 수수료 변경점 — 비어 있으면 단일 요율(기존 동작과 동일). */
   const feeBreakpoints = settings?.feeRateBreakpoints ?? null;
-  const feeA = computeFeeBilling(totals.baseAOptionalOnlyByMonth, feeRate, feeMode, feeBreakpoints);
+  /**
+   * 수수료 A(선택적복지) 는 정책상 항상 「연말 12월 일시 청구」 — 운영자 설정(`feeMode`) 과 무관하게 고정.
+   * 수수료 B(정기·분기) 는 운영자 설정(EVEN_12 / ON_PAY_MONTH) 그대로 따른다.
+   */
+  const feeA = computeFeeBilling(totals.baseAOptionalOnlyByMonth, feeRate, "YEAR_END_LUMP", feeBreakpoints);
   const feeB = computeFeeBilling(totals.baseBScheduleOnlyByMonth, feeRate, feeMode, feeBreakpoints);
   /** 「현재 달 청구」 — 활성 연도와 시스템 시계의 연도가 같을 때만 의미가 있다. 다르면 1월(인덱스 0). */
   const currentMonthIdx = (() => {
@@ -88,7 +92,9 @@ export default async function DashboardHomePage() {
   const feeBThisMonth = feeB.monthlyFees[currentMonthIdx] ?? 0;
   const feeAThisMonthVat = feeA.monthlyFeesWithVat[currentMonthIdx] ?? 0;
   const feeBThisMonthVat = feeB.monthlyFeesWithVat[currentMonthIdx] ?? 0;
-  const feeBillingLabel = feeBillingModeLabel(feeMode);
+  /** 수수료 A 는 항상 「연말 일시(12월)」, 수수료 B 는 운영자 설정 그대로 — 카드별로 라벨 분리. */
+  const feeABillingLabel = feeBillingModeLabel("YEAR_END_LUMP");
+  const feeBBillingLabel = feeBillingModeLabel(feeMode);
   /**
    * 「10.0%」 또는 「10% → 7월부터 8%」 형태의 짧은 라벨.
    * segments 가 1개면 단일 요율, 2개 이상이면 변경점 시점·요율을 화살표로 잇는다.
@@ -229,7 +235,7 @@ export default async function DashboardHomePage() {
             </p>
             <div className="kpi-card-foot flex-wrap">
               <span>
-                {feeBillingLabel} · {feeRateLabel} · 이번 달 {fmtWon(feeAThisMonth)}원
+                {feeABillingLabel} · {feeRateLabel} · 이번 달 {fmtWon(feeAThisMonth)}원
                 <span className="text-[var(--muted)]"> / VAT 포함 {fmtWon(feeAThisMonthVat)}원</span>
               </span>
               <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
@@ -253,7 +259,7 @@ export default async function DashboardHomePage() {
             </p>
             <div className="kpi-card-foot flex-wrap">
               <span>
-                {feeBillingLabel} · {feeRateLabel} · 이번 달 {fmtWon(feeBThisMonth)}원
+                {feeBBillingLabel} · {feeRateLabel} · 이번 달 {fmtWon(feeBThisMonth)}원
                 <span className="text-[var(--muted)]"> / VAT 포함 {fmtWon(feeBThisMonthVat)}원</span>
               </span>
               <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
@@ -265,13 +271,17 @@ export default async function DashboardHomePage() {
 
         {/* 월별 청구액 미니 표 — 각 수수료마다 「공급가 / VAT 10% 포함」 두 줄로 비교 */}
         <div className="surface mt-4 overflow-x-auto p-3">
-          {feeA.segments.length > 1 ? (
-            <p className="mb-2 text-[0.7rem] text-[var(--muted)]">
-              구간별 요율: <span className="text-[var(--text)]">{feeRateLabel}</span>
-              {" — "}
-              EVEN_12 모드는 각 구간을 「구간 base × 구간 요율 ÷ 구간 개월」 로 균등 분배(rolling).
-            </p>
-          ) : null}
+          <p className="mb-2 text-[0.7rem] leading-relaxed text-[var(--muted)]">
+            <span className="font-semibold text-[var(--text)]">수수료 A</span>(선택적복지) 는 정책상 항상
+            「연말 일시(12월) 청구」 로 1~11월 0원 · 12월에 연 합계가 일시 발생합니다.
+            <span className="font-semibold text-[var(--text)]"> 수수료 B</span>(정기·분기) 는 운영자 설정({feeBBillingLabel}) 그대로 적용됩니다.
+            {feeA.segments.length > 1 ? (
+              <>
+                {" "}구간별 요율: <span className="text-[var(--text)]">{feeRateLabel}</span> — EVEN_12 모드는 각 구간을
+                「구간 base × 구간 요율 ÷ 구간 개월」 로 균등 분배(rolling).
+              </>
+            ) : null}
+          </p>
           <table className="min-w-max border-collapse text-xs">
             <thead>
               <tr className="border-b border-[var(--border)] bg-[var(--surface-sunken)]">

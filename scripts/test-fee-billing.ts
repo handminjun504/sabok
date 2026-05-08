@@ -7,7 +7,9 @@
  *  3. `computeFeeBilling`
  *     - EVEN_12: 연 base × 요율 ÷ 12 → 12개월 합과 정확히 일치(잔여 1원 분배)
  *     - ON_PAY_MONTH: 그 달 base × 요율, base ≤ 0 인 달은 0원
+ *     - YEAR_END_LUMP: 1~11월 0원, 12월에 연 합계 일시 (수수료 A 전용 정책)
  *  4. `welfare-totals` 의 base 계산 — 「+ 반환 추가」 카테고리 합이 base A 에서 차감되는지.
+ *  5. `feeBillingModeLabel` — 3개 모드 라벨링 정확성.
  */
 
 import {
@@ -15,6 +17,7 @@ import {
   computeFeeBilling,
   defaultFeeRate,
   expandFeeRateSegments,
+  feeBillingModeLabel,
   normalizeFeeRateBreakpoints,
   rateForMonthIndex,
   resolveFeeRate,
@@ -540,6 +543,108 @@ check(
   splitFee.monthlyFeesWithVat.reduce((s, v) => s + v, 0),
   splitFee.annualFeeWithVat,
 );
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * YEAR_END_LUMP — 수수료 A 의 「연말 12월 일시 청구」 정책 회귀
+ * ──────────────────────────────────────────────────────────────────────────── */
+console.log("\n=== YEAR_END_LUMP — 연말 12월 일시 청구 ===");
+
+const lumpFlat = computeFeeBilling(allEqual, 10, "YEAR_END_LUMP");
+check("YEAR_END_LUMP · 연 base 12,000,000 × 10% → annualFee 1,200,000", lumpFlat.annualFee, 1_200_000);
+check("YEAR_END_LUMP · 1월 0원", lumpFlat.monthlyFees[0], 0);
+check("YEAR_END_LUMP · 6월 0원", lumpFlat.monthlyFees[5], 0);
+check("YEAR_END_LUMP · 11월 0원", lumpFlat.monthlyFees[10], 0);
+check("YEAR_END_LUMP · 12월 = annualFee (1,200,000)", lumpFlat.monthlyFees[11], 1_200_000);
+check(
+  "YEAR_END_LUMP · 1~11월 합 = 0",
+  lumpFlat.monthlyFees.slice(0, 11).reduce((s, v) => s + v, 0),
+  0,
+);
+check(
+  "YEAR_END_LUMP · 12개월 합 = annualFee (회계 정합)",
+  lumpFlat.monthlyFees.reduce((s, v) => s + v, 0),
+  lumpFlat.annualFee,
+);
+check("YEAR_END_LUMP · annualBase = 12,000,000", lumpFlat.annualBase, 12_000_000);
+
+/** VAT — 12월 한 셀에서만 발생, 1~11월 VAT 0 */
+check("YEAR_END_LUMP · VAT 12월 = floor(1,200,000 × 10%) = 120,000", lumpFlat.monthlyVat[11], 120_000);
+check("YEAR_END_LUMP · VAT 1월 0", lumpFlat.monthlyVat[0], 0);
+check("YEAR_END_LUMP · VAT 11월 0", lumpFlat.monthlyVat[10], 0);
+check(
+  "YEAR_END_LUMP · annualVat = 12개월 VAT 합 = 120,000",
+  lumpFlat.annualVat,
+  120_000,
+);
+check(
+  "YEAR_END_LUMP · annualFeeWithVat = 1,200,000 + 120,000",
+  lumpFlat.annualFeeWithVat,
+  1_320_000,
+);
+check(
+  "YEAR_END_LUMP · 12월 부가세 포함액 = 1,320,000",
+  lumpFlat.monthlyFeesWithVat[11],
+  1_320_000,
+);
+
+/** 사복 미발생(전 연도 base 0) → 12월도 0 */
+const lumpZero = computeFeeBilling(
+  Array.from({ length: 12 }, () => 0) as unknown as WelfareTotalsByMonth,
+  10,
+  "YEAR_END_LUMP",
+);
+check("YEAR_END_LUMP · base 전부 0 → 12월 0", lumpZero.monthlyFees[11], 0);
+check("YEAR_END_LUMP · base 전부 0 → annualFee 0", lumpZero.annualFee, 0);
+check("YEAR_END_LUMP · base 전부 0 → annualVat 0", lumpZero.annualVat, 0);
+
+/** breakpoint 와 결합 — 구간별 「base × rate」 합이 12월 한 셀에 모임 */
+const lumpBp = computeFeeBilling(
+  baseSplit,
+  10,
+  "YEAR_END_LUMP",
+  [
+    { fromMonth: 1, ratePercent: 10 },
+    { fromMonth: 7, ratePercent: 5 },
+  ],
+);
+/** 1~6월 base 6,000,000 × 10% = 600,000, 7~12월 base 12,000,000 × 5% = 600,000 → 합 1,200,000 */
+check("YEAR_END_LUMP + breakpoint · 12월 = 구간 합 (600k + 600k)", lumpBp.monthlyFees[11], 1_200_000);
+check("YEAR_END_LUMP + breakpoint · 1~11월 모두 0", lumpBp.monthlyFees.slice(0, 11).every((v) => v === 0), true);
+check("YEAR_END_LUMP + breakpoint · annualFee = 1,200,000", lumpBp.annualFee, 1_200_000);
+check(
+  "YEAR_END_LUMP + breakpoint · segments 보존 (구간 시각화용)",
+  lumpBp.segments.length,
+  2,
+);
+
+/** 단일 요율 vs breakpoint 동치 케이스 — 동일 요율 1개 변경점은 빈 배열로 폴백 */
+const lumpEquiv = computeFeeBilling(allEqual, 10, "YEAR_END_LUMP", [
+  { fromMonth: 1, ratePercent: 10 },
+]);
+check(
+  "YEAR_END_LUMP · 단일 1월 항목(요율 동일) vs 미전달 동일",
+  lumpEquiv.annualFee,
+  lumpFlat.annualFee,
+);
+
+/** YEAR_END_LUMP 는 EVEN_12 / ON_PAY_MONTH 와 「연 합계」 가 동일해야 한다(같은 base × 같은 요율). */
+const evenForCompare = computeFeeBilling(allEqual, 10, "EVEN_12");
+const onPayForCompare = computeFeeBilling(allEqual, 10, "ON_PAY_MONTH");
+check(
+  "YEAR_END_LUMP · 연 합계는 EVEN_12 와 동일 (base 동일, 요율 동일)",
+  lumpFlat.annualFee,
+  evenForCompare.annualFee,
+);
+check(
+  "YEAR_END_LUMP · 연 합계는 ON_PAY_MONTH 와 동일 (base 동일, 요율 동일)",
+  lumpFlat.annualFee,
+  onPayForCompare.annualFee,
+);
+
+/** 라벨 검증 */
+check("feeBillingModeLabel(EVEN_12) = 매월 균등(÷12)", feeBillingModeLabel("EVEN_12"), "매월 균등(÷12)");
+check("feeBillingModeLabel(ON_PAY_MONTH) = 지급월 청구", feeBillingModeLabel("ON_PAY_MONTH"), "지급월 청구");
+check("feeBillingModeLabel(YEAR_END_LUMP) = 연말 일시(12월)", feeBillingModeLabel("YEAR_END_LUMP"), "연말 일시(12월)");
 
 console.log(`\n결과: ${passed} 통과 / ${failed} 실패`);
 if (failed > 0) process.exit(1);

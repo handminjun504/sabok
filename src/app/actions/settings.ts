@@ -42,8 +42,12 @@ const schema = z.object({
   incentiveNetRatioPercent: z.number().int().min(1).max(100).nullable(),
   /** 사복 운영 수수료 요율(%) — 0.1~100. null 이면 거래처 디폴트로 폴백. */
   feeRatePercent: z.number().min(0.1).max(100).nullable(),
-  /** 수수료 청구 방식. */
-  feeBillingMode: z.enum(["EVEN_12", "ON_PAY_MONTH"]),
+  /**
+   * 수수료 청구 방식 — 운영자 폼은 EVEN_12 / ON_PAY_MONTH 둘 중 하나만 선택 가능(=수수료 B 정책).
+   * `YEAR_END_LUMP` 는 코드에서 수수료 A 에 강제 적용되는 정책이라 폼에는 노출되지 않으나,
+   * 안전을 위해 enum 에 포함시켜 PB 직접 기록 등 외부 경로에서 들어와도 거부되지 않도록 둔다.
+   */
+  feeBillingMode: z.enum(["EVEN_12", "ON_PAY_MONTH", "YEAR_END_LUMP"]),
   /**
    * 「수수료 변경점」 배열. 빈 배열이면 단일 요율 사용. fromMonth 는 2~12 만 허용 —
    * 1월 항목은 폼이 별도로 보내지 않고 도메인에서 `feeRatePercent` 또는 디폴트로 자동 채워진다.

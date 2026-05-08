@@ -157,6 +157,12 @@ export default async function SchedulePage() {
     /** 월별 항목 내역(합계와 동일 귀속·지급 기준) */
     welfareLinesByMonth: Map<number, { label: string; amount: number; kind: "regular" | "quarterly" | "note" }[]>;
     yearlyWelfare: number;
+    /**
+     * 그 직원의 활성 월 1~12 「선택적복지(`optionalExtraAmount`)」 만의 연합.
+     * `yearlyWelfare = 정기·분기 + 선택적복지` 의 부분 합계로, 표 합계 셀 아래에
+     * 「ㄴ선택 X」 한 줄로 작게 보여 「합계 중 선택적이 얼마인지」 즉시 판독.
+     */
+    optionalAnnual: number;
     salaryMonth: number;
     /** 월별 조정급여 — 중도 재분배로 월별 오버라이드가 있으면 월별로 다를 수 있음 */
     salaryByMonth: Record<number, number>;
@@ -251,6 +257,12 @@ export default async function SchedulePage() {
       customSchedule,
       fixedEventMonths,
     );
+    /**
+     * 선택적복지(노트의 `optionalExtraAmount`) 만의 연 합 — 활성 월(`noteByMonth` 가 이미
+     * `monthIsActive` 가드를 통과한 값) 만 합산. 퇴사 후 잔존 노트는 자동 제외된다.
+     */
+    let optionalAnnual = 0;
+    for (const v of noteByMonth.values()) optionalAnnual += v;
     const capBlocks = computeSalaryInclusionCapBlocks(
       emp,
       yearlyWelfare,
@@ -502,6 +514,7 @@ export default async function SchedulePage() {
       welfareByMonth,
       welfareLinesByMonth,
       yearlyWelfare,
+      optionalAnnual,
       salaryMonth: monthlySalaryPortion(emp),
       salaryByMonth,
       announcementSalaryByMonthList,
@@ -578,6 +591,7 @@ export default async function SchedulePage() {
       welfareByMonth,
       linesByMonth,
       yearlyWelfare: r.yearlyWelfare,
+      optionalYearlyWelfare: r.optionalAnnual,
       salaryMonth: r.salaryMonth,
       salaryByMonth: r.salaryByMonth,
       announcementSalaryByMonthList: r.announcementSalaryByMonthList,

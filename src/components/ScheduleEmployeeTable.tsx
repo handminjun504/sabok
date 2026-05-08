@@ -42,6 +42,12 @@ export type ScheduleTableRow = {
   welfareByMonth: Record<number, number>;
   linesByMonth: Record<number, ScheduleWelfareLine[]>;
   yearlyWelfare: number;
+  /**
+   * 활성 월의 「선택적복지(`MonthlyEmployeeNote.optionalExtraAmount`)」 만의 연 합.
+   * `yearlyWelfare` 는 정기·분기 + 선택적의 합이며, 본 필드는 그 중 선택적 부분만 작게 보조 표시.
+   * 누락(undefined) 이면 보조 줄을 출력하지 않는다(이전 호출자 회귀 방지).
+   */
+  optionalYearlyWelfare?: number;
   salaryMonth: number;
   flagRepReturn: boolean;
   capBlocks: ScheduleCapBlock[];
@@ -354,8 +360,20 @@ export function ScheduleEmployeeTable({
                           </td>
                         );
                       })}
-                      <td className="px-2 py-2.5 text-right text-sm font-bold tabular-nums text-[var(--accent)]">
-                        {fmt(r.yearlyWelfare)}
+                      <td className="px-2 py-2.5 text-right tabular-nums">
+                        <div className="flex flex-col items-end leading-tight">
+                          <span className="text-sm font-bold text-[var(--accent)]">
+                            {fmt(r.yearlyWelfare)}
+                          </span>
+                          {r.optionalYearlyWelfare != null && r.optionalYearlyWelfare > 0 ? (
+                            <span
+                              className="mt-0.5 text-[0.65rem] font-medium text-[var(--muted)]"
+                              title={`${year}년 선택적복지 합계 — 합계 ${fmt(r.yearlyWelfare)}원 중 선택적복지 ${fmt(r.optionalYearlyWelfare)}원`}
+                            >
+                              ㄴ선택 {fmt(r.optionalYearlyWelfare)}
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="text-center">
                         <div className="flex flex-col items-center gap-0.5">

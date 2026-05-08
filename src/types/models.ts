@@ -256,9 +256,13 @@ export type CompanySettings = {
    */
   feeRatePercent: number | null;
   /**
-   * 수수료 청구 방식.
+   * 수수료 청구 방식 — **수수료 B(정기·분기) 에만 적용**.
+   * 수수료 A(선택적복지) 는 정책상 항상 「연말 12월 일시 청구」(=`YEAR_END_LUMP`) 로 고정되며
+   * 본 설정 값과 무관하다. 운영자 폼에서도 A 의 청구 방식은 노출하지 않는다.
+   *
    * - `EVEN_12`: 연 수수료(=총 base × 요율) ÷ 12 → 매월 동일 금액 청구
    * - `ON_PAY_MONTH`: 그 달 사복 지급 base × 요율 → 지급액 있는 달만 청구
+   * - `YEAR_END_LUMP`: 연 base × 요율 합을 12월 한 달에 일시 청구 (수수료 A 정책)
    * PB `feeBillingMode`(text). 없으면 `EVEN_12`.
    */
   feeBillingMode: FeeBillingMode;
@@ -281,8 +285,12 @@ export type CompanySettings = {
   customReturnsSchedule: CustomReturnsSchedule | null;
 };
 
-/** 「전사 설정」 의 수수료 청구 방식 — 매월 균등(/12) vs 지급월 청구 */
-export type FeeBillingMode = "EVEN_12" | "ON_PAY_MONTH";
+/**
+ * 「전사 설정」 의 수수료 청구 방식.
+ * - `EVEN_12` / `ON_PAY_MONTH`: 운영자 선택. 수수료 B(정기·분기) 에 적용.
+ * - `YEAR_END_LUMP`: 코드에서만 강제(수수료 A 전용). 1~11월 0원, 12월에 연 합계 일시 청구.
+ */
+export type FeeBillingMode = "EVEN_12" | "ON_PAY_MONTH" | "YEAR_END_LUMP";
 
 /**
  * 「수수료 변경점」 한 건 — 「fromMonth 월부터 요율 ratePercent% 적용」.
