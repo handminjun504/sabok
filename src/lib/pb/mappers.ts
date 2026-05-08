@@ -350,7 +350,42 @@ export function mapCompanySettings(r: Record<string, unknown>): CompanySettings 
     incentiveNetRatioPercent: parseIncentiveNetRatioPercent(r.incentiveNetRatioPercent),
     feeRatePercent: parseFeeRatePercent(r.feeRatePercent),
     feeBillingMode: parseFeeBillingMode(r.feeBillingMode),
+    feeRateBreakpoints: parseFeeRateBreakpoints(r.feeRateBreakpoints),
   };
+}
+
+/**
+ * 「수수료 변경점」 배열 파싱 — JSON 문자열 / plain array / null 모두 허용.
+ * - 항목 형식: `{ fromMonth: 1..12, ratePercent: 0.1..100 }`
+ * - fromMonth 같은 항목이 여럿이면 마지막 입력만 유지(나중 입력 = 사용자 의도).
+ * - fromMonth 오름차순 정렬. 결과가 비면 null(폴백 단일 요율 사용 의미).
+ */
+function parseFeeRateBreakpoints(v: unknown): import("@/types/models").FeeRateBreakpoint[] | null {
+  let raw: unknown = v;
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    if (!t) return null;
+    try {
+      raw = JSON.parse(t) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(raw)) return null;
+  const dedup = new Map<number, import("@/types/models").FeeRateBreakpoint>();
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const obj = item as Record<string, unknown>;
+    const fm = Math.round(Number(obj.fromMonth));
+    const r = Number(obj.ratePercent);
+    if (!Number.isFinite(fm) || fm < 1 || fm > 12) continue;
+    if (!Number.isFinite(r) || r <= 0 || r > 100) continue;
+    const rate = Math.round(r * 10) / 10;
+    dedup.set(fm, { fromMonth: fm, ratePercent: rate });
+  }
+  if (dedup.size === 0) return null;
+  return [...dedup.values()].sort((a, b) => a.fromMonth - b.fromMonth);
 }
 
 /**

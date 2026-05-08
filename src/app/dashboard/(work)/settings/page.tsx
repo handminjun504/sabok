@@ -94,6 +94,7 @@ export default async function SettingsPage() {
             clientEntityType={tenant?.clientEntityType ?? "INDIVIDUAL"}
             feeRatePercent={s?.feeRatePercent ?? null}
             feeBillingMode={s?.feeBillingMode ?? "EVEN_12"}
+            feeRateBreakpoints={s?.feeRateBreakpoints ?? null}
           />
         </CollapsibleEditorPanel>
       ) : (

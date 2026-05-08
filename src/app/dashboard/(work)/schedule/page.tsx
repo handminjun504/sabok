@@ -80,6 +80,7 @@ import {
 } from "@/components/ScheduleEmployeeTable";
 import { ScheduleReserveTab } from "@/components/ScheduleReserveTab";
 import { MonthlySchedulesPanel } from "@/components/MonthlySchedulesPanel";
+import { OptionalWelfareGridPanel } from "@/components/OptionalWelfareGridPanel";
 import { Alert } from "@/components/ui/Alert";
 import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
@@ -729,6 +730,21 @@ export default async function SchedulePage() {
    * 월별 메모 탭 — 기존 '월별 발생 인센' 그리드와 '선택적 복지·메모' 폼을 한 탭으로 합쳤음.
    * 두 기능 모두 `sabok_monthly_notes` 컬렉션을 직원·월 단위로 다루기 때문에 한 흐름에 두는 편이 자연스럽다.
    */
+  /**
+   * 새 「선택적 복지 그리드」 입력 — 직원×월 한 번에 일괄 입력.
+   * 노트(`MonthlyEmployeeNote`) 의 `optionalExtraAmount` 한 필드만 부분 업데이트하므로
+   * 메모/인센/오버라이드 같은 다른 필드는 그대로 보존된다.
+   */
+  const optionalAmountsByEmpMonth: Record<string, Record<string, number>> = {};
+  for (const n of notes) {
+    if (n.optionalExtraAmount == null) continue;
+    const v = Number(n.optionalExtraAmount);
+    if (!Number.isFinite(v) || v <= 0) continue;
+    if (n.year !== year) continue;
+    if (!optionalAmountsByEmpMonth[n.employeeId]) optionalAmountsByEmpMonth[n.employeeId] = {};
+    optionalAmountsByEmpMonth[n.employeeId][String(n.month)] = Math.round(v);
+  }
+
   const monthlyNoteTab = (
     <div className="space-y-5">
       <div className="surface dash-panel-pad">
@@ -744,9 +760,23 @@ export default async function SchedulePage() {
         />
       </div>
 
+      <div className="surface dash-panel-pad">
+        <OptionalWelfareGridPanel
+          activeYear={year}
+          employees={employees.map((e) => ({
+            id: e.id,
+            employeeCode: e.employeeCode,
+            name: e.name,
+            position: e.position,
+          }))}
+          optionalAmounts={optionalAmountsByEmpMonth}
+          canEdit={canNote}
+        />
+      </div>
+
       {canNote ? (
         <CollapsibleEditorPanel
-          title="선택적 복지·메모"
+          title="선택적 복지·메모 (단일 폼)"
           triggerLabel="열기"
           defaultOpen={false}
         >

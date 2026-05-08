@@ -263,6 +263,17 @@ export type CompanySettings = {
    */
   feeBillingMode: FeeBillingMode;
   /**
+   * 사복 금액 변동·요율 변경에 따른 「수수료 변경점(breakpoints)」.
+   * - 운영자가 「N월부터 요율 X%」 형태로 1개 이상 등록.
+   * - 첫 항목은 항상 fromMonth=1 (1월부터 시작) 이며, 그 요율이 곧 「초기 요율」로 사용.
+   *   비어 있거나 fromMonth=1 이 누락되면 단일 요율 `feeRatePercent` 와 동치(폴백).
+   * - EVEN_12 모드에서는 구간별로 「구간 base × 구간 요율 ÷ 구간 개월」 을 EVEN 분배(rolling 정책).
+   *   이미 청구된 이전 구간은 그대로 두고, 변경 시점부터 잔여 base 를 잔여 개월에 균등 분배한 효과.
+   * - ON_PAY_MONTH 모드에서는 매달 그 달이 속한 breakpoint 의 요율을 적용.
+   * PB `feeRateBreakpoints`(json). 없으면 null.
+   */
+  feeRateBreakpoints: FeeRateBreakpoint[] | null;
+  /**
    * 「대표반환」 외 사용자 정의 반환 카테고리. 안내 멘트 ㄴ 줄 + 수수료 base A 차감에 사용.
    * 구조: `{ categories: [{ key, label, byEmployeeMonth: { 직원ID: { "1~12": 원금액 } } }] }`.
    * PB `customReturnsSchedule`(json). 없으면 null.
@@ -272,6 +283,16 @@ export type CompanySettings = {
 
 /** 「전사 설정」 의 수수료 청구 방식 — 매월 균등(/12) vs 지급월 청구 */
 export type FeeBillingMode = "EVEN_12" | "ON_PAY_MONTH";
+
+/**
+ * 「수수료 변경점」 한 건 — 「fromMonth 월부터 요율 ratePercent% 적용」.
+ * - fromMonth: 1~12 정수
+ * - ratePercent: 0.1~100 (소수점 1자리). 폴백 디폴트가 필요한 케이스는 별도로 처리.
+ */
+export type FeeRateBreakpoint = {
+  fromMonth: number;
+  ratePercent: number;
+};
 
 /** 「대표반환」 외 사용자 정의 반환 카테고리 한 건 */
 export type CustomReturnCategory = {

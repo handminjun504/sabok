@@ -1,12 +1,16 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveCompanySettingsAction, type SettingsState } from "@/app/actions/settings";
 import { SALARY_INCLUSION_VARIANCE_MODES } from "@/lib/domain/salary-inclusion-display";
 import { defaultFeeRate } from "@/lib/domain/fee-billing";
 import type { TenantClientEntityType } from "@/lib/domain/tenant-profile";
-import type { FeeBillingMode, SalaryInclusionVarianceMode } from "@/types/models";
+import type {
+  FeeBillingMode,
+  FeeRateBreakpoint,
+  SalaryInclusionVarianceMode,
+} from "@/types/models";
 
 type QuarterlyItemKey = "INFANT_SCHOLARSHIP" | "PRESCHOOL_SCHOLARSHIP" | "TEEN_SCHOLARSHIP" | "PARENT_SUPPORT" | "HEALTH_INSURANCE" | "HOUSING_INTEREST" | "HOUSING_RENT";
 
@@ -44,7 +48,15 @@ type Props = {
   feeRatePercent?: number | null;
   /** 수수료 청구 방식 — `EVEN_12` | `ON_PAY_MONTH`. */
   feeBillingMode?: FeeBillingMode;
+  /**
+   * 사복 금액 변동·요율 변경 시 적용할 「2월~12월부터 시작하는 변경점」.
+   * 1월은 위쪽 `feeRatePercent` 가 곧 시작 요율이므로 별도 행을 만들지 않는다.
+   * 비어 있으면 단일 요율로 동작.
+   */
+  feeRateBreakpoints?: FeeRateBreakpoint[] | null;
 };
+
+const BREAKPOINT_MONTH_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
 const FIXED_EVENT_FIELDS: { key: "NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV"; label: string; defaultMonth: number }[] = [
   { key: "NEW_YEAR_FEB", label: "연초·신년", defaultMonth: 2 },
@@ -71,15 +83,58 @@ export function CompanySettingsForm({
   clientEntityType,
   feeRatePercent = null,
   feeBillingMode = "EVEN_12",
+  feeRateBreakpoints = null,
 }: Props) {
   const router = useRouter();
   const [state, formAction] = useActionState<SettingsState, FormData>(saveCompanySettingsAction, null);
+
+  /**
+   * 「수수료 변경점」 — 1월은 별도 행 없이 위 `feeRatePercent` 입력란이 시작 요율 역할.
+   * 여기서는 fromMonth ≥ 2 인 변경점만 가변 행으로 관리한다.
+   * 빈 배열이면 「변경점 없음」(단일 요율 모드).
+   */
+  const initialExtraBreakpoints: FeeRateBreakpoint[] = (feeRateBreakpoints ?? [])
+    .filter((b) => Number.isFinite(b?.fromMonth) && b.fromMonth >= 2 && b.fromMonth <= 12)
+    .filter((b) => Number.isFinite(b?.ratePercent) && b.ratePercent > 0 && b.ratePercent <= 100)
+    .sort((a, b) => a.fromMonth - b.fromMonth);
+  const [extraBreakpoints, setExtraBreakpoints] = useState<FeeRateBreakpoint[]>(initialExtraBreakpoints);
+
+  /** 폼 key 변경(저장 후 부모가 새 데이터를 내려줄 때) 시 변경점 행도 다시 동기화. */
+  useEffect(() => {
+    setExtraBreakpoints(initialExtraBreakpoints);
+    /** initialExtraBreakpoints 는 매 렌더 새 객체라 의존성으로 두지 않고 stringify 비교. */
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [JSON.stringify(feeRateBreakpoints ?? [])]);
 
   useEffect(() => {
     if (state?.성공) {
       router.refresh();
     }
   }, [state?.성공, router]);
+
+  function handleAddBreakpoint() {
+    /** 비어 있는 첫 후보 월(2~12 중 아직 안 쓰는 월)을 자동 선택. */
+    const used = new Set(extraBreakpoints.map((b) => b.fromMonth));
+    const next = BREAKPOINT_MONTH_OPTIONS.find((m) => !used.has(m));
+    if (next == null) return;
+    setExtraBreakpoints([
+      ...extraBreakpoints,
+      { fromMonth: next, ratePercent: feeRatePercent ?? defaultFeeRate(clientEntityType) },
+    ]);
+  }
+  function handleChangeBreakpointMonth(idx: number, month: number) {
+    setExtraBreakpoints(
+      extraBreakpoints.map((b, i) => (i === idx ? { ...b, fromMonth: month } : b)),
+    );
+  }
+  function handleChangeBreakpointRate(idx: number, rate: number) {
+    setExtraBreakpoints(
+      extraBreakpoints.map((b, i) => (i === idx ? { ...b, ratePercent: rate } : b)),
+    );
+  }
+  function handleRemoveBreakpoint(idx: number) {
+    setExtraBreakpoints(extraBreakpoints.filter((_, i) => i !== idx));
+  }
 
   return (
     <div className="space-y-3">
@@ -102,10 +157,21 @@ export function CompanySettingsForm({
           incentiveNetRatioPercent ?? "",
           feeRatePercent ?? "",
           feeBillingMode,
+          JSON.stringify(feeRateBreakpoints ?? []),
         ].join("|")}
         action={formAction}
         className="space-y-3"
       >
+        {/**
+         * 변경점 행은 가변 길이 — 폼 직렬화는 hidden input 한 묶음(`feeRateBreakpoint_${idx}_fromMonth/ratePercent`) 으로
+         * 항상 현재 state 를 그대로 제출. 서버 액션은 동일한 prefix 만 모아 정규화 한다.
+         */}
+        {extraBreakpoints.map((b, idx) => (
+          <div key={`bp-hidden-${idx}`} hidden>
+            <input type="hidden" name={`feeRateBreakpoint_${idx}_fromMonth`} value={String(b.fromMonth)} />
+            <input type="hidden" name={`feeRateBreakpoint_${idx}_ratePercent`} value={String(b.ratePercent)} />
+          </div>
+        ))}
       <div>
         <label className="dash-field-label">회사 창립월 (1~12)</label>
         <input
@@ -283,6 +349,7 @@ export function CompanySettingsForm({
         <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
           요율(%) 을 비우면 거래처 구분 디폴트(개인 10% / 법인 2%) 가 적용됩니다.
           청구 방식은 「매월 균등(연 수수료 ÷ 12)」 또는 「지급월 청구(그 달 사복 지급 base × 요율)」 중 선택.
+          연중에 사복 금액이 바뀌어 청구액이 달라지면, 아래 「수수료 변경점」에 「N월부터 X%」을 추가해 구간별로 적용됩니다.
         </p>
         <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
           <div>
@@ -334,6 +401,70 @@ export function CompanySettingsForm({
               </label>
             </div>
           </div>
+        </div>
+
+        {/* 수수료 변경점 — 사복 금액 / 요율 변경 시 N월부터 새 요율을 적용 */}
+        <div className="mt-3 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] p-2.5">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-xs font-semibold text-[var(--text)]">수수료 변경점</p>
+            <button
+              type="button"
+              className="btn btn-secondary px-2 py-1 text-[0.7rem]"
+              onClick={handleAddBreakpoint}
+              disabled={extraBreakpoints.length >= 11}
+            >
+              + 변경점 추가
+            </button>
+          </div>
+          <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--muted)]">
+            「{1}월~」 은 위 「수수료 요율」 입력란이 자동으로 시작 요율로 사용됩니다. 여기에 추가하는 행은 그 이후
+            구간(2월~12월 시작) 에 새 요율을 덮어쓰는 변경점입니다. EVEN_12 모드는 각 구간을 별도 균등 분배(rolling),
+            ON_PAY_MONTH 모드는 그 달 요율로 청구합니다.
+          </p>
+          {extraBreakpoints.length === 0 ? (
+            <p className="mt-2 text-[0.7rem] text-[var(--muted)]">— 변경점 없음. 1월 요율이 12개월 내내 적용됩니다.</p>
+          ) : (
+            <ul className="mt-2 space-y-1.5">
+              {extraBreakpoints.map((b, idx) => {
+                const usedByOthers = new Set(
+                  extraBreakpoints.filter((_, i) => i !== idx).map((x) => x.fromMonth),
+                );
+                return (
+                  <li key={`bp-${idx}`} className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <select
+                      className="input w-[6rem] text-xs"
+                      value={b.fromMonth}
+                      onChange={(e) => handleChangeBreakpointMonth(idx, Number(e.target.value))}
+                    >
+                      {BREAKPOINT_MONTH_OPTIONS.map((m) => (
+                        <option key={m} value={m} disabled={m !== b.fromMonth && usedByOthers.has(m)}>
+                          {m}월부터
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={0.1}
+                      max={100}
+                      step={0.1}
+                      value={b.ratePercent}
+                      onChange={(e) => handleChangeBreakpointRate(idx, Number(e.target.value))}
+                      className="input w-[6rem] text-xs tabular-nums"
+                    />
+                    <span className="text-[0.7rem] text-[var(--muted)]">%</span>
+                    <button
+                      type="button"
+                      className="btn btn-secondary px-2 py-0.5 text-[0.7rem]"
+                      onClick={() => handleRemoveBreakpoint(idx)}
+                      aria-label={`${b.fromMonth}월부터 변경점 제거`}
+                    >
+                      삭제
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </div>
 

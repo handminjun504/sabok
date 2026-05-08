@@ -28,15 +28,16 @@ export type WelfareTotalsForYear = {
   scheduleByMonth: WelfareTotalsByMonth;
   /** 월별 노트 `optionalExtraAmount` 합 — 「선택적복지 합계」 KPI 입력 */
   optionalByMonth: WelfareTotalsByMonth;
-  /** `CompanySettings.repReturnSchedule` 직원합 (월별) */
+  /** `CompanySettings.repReturnSchedule` 직원합 (월별) — 안내·운영보고 표시 전용, 수수료 base 에는 영향 없음 */
   repReturnByMonth: WelfareTotalsByMonth;
-  /** 모든 「+ 반환 추가」 카테고리 합 (월별, 카테고리·직원 통합) */
+  /** 모든 「+ 반환 추가」 카테고리 합 (월별) — 안내·운영보고 표시 전용, 수수료 base 에는 영향 없음 */
   customReturnsByMonth: WelfareTotalsByMonth;
   /**
-   * 수수료 base A — 선택적복지 포함, 대표반환·커스텀 반환 차감.
-   * `scheduleByMonth + optionalByMonth − repReturnByMonth − customReturnsByMonth` (음수는 0 으로 클램프).
+   * 수수료 base A — **선택적복지 만**.
+   * 대표반환·사용자 정의 반환은 차감하지 않으며, 가산 또한 하지 않는다(안내·운영보고 표시 전용).
+   * `optionalByMonth` 와 항상 같은 값이지만, 수수료 도메인의 의미를 명시하기 위해 별도 키로 노출.
    */
-  baseAWithOptionalByMonth: WelfareTotalsByMonth;
+  baseAOptionalOnlyByMonth: WelfareTotalsByMonth;
   /** 수수료 base B — 정기·분기 스케줄만. `scheduleByMonth` 와 동일하지만 의미 명시. */
   baseBScheduleOnlyByMonth: WelfareTotalsByMonth;
 };
@@ -179,20 +180,16 @@ export function computeWelfareTotalsForYear(args: {
   const repReturnByMonth = sumEmployeeMonthlyAmountMap(args.settings?.repReturnSchedule ?? null);
   const customReturnsByMonth = sumCustomReturns(args.settings?.customReturnsSchedule ?? null);
 
-  const baseAArr = arr12<number>();
-  for (let i = 0; i < 12; i++) {
-    /** 음수 클램프 — 잘못된 입력으로 base 가 음수가 되어 수수료가 음수로 깎이는 사고를 방지. */
-    baseAArr[i] = Math.max(
-      0,
-      scheduleByMonth[i] + optionalByMonth[i] - repReturnByMonth[i] - customReturnsByMonth[i],
-    );
-  }
+  /**
+   * Fee A base = 선택적복지 만. 반환은 「표시 전용」 으로 base 에 가산·차감 어느 쪽으로도 손대지 않는다.
+   * `optionalByMonth` 자체로 충분하지만, 수수료 도메인의 의미를 명시하기 위해 별칭 키를 함께 노출.
+   */
   return {
     scheduleByMonth,
     optionalByMonth,
     repReturnByMonth,
     customReturnsByMonth,
-    baseAWithOptionalByMonth: asTotalsByMonth(baseAArr),
+    baseAOptionalOnlyByMonth: optionalByMonth,
     baseBScheduleOnlyByMonth: scheduleByMonth,
   };
 }

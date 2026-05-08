@@ -11,8 +11,12 @@
  */
 
 import {
+  FEE_VAT_RATE_PERCENT,
   computeFeeBilling,
   defaultFeeRate,
+  expandFeeRateSegments,
+  normalizeFeeRateBreakpoints,
+  rateForMonthIndex,
   resolveFeeRate,
 } from "../src/lib/domain/fee-billing";
 import type { WelfareTotalsByMonth } from "../src/lib/domain/welfare-totals";
@@ -109,6 +113,88 @@ check(
   100_000,
 );
 
+console.log("\n=== 부가세 10% — 공급가/부가세/포함액 노출 ===");
+
+check("VAT 상수 10", FEE_VAT_RATE_PERCENT, 10);
+check("EVEN_12 · vatRatePercent 노출", evenIndividual.vatRatePercent, 10);
+
+/** EVEN_12, 매월 100,000 → VAT 10,000, 포함액 110,000 (소수점 절사 없음) */
+check(
+  "EVEN_12 · 매월 VAT = floor(공급가 × 10%) = 10,000",
+  evenIndividual.monthlyVat[0],
+  10_000,
+);
+check(
+  "EVEN_12 · 매월 포함액 = 110,000",
+  evenIndividual.monthlyFeesWithVat[0],
+  110_000,
+);
+check(
+  "EVEN_12 · 연 VAT = 매월 VAT 합 = 120,000",
+  evenIndividual.annualVat,
+  120_000,
+);
+check(
+  "EVEN_12 · 연 포함액 = annualFee + annualVat = 1,320,000",
+  evenIndividual.annualFeeWithVat,
+  1_320_000,
+);
+check(
+  "EVEN_12 · 12개월 포함액 합 = annualFeeWithVat",
+  evenIndividual.monthlyFeesWithVat.reduce((s, v) => s + v, 0),
+  evenIndividual.annualFeeWithVat,
+);
+
+/** ON_PAY_MONTH, sparse → 각 달 base × 10% × 1.1 */
+check(
+  "ON_PAY_MONTH · 1월 (공급가 0) → VAT 0",
+  onPay.monthlyVat[0],
+  0,
+);
+check(
+  "ON_PAY_MONTH · 2월 (공급가 100,000) → VAT 10,000",
+  onPay.monthlyVat[1],
+  10_000,
+);
+check(
+  "ON_PAY_MONTH · 5월 (공급가 200,000) → 포함액 220,000",
+  onPay.monthlyFeesWithVat[4],
+  220_000,
+);
+check(
+  "ON_PAY_MONTH · 연 VAT = 35,000",
+  onPay.annualVat,
+  35_000,
+);
+check(
+  "ON_PAY_MONTH · 연 포함액 = 385,000",
+  onPay.annualFeeWithVat,
+  385_000,
+);
+
+/** 부가세 절사 검증 — 공급가 7원이면 VAT floor(7 × 0.1) = 0 (1원 미만 절사) */
+const tinyBase: WelfareTotalsByMonth = [
+  70, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+] as const;
+const tinyFee = computeFeeBilling(tinyBase, 10, "ON_PAY_MONTH");
+check(
+  "절사 · 공급가 7원 → VAT floor(0.7) = 0",
+  tinyFee.monthlyVat[0],
+  0,
+);
+check(
+  "절사 · 공급가 7원 + VAT 0 → 포함액 7원",
+  tinyFee.monthlyFeesWithVat[0],
+  7,
+);
+
+/** 잔여 분배 후 12개월 합 = annualFee 인 경우, 포함액 합도 동일 항등성 보장 */
+check(
+  "EVEN_12 잔여분배 · 12개월 포함액 합 = annualFeeWithVat",
+  evenOdd.monthlyFeesWithVat.reduce((s, v) => s + v, 0),
+  evenOdd.annualFeeWithVat,
+);
+
 /** 「+ 반환 추가」 차감 — welfare-totals 의 base A 식: schedule + optional - repReturn - customReturns */
 import { computeWelfareTotalsForYear } from "../src/lib/domain/welfare-totals";
 import type {
@@ -181,6 +267,7 @@ const fakeSettings: CompanySettings = {
   incentiveNetRatioPercent: null,
   feeRatePercent: null,
   feeBillingMode: "EVEN_12",
+  feeRateBreakpoints: null,
 };
 
 const totals = computeWelfareTotalsForYear({
@@ -202,21 +289,256 @@ check(
   totals.customReturnsByMonth[4],
   250_000,
 );
-/** 정기·분기 규칙이 없으므로 schedule = 0. 노트도 없으니 optional = 0. base A = 0 - 100k(3월) - 250k(5월) → 모두 0 클램프 */
+/**
+ * Fee A base 는 「선택적복지 만」 — 노트 미설정이면 0.
+ * 대표반환·사용자 정의 반환은 base 에 영향 없음(표시 전용).
+ */
 check(
-  "welfare-totals · base A 음수 클램프 (3월=0)",
-  totals.baseAWithOptionalByMonth[2],
+  "welfare-totals · base A = optional only (3월=0)",
+  totals.baseAOptionalOnlyByMonth[2],
   0,
 );
 check(
-  "welfare-totals · base A 음수 클램프 (5월=0)",
-  totals.baseAWithOptionalByMonth[4],
+  "welfare-totals · base A = optional only (5월=0, 반환만 있어도 base 가 0 유지)",
+  totals.baseAOptionalOnlyByMonth[4],
   0,
+);
+check(
+  "welfare-totals · base A 항등성 — optionalByMonth 와 동일 객체 의미값",
+  totals.baseAOptionalOnlyByMonth,
+  totals.optionalByMonth,
 );
 check(
   "welfare-totals · base B 는 schedule 만 (모두 0)",
   totals.baseBScheduleOnlyByMonth.every((v) => v === 0),
   true,
+);
+
+console.log("\n=== welfare-totals: 선택적복지 입력이 있을 때 base A 가 그 값 그대로 ===");
+
+const totalsWithOptional = computeWelfareTotalsForYear({
+  employees: [fakeEmployee],
+  year: 2026,
+  settings: fakeSettings,
+  rules: [] as LevelPaymentRule[],
+  overrides: [] as Level5Override[],
+  quarterly: [] as QuarterlyEmployeeConfig[],
+  /**
+   * 선택적복지 — 4월에 emp1 이 300,000원 입력. 같은 4월에 대표반환 0, 커스텀 반환 0.
+   * 새 정책에서 base A = optional 그대로 → 300,000 이어야 한다(반환은 base 에 영향 없음).
+   */
+  notes: [
+    {
+      id: "n1",
+      employeeId: "emp1",
+      year: 2026,
+      month: 4,
+      tenantId: "t",
+      monthlyPayAmount: null,
+      quarterlyPayAmount: null,
+      welfareOverrideAmount: null,
+      optionalExtraAmount: 300_000,
+      memo: null,
+      createdAt: null,
+      updatedAt: null,
+    } as unknown as MonthlyEmployeeNote,
+  ],
+});
+check(
+  "welfare-totals · 4월 optionalByMonth = 300,000",
+  totalsWithOptional.optionalByMonth[3],
+  300_000,
+);
+check(
+  "welfare-totals · 4월 base A = 선택적복지 그대로 (300,000)",
+  totalsWithOptional.baseAOptionalOnlyByMonth[3],
+  300_000,
+);
+check(
+  "welfare-totals · 5월 base A — customReturn 250k 이 차감되지 않음(여전히 0)",
+  totalsWithOptional.baseAOptionalOnlyByMonth[4],
+  0,
+);
+
+console.log("\n=== 수수료 변경점(breakpoints) — 정규화 / rolling EVEN_12 / ON_PAY_MONTH 월별 요율 ===");
+
+/** 정규화 — 1월 항목 자동 prepend, fromMonth 정렬, 같은 fromMonth 마지막 입력 유지 */
+check(
+  "normalize · 빈 배열 → []",
+  normalizeFeeRateBreakpoints([], 10),
+  [],
+);
+check(
+  "normalize · 단일 요율과 동일하면 [] 폴백",
+  normalizeFeeRateBreakpoints([{ fromMonth: 1, ratePercent: 10 }], 10),
+  [],
+);
+check(
+  "normalize · 1월 누락이면 fallback 으로 prepend",
+  normalizeFeeRateBreakpoints([{ fromMonth: 7, ratePercent: 8 }], 10),
+  [
+    { fromMonth: 1, ratePercent: 10 },
+    { fromMonth: 7, ratePercent: 8 },
+  ],
+);
+check(
+  "normalize · 같은 fromMonth 가 둘이면 마지막 입력 유지",
+  normalizeFeeRateBreakpoints(
+    [
+      { fromMonth: 7, ratePercent: 8 },
+      { fromMonth: 7, ratePercent: 6 },
+      { fromMonth: 1, ratePercent: 10 },
+    ],
+    10,
+  ),
+  [
+    { fromMonth: 1, ratePercent: 10 },
+    { fromMonth: 7, ratePercent: 6 },
+  ],
+);
+check(
+  "normalize · fromMonth 범위 외(0/13)·ratePercent 0/200 은 제거",
+  normalizeFeeRateBreakpoints(
+    [
+      { fromMonth: 0, ratePercent: 10 } as unknown as { fromMonth: number; ratePercent: number },
+      { fromMonth: 13, ratePercent: 10 } as unknown as { fromMonth: number; ratePercent: number },
+      { fromMonth: 7, ratePercent: 0 } as unknown as { fromMonth: number; ratePercent: number },
+      { fromMonth: 9, ratePercent: 200 } as unknown as { fromMonth: number; ratePercent: number },
+      { fromMonth: 5, ratePercent: 8 },
+    ],
+    10,
+  ),
+  [
+    { fromMonth: 1, ratePercent: 10 },
+    { fromMonth: 5, ratePercent: 8 },
+  ],
+);
+
+const segs = expandFeeRateSegments(
+  normalizeFeeRateBreakpoints(
+    [
+      { fromMonth: 1, ratePercent: 10 },
+      { fromMonth: 4, ratePercent: 8 },
+      { fromMonth: 9, ratePercent: 5 },
+    ],
+    10,
+  ),
+);
+check("expand · 3 구간으로 확장 (1-3 / 4-8 / 9-12)", segs, [
+  { fromMonth: 1, toMonth: 3, ratePercent: 10 },
+  { fromMonth: 4, toMonth: 8, ratePercent: 8 },
+  { fromMonth: 9, toMonth: 12, ratePercent: 5 },
+]);
+
+check("rateForMonthIndex · 2월 → 10%", rateForMonthIndex(segs, 1, 999), 10);
+check("rateForMonthIndex · 4월 → 8%", rateForMonthIndex(segs, 3, 999), 8);
+check("rateForMonthIndex · 9월 → 5%", rateForMonthIndex(segs, 8, 999), 5);
+check("rateForMonthIndex · 12월 → 5%", rateForMonthIndex(segs, 11, 999), 5);
+check("rateForMonthIndex · 빈 segments → fallback", rateForMonthIndex([], 5, 999), 999);
+
+/** EVEN_12 with breakpoints — 1~6월 base 600만 × 10% / 6 = 10만, 7~12월 base 1200만 × 5% / 6 = 10만 */
+const baseSplit = [
+  1_000_000, 1_000_000, 1_000_000, 1_000_000, 1_000_000, 1_000_000,
+  2_000_000, 2_000_000, 2_000_000, 2_000_000, 2_000_000, 2_000_000,
+] as const as WelfareTotalsByMonth;
+const splitFee = computeFeeBilling(
+  baseSplit,
+  10,
+  "EVEN_12",
+  [
+    { fromMonth: 1, ratePercent: 10 },
+    { fromMonth: 7, ratePercent: 5 },
+  ],
+);
+check("EVEN_12 + breakpoint · 1~6월 매월 100,000", splitFee.monthlyFees[0], 100_000);
+check("EVEN_12 + breakpoint · 6월 100,000 (구간 종료)", splitFee.monthlyFees[5], 100_000);
+check("EVEN_12 + breakpoint · 7월 100,000 (5% 적용)", splitFee.monthlyFees[6], 100_000);
+check("EVEN_12 + breakpoint · 12월 100,000", splitFee.monthlyFees[11], 100_000);
+check("EVEN_12 + breakpoint · 연 합계 = 1,200,000", splitFee.annualFee, 1_200_000);
+check(
+  "EVEN_12 + breakpoint · segments 길이 = 2",
+  splitFee.segments.length,
+  2,
+);
+check(
+  "EVEN_12 + breakpoint · segments[0] = 1~6 / 10%",
+  splitFee.segments[0],
+  { fromMonth: 1, toMonth: 6, ratePercent: 10 },
+);
+check(
+  "EVEN_12 + breakpoint · segments[1] = 7~12 / 5%",
+  splitFee.segments[1],
+  { fromMonth: 7, toMonth: 12, ratePercent: 5 },
+);
+
+/** EVEN_12 + breakpoint, base 가 후반에 0 인 경우 — 잔여 base 0 → 후반 청구 0 */
+const baseFrontLoaded = [
+  1_000_000, 1_000_000, 1_000_000, 1_000_000, 1_000_000, 1_000_000,
+  0, 0, 0, 0, 0, 0,
+] as const as WelfareTotalsByMonth;
+const frontFee = computeFeeBilling(
+  baseFrontLoaded,
+  10,
+  "EVEN_12",
+  [
+    { fromMonth: 1, ratePercent: 10 },
+    { fromMonth: 7, ratePercent: 5 },
+  ],
+);
+check("EVEN_12 + breakpoint · 후반 구간 base 0 → 7~12월 매월 0", frontFee.monthlyFees[6], 0);
+check("EVEN_12 + breakpoint · 후반 구간 base 0 → 12월 0", frontFee.monthlyFees[11], 0);
+check("EVEN_12 + breakpoint · 1~6월만 60만 합계 (10% 분배)", frontFee.annualFee, 600_000);
+
+/** ON_PAY_MONTH + breakpoint — 매월 base × 그 달 요율 */
+const onPayBp = computeFeeBilling(
+  [
+    1_000_000, 0, 0, 0, 0, 0,
+    1_000_000, 0, 0, 0, 0, 0,
+  ] as unknown as WelfareTotalsByMonth,
+  10,
+  "ON_PAY_MONTH",
+  [
+    { fromMonth: 1, ratePercent: 10 },
+    { fromMonth: 7, ratePercent: 5 },
+  ],
+);
+check("ON_PAY_MONTH + breakpoint · 1월 (10%) → 100,000", onPayBp.monthlyFees[0], 100_000);
+check("ON_PAY_MONTH + breakpoint · 7월 (5%) → 50,000", onPayBp.monthlyFees[6], 50_000);
+check("ON_PAY_MONTH + breakpoint · 연 합계 = 150,000", onPayBp.annualFee, 150_000);
+
+/** breakpoint 가 없으면 기존 단일 요율 동작과 정확히 동일해야 함 (회귀 보호) */
+const same1 = computeFeeBilling(allEqual, 10, "EVEN_12");
+const same2 = computeFeeBilling(allEqual, 10, "EVEN_12", null);
+const same3 = computeFeeBilling(allEqual, 10, "EVEN_12", []);
+const same4 = computeFeeBilling(allEqual, 10, "EVEN_12", [{ fromMonth: 1, ratePercent: 10 }]);
+check("회귀 · breakpoints null vs 미전달 동일", same1.annualFee, same2.annualFee);
+check("회귀 · breakpoints [] vs 미전달 동일", same1.annualFee, same3.annualFee);
+check(
+  "회귀 · 단일 1월 항목(요율 동일) vs 미전달 동일",
+  same1.annualFee,
+  same4.annualFee,
+);
+check(
+  "회귀 · 미전달 segments = [{1, 12, 10%}]",
+  same1.segments,
+  [{ fromMonth: 1, toMonth: 12, ratePercent: 10 }],
+);
+
+/** 부가세는 매월 floor 정책 그대로 작동 — breakpoint 가 있어도 동일 */
+check(
+  "EVEN_12 + breakpoint · 매월 VAT = floor(공급가 × 10%)",
+  splitFee.monthlyVat[0],
+  10_000,
+);
+check(
+  "EVEN_12 + breakpoint · 12개월 VAT 합 = annualVat",
+  splitFee.monthlyVat.reduce((s, v) => s + v, 0),
+  splitFee.annualVat,
+);
+check(
+  "EVEN_12 + breakpoint · 12개월 포함액 합 = annualFeeWithVat",
+  splitFee.monthlyFeesWithVat.reduce((s, v) => s + v, 0),
+  splitFee.annualFeeWithVat,
 );
 
 console.log(`\n결과: ${passed} 통과 / ${failed} 실패`);

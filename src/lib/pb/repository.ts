@@ -361,7 +361,8 @@ export async function tenantCreate(data: {
 
   const optional: Record<string, unknown> = {};
   const ap = data.approvalNumber != null ? String(data.approvalNumber).trim() : "";
-  if (ap) optional.approvalNumber = ap;
+  /** PB 컬럼명은 snake_case `approval_number` (camelCase 잔존 컬럼 충돌로 메타 등록 불가) — 매퍼는 두 키 모두 read 가능. */
+  if (ap) optional.approval_number = ap;
   const br = data.businessRegNo != null ? String(data.businessRegNo).trim() : "";
   if (br) optional.businessRegNo = br;
   if (data.headOfficeCapital != null && Number.isFinite(data.headOfficeCapital)) {
@@ -454,7 +455,8 @@ export async function tenantUpdateProfile(
     memo: data.memo ?? null,
     clientEntityType: data.clientEntityType,
     operationMode: data.operationMode,
-    approvalNumber: data.approvalNumber,
+    /** PB 컬럼명은 snake_case `approval_number` — camelCase 잔존 컬럼 충돌로 메타에 camelCase 키를 등록할 수 없어 snake 로 통일. */
+    approval_number: data.approvalNumber,
     businessRegNo: data.businessRegNo,
     headOfficeCapital: data.headOfficeCapital,
   };
@@ -927,6 +929,8 @@ export async function companySettingsUpsert(
     feeRatePercent?: number | null;
     /** 수수료 청구 방식 — `EVEN_12`(균등÷12) | `ON_PAY_MONTH`(지급월만). */
     feeBillingMode?: import("@/types/models").FeeBillingMode;
+    /** 사복 금액 변동·요율 변경에 따른 「수수료 변경점」 배열 — null/빈 배열이면 단일 요율 사용. */
+    feeRateBreakpoints?: import("@/types/models").FeeRateBreakpoint[] | null;
   }
 ): Promise<void> {
   const existing = await companySettingsByTenant(tenantId);
@@ -944,8 +948,19 @@ export async function companySettingsUpsert(
     void _m;
     return rest;
   };
+  /** 「수수료 변경점」 컬럼 누락 환경 호환 — 변경점만 빼고 다른 키는 그대로 저장. */
+  const stripFeeRateBreakpoints = (payload: Record<string, unknown>): Record<string, unknown> => {
+    const { feeRateBreakpoints: _b, ...rest } = payload;
+    void _b;
+    return rest;
+  };
   const feeOptionMissing = (detailLower: string) =>
     (detailLower.includes("feeratepercent") || detailLower.includes("feebillingmode")) &&
+    (detailLower.includes("unknown") ||
+      detailLower.includes("invalid") ||
+      detailLower.includes("not found"));
+  const feeBreakpointsMissing = (detailLower: string) =>
+    detailLower.includes("feeratebreakpoints") &&
     (detailLower.includes("unknown") ||
       detailLower.includes("invalid") ||
       detailLower.includes("not found"));
@@ -996,6 +1011,14 @@ export async function companySettingsUpsert(
         );
         return;
       }
+      if (feeBreakpointsMissing(detailLower)) {
+        await pb.collection(C.companySettings).update(existing.id, stripFeeRateBreakpoints(dataWithLegacy));
+        console.warn(
+          "[pb] companySettingsUpsert(update): feeRateBreakpoints(json) 컬럼 누락으로 해당 필드를 빼고 저장했습니다. " +
+            "Admin → sabok_company_settings 에 json 필드를 추가하세요.",
+        );
+        return;
+      }
       throw e;
     }
     return;
@@ -1016,7 +1039,14 @@ export async function companySettingsUpsert(
       (detailLower.includes("unknown") || detailLower.includes("invalid") || detailLower.includes("not found"));
     const salaryVarianceMissing = salaryVarianceUnknownColumnIssue(detailLower);
     const feeMissing = feeOptionMissing(detailLower);
-    if (!legacyAccrualMissing && !incentiveColMissing && !salaryVarianceMissing && !feeMissing) {
+    const feeBpMissing = feeBreakpointsMissing(detailLower);
+    if (
+      !legacyAccrualMissing &&
+      !incentiveColMissing &&
+      !salaryVarianceMissing &&
+      !feeMissing &&
+      !feeBpMissing
+    ) {
       logPbClientError("companySettingsUpsert(create)", e);
       throw e;
     }
@@ -1026,6 +1056,7 @@ export async function companySettingsUpsert(
       if (incentiveColMissing) retryPayload = stripIncentiveRatio(retryPayload);
       if (salaryVarianceMissing) retryPayload = stripSalaryInclusionVarianceMode(retryPayload);
       if (feeMissing) retryPayload = stripFeeOptions(retryPayload);
+      if (feeBpMissing) retryPayload = stripFeeRateBreakpoints(retryPayload);
       await pb.collection(C.companySettings).create(retryPayload);
       if (incentiveColMissing) {
         console.warn(
@@ -1043,6 +1074,12 @@ export async function companySettingsUpsert(
         console.warn(
           "[pb] companySettingsUpsert(create): feeRatePercent / feeBillingMode 컬럼 누락으로 해당 필드를 빼고 생성했습니다. " +
             "`npm run pb:ensure-company-settings-schema` 로 number / text 필드를 추가하세요.",
+        );
+      }
+      if (feeBpMissing) {
+        console.warn(
+          "[pb] companySettingsUpsert(create): feeRateBreakpoints(json) 컬럼 누락으로 해당 필드를 빼고 생성했습니다. " +
+            "Admin → sabok_company_settings 에 json 필드를 추가하세요.",
         );
       }
     } catch (e2) {
@@ -1810,6 +1847,49 @@ export async function monthlyNoteUpsert(data: {
   } else {
     await pb.collection(C.monthlyEmployeeNotes).create(data);
   }
+}
+
+/**
+ * 「선택적 복지 금액」 한 셀(직원×월) 부분 업데이트 전용 함수.
+ *
+ * - `optionalExtraAmount` 만 덮어쓰고 다른 필드(메모/인센/오버라이드 등) 는 **절대 건드리지 않는다**.
+ * - amount=0 / null / 비유한 값은 모두 「해제(null)」 로 저장.
+ * - 노트가 없으면 새로 만들되 나머지 필드는 모두 null. amount=null 인데 노트도 없으면 no-op (불필요 row 생성 방지).
+ *
+ * 그리드 일괄 입력 시 셀 단위로 호출 — 동일 직원×월 페어가 중복 호출되지 않도록 호출 측이 dedup.
+ */
+export async function monthlyNoteUpsertOptionalExtra(data: {
+  employeeId: string;
+  year: number;
+  month: number;
+  amount: number | null;
+}): Promise<void> {
+  const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && month=${data.month}`;
+  const existing = await firstByFilterStrict(C.monthlyEmployeeNotes, f);
+  const pb = await getAdminPb();
+  const safe =
+    data.amount != null && Number.isFinite(data.amount) && data.amount > 0
+      ? Math.round(Number(data.amount))
+      : null;
+
+  if (existing?.id) {
+    await pb
+      .collection(C.monthlyEmployeeNotes)
+      .update(String(existing.id), { optionalExtraAmount: safe });
+    return;
+  }
+  /** 노트도 없고 amount 도 없으면 굳이 빈 row 만들지 않음. */
+  if (safe == null) return;
+
+  await pb.collection(C.monthlyEmployeeNotes).create({
+    employeeId: data.employeeId,
+    year: data.year,
+    month: data.month,
+    optionalWelfareText: null,
+    optionalExtraAmount: safe,
+    incentiveAccrualAmount: null,
+    incentiveWelfarePaymentAmount: null,
+  });
 }
 
 /**

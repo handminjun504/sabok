@@ -17,6 +17,8 @@
     "test:empty-month-notice": "tsx scripts/test-empty-month-notice.ts",
     "test:fee-billing": "tsx scripts/test-fee-billing.ts",
     "test:vendor-reserve": "tsx scripts/test-vendor-reserve.ts",
+    "test:optional-welfare-announcement": "tsx scripts/test-optional-welfare-announcement.ts",
+    "test:optional-welfare-grid": "tsx scripts/test-optional-welfare-grid.ts",
     "pb:seed": "tsx scripts/pb-seed.ts",
     "pb:create-user": "tsx scripts/pb-create-user.ts",
     "pb:fix-employees-schema": "node scripts/pb-fix-employees-schema.mjs",

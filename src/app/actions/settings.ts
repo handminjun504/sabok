@@ -44,6 +44,18 @@ const schema = z.object({
   feeRatePercent: z.number().min(0.1).max(100).nullable(),
   /** 수수료 청구 방식. */
   feeBillingMode: z.enum(["EVEN_12", "ON_PAY_MONTH"]),
+  /**
+   * 「수수료 변경점」 배열. 빈 배열이면 단일 요율 사용. fromMonth 는 2~12 만 허용 —
+   * 1월 항목은 폼이 별도로 보내지 않고 도메인에서 `feeRatePercent` 또는 디폴트로 자동 채워진다.
+   */
+  feeRateBreakpoints: z
+    .array(
+      z.object({
+        fromMonth: z.number().int().min(2).max(12),
+        ratePercent: z.number().min(0.1).max(100),
+      }),
+    )
+    .nullable(),
 });
 
 const QUARTERLY_ITEM_KEYS = [
@@ -140,6 +152,38 @@ function pickFeeBillingMode(formData: FormData): "EVEN_12" | "ON_PAY_MONTH" {
   return raw === "ON_PAY_MONTH" ? "ON_PAY_MONTH" : "EVEN_12";
 }
 
+/**
+ * 폼에서 「수수료 변경점」(`feeRateBreakpoint_${idx}_fromMonth/ratePercent`) 행들을 모아
+ * fromMonth 2~12, ratePercent 0.1~100 의 정상 값만 남기고 fromMonth 중복은 마지막 입력 유지.
+ * 결과가 비면 null 을 돌려 단일 요율 모드로 폴백.
+ */
+function pickFeeRateBreakpoints(formData: FormData): { fromMonth: number; ratePercent: number }[] | null {
+  const buckets = new Map<number, { fromMonth: number; ratePercent: number }>();
+  for (const [name, value] of formData.entries()) {
+    const m = name.match(/^feeRateBreakpoint_(\d+)_(fromMonth|ratePercent)$/);
+    if (!m) continue;
+    const idx = Number(m[1]);
+    if (!Number.isFinite(idx)) continue;
+    const cur = buckets.get(idx) ?? { fromMonth: 0, ratePercent: 0 };
+    if (m[2] === "fromMonth") {
+      cur.fromMonth = Math.round(Number(String(value).trim()));
+    } else {
+      const r = Number(String(value).trim());
+      cur.ratePercent = Number.isFinite(r) ? Math.round(r * 10) / 10 : 0;
+    }
+    buckets.set(idx, cur);
+  }
+  if (buckets.size === 0) return null;
+  const dedup = new Map<number, { fromMonth: number; ratePercent: number }>();
+  for (const [, v] of [...buckets.entries()].sort(([a], [b]) => a - b)) {
+    if (!Number.isFinite(v.fromMonth) || v.fromMonth < 2 || v.fromMonth > 12) continue;
+    if (!Number.isFinite(v.ratePercent) || v.ratePercent < 0.1 || v.ratePercent > 100) continue;
+    dedup.set(v.fromMonth, v);
+  }
+  if (dedup.size === 0) return null;
+  return [...dedup.values()].sort((a, b) => a.fromMonth - b.fromMonth);
+}
+
 function pickFixedEventMonths(formData: FormData): Record<string, number> | null {
   const out: Record<string, number> = {};
   for (const k of Object.keys(FIXED_EVENT_DEFAULTS) as (keyof typeof FIXED_EVENT_DEFAULTS)[]) {
@@ -177,6 +221,7 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     incentiveNetRatioPercent: pickIncentiveNetRatioPercent(formData),
     feeRatePercent: pickFeeRatePercent(formData),
     feeBillingMode: pickFeeBillingMode(formData),
+    feeRateBreakpoints: pickFeeRateBreakpoints(formData),
   });
   if (!parsed.success) {
     return { 오류: parsed.error.errors.map((e) => e.message).join(", ") };

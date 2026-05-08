@@ -163,6 +163,7 @@ if (fs.existsSync(snapPath)) {
     incentiveNetRatioPercent: null,
     feeRatePercent: null,
     feeBillingMode: "EVEN_12",
+    feeRateBreakpoints: null,
   };
   const lines = fs.readFileSync(snapPath, "utf8").split(/\r?\n/).filter((l) => l.length > 0);
   const headerRow = lines[2]?.split(",").map((c) => c.trim()) ?? [];

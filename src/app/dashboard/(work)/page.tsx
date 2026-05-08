@@ -74,8 +74,10 @@ export default async function DashboardHomePage() {
   const clientEntityType = tenant?.clientEntityType ?? "INDIVIDUAL";
   const feeRate = resolveFeeRate(settings?.feeRatePercent ?? null, clientEntityType);
   const feeMode = settings?.feeBillingMode ?? "EVEN_12";
-  const feeA = computeFeeBilling(totals.baseAWithOptionalByMonth, feeRate, feeMode);
-  const feeB = computeFeeBilling(totals.baseBScheduleOnlyByMonth, feeRate, feeMode);
+  /** 수수료 변경점 — 비어 있으면 단일 요율(기존 동작과 동일). */
+  const feeBreakpoints = settings?.feeRateBreakpoints ?? null;
+  const feeA = computeFeeBilling(totals.baseAOptionalOnlyByMonth, feeRate, feeMode, feeBreakpoints);
+  const feeB = computeFeeBilling(totals.baseBScheduleOnlyByMonth, feeRate, feeMode, feeBreakpoints);
   /** 「현재 달 청구」 — 활성 연도와 시스템 시계의 연도가 같을 때만 의미가 있다. 다르면 1월(인덱스 0). */
   const currentMonthIdx = (() => {
     const now = new Date();
@@ -84,7 +86,20 @@ export default async function DashboardHomePage() {
   })();
   const feeAThisMonth = feeA.monthlyFees[currentMonthIdx] ?? 0;
   const feeBThisMonth = feeB.monthlyFees[currentMonthIdx] ?? 0;
+  const feeAThisMonthVat = feeA.monthlyFeesWithVat[currentMonthIdx] ?? 0;
+  const feeBThisMonthVat = feeB.monthlyFeesWithVat[currentMonthIdx] ?? 0;
   const feeBillingLabel = feeBillingModeLabel(feeMode);
+  /**
+   * 「10.0%」 또는 「10% → 7월부터 8%」 형태의 짧은 라벨.
+   * segments 가 1개면 단일 요율, 2개 이상이면 변경점 시점·요율을 화살표로 잇는다.
+   */
+  const formatRateLabel = (segs: typeof feeA.segments): string => {
+    if (segs.length <= 1) return `${segs[0]?.ratePercent ?? feeRate}%`;
+    return segs
+      .map((s, i) => (i === 0 ? `${s.ratePercent}%` : `${s.fromMonth}월부터 ${s.ratePercent}%`))
+      .join(" → ");
+  };
+  const feeRateLabel = formatRateLabel(feeA.segments);
 
   const reserveSummary = tenant
     ? summarizeTenantAdditionalReserve(
@@ -200,14 +215,22 @@ export default async function DashboardHomePage() {
           </Link>
 
           <Link href="/dashboard/settings" className="kpi-card group">
-            <p className="kpi-card-label">수수료 A · 선택적복지 포함</p>
+            <p className="kpi-card-label">수수료 A · 선택적복지만</p>
             <p className="kpi-card-value">
               <span className="tabular-nums">{fmtWon(feeA.annualFee)}</span>
               <span className="kpi-card-suffix">원/년</span>
             </p>
-            <div className="kpi-card-foot">
+            <p className="mt-0.5 text-xs text-[var(--muted)]">
+              VAT {feeA.vatRatePercent}% 포함{" "}
+              <span className="tabular-nums font-semibold text-[var(--text)]">
+                {fmtWon(feeA.annualFeeWithVat)}
+              </span>
+              원/년
+            </p>
+            <div className="kpi-card-foot flex-wrap">
               <span>
-                {feeBillingLabel} · {feeRate}% · 이번 달 {fmtWon(feeAThisMonth)}원
+                {feeBillingLabel} · {feeRateLabel} · 이번 달 {fmtWon(feeAThisMonth)}원
+                <span className="text-[var(--muted)]"> / VAT 포함 {fmtWon(feeAThisMonthVat)}원</span>
               </span>
               <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
                 설정 →
@@ -221,9 +244,17 @@ export default async function DashboardHomePage() {
               <span className="tabular-nums">{fmtWon(feeB.annualFee)}</span>
               <span className="kpi-card-suffix">원/년</span>
             </p>
-            <div className="kpi-card-foot">
+            <p className="mt-0.5 text-xs text-[var(--muted)]">
+              VAT {feeB.vatRatePercent}% 포함{" "}
+              <span className="tabular-nums font-semibold text-[var(--text)]">
+                {fmtWon(feeB.annualFeeWithVat)}
+              </span>
+              원/년
+            </p>
+            <div className="kpi-card-foot flex-wrap">
               <span>
-                {feeBillingLabel} · {feeRate}% · 이번 달 {fmtWon(feeBThisMonth)}원
+                {feeBillingLabel} · {feeRateLabel} · 이번 달 {fmtWon(feeBThisMonth)}원
+                <span className="text-[var(--muted)]"> / VAT 포함 {fmtWon(feeBThisMonthVat)}원</span>
               </span>
               <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
                 설정 →
@@ -232,22 +263,40 @@ export default async function DashboardHomePage() {
           </Link>
         </div>
 
-        {/* 월별 청구액 미니 표 — 균등/지급월 모드별 1~12월 한 줄 비교 */}
+        {/* 월별 청구액 미니 표 — 각 수수료마다 「공급가 / VAT 10% 포함」 두 줄로 비교 */}
         <div className="surface mt-4 overflow-x-auto p-3">
+          {feeA.segments.length > 1 ? (
+            <p className="mb-2 text-[0.7rem] text-[var(--muted)]">
+              구간별 요율: <span className="text-[var(--text)]">{feeRateLabel}</span>
+              {" — "}
+              EVEN_12 모드는 각 구간을 「구간 base × 구간 요율 ÷ 구간 개월」 로 균등 분배(rolling).
+            </p>
+          ) : null}
           <table className="min-w-max border-collapse text-xs">
             <thead>
               <tr className="border-b border-[var(--border)] bg-[var(--surface-sunken)]">
                 <th className="px-2 py-2 text-left text-[var(--muted)]">청구 월</th>
-                {KOREAN_MONTHS.map((m) => (
-                  <th key={m} className="px-2 py-2 text-right tabular-nums text-[var(--muted)]">
-                    {m}월
-                  </th>
-                ))}
+                {KOREAN_MONTHS.map((m) => {
+                  /** 변경점이 있는 첫 달은 헤더에 시각 단서 — 작은 점 표시. */
+                  const isBp = feeA.segments.length > 1 && feeA.segments.some((s) => s.fromMonth === m && m !== 1);
+                  return (
+                    <th
+                      key={m}
+                      className={
+                        "px-2 py-2 text-right tabular-nums text-[var(--muted)]" +
+                        (isBp ? " border-l border-[var(--accent)]/40" : "")
+                      }
+                      title={isBp ? `요율 변경점 (${m}월부터)` : undefined}
+                    >
+                      {m}월{isBp ? <span className="ml-0.5 text-[var(--accent)]" aria-hidden>•</span> : null}
+                    </th>
+                  );
+                })}
                 <th className="px-2 py-2 text-right text-[var(--muted)]">연 합계</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-[var(--border)]/60">
+              <tr>
                 <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-[var(--text)]">
                   수수료 A
                 </td>
@@ -258,6 +307,19 @@ export default async function DashboardHomePage() {
                 ))}
                 <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[var(--accent)]">
                   {fmtWon(feeA.annualFee)}
+                </td>
+              </tr>
+              <tr className="border-b border-[var(--border)]/60 text-[var(--muted)]">
+                <td className="px-2 py-1.5 whitespace-nowrap pl-4 text-[10px]">
+                  ㄴ VAT {feeA.vatRatePercent}% 포함
+                </td>
+                {KOREAN_MONTHS.map((m) => (
+                  <td key={m} className="px-2 py-1.5 text-right tabular-nums">
+                    {fmtWon(feeA.monthlyFeesWithVat[m - 1] ?? 0)}
+                  </td>
+                ))}
+                <td className="px-2 py-1.5 text-right font-semibold tabular-nums">
+                  {fmtWon(feeA.annualFeeWithVat)}
                 </td>
               </tr>
               <tr>
@@ -271,6 +333,19 @@ export default async function DashboardHomePage() {
                 ))}
                 <td className="px-2 py-1.5 text-right font-bold tabular-nums text-[var(--accent)]">
                   {fmtWon(feeB.annualFee)}
+                </td>
+              </tr>
+              <tr className="text-[var(--muted)]">
+                <td className="px-2 py-1.5 whitespace-nowrap pl-4 text-[10px]">
+                  ㄴ VAT {feeB.vatRatePercent}% 포함
+                </td>
+                {KOREAN_MONTHS.map((m) => (
+                  <td key={m} className="px-2 py-1.5 text-right tabular-nums">
+                    {fmtWon(feeB.monthlyFeesWithVat[m - 1] ?? 0)}
+                  </td>
+                ))}
+                <td className="px-2 py-1.5 text-right font-semibold tabular-nums">
+                  {fmtWon(feeB.annualFeeWithVat)}
                 </td>
               </tr>
             </tbody>
