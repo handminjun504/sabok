@@ -7,8 +7,6 @@ import { canEditCompanySettings } from "@/lib/permissions";
 import { CollapsibleEditorPanel } from "@/components/CollapsibleEditorPanel";
 import { CompanySettingsForm } from "@/components/CompanySettingsForm";
 import { DashboardTenantProfileForm } from "@/components/DashboardTenantProfileForm";
-import { TenantReserveBalanceForm } from "@/components/TenantReserveBalanceForm";
-import { TenantWorkerLoanBalanceForm } from "@/components/TenantWorkerLoanBalanceForm";
 import { SALARY_INCLUSION_VARIANCE_MODES } from "@/lib/domain/salary-inclusion-display";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert } from "@/components/ui/Alert";
@@ -120,23 +118,6 @@ export default async function SettingsPage() {
     <p className="text-sm text-[var(--muted)]">거래처 정보를 불러올 수 없습니다.</p>
   );
 
-  const reserveTab = tenant ? (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <TenantReserveBalanceForm
-        tenant={tenant}
-        defaultYear={activeYear}
-        defaultMonth={new Date().getMonth() + 1}
-      />
-      <TenantWorkerLoanBalanceForm
-        tenant={tenant}
-        defaultYear={activeYear}
-        defaultMonth={new Date().getMonth() + 1}
-      />
-    </div>
-  ) : (
-    <p className="text-sm text-[var(--muted)]">거래처 정보를 불러올 수 없습니다.</p>
-  );
-
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <PageHeader
@@ -154,7 +135,6 @@ export default async function SettingsPage() {
         tabs={[
           { label: "전사 설정", content: companySettingsTab },
           { label: "거래처 프로필", content: tenantProfileTab },
-          { label: "적립금 · 대부금", content: reserveTab },
         ]}
       />
     </div>

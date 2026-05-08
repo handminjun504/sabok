@@ -15,7 +15,10 @@ import {
   levelPaymentRuleList,
   quarterlyEmployeeConfigListByTenantYear,
   quarterlyRateList,
+  tenantGetById,
 } from "@/lib/pb/repository";
+import { TenantReserveBalanceForm } from "@/components/TenantReserveBalanceForm";
+import { TenantWorkerLoanBalanceForm } from "@/components/TenantWorkerLoanBalanceForm";
 import { welfareEligibleEmployees } from "@/lib/domain/schedule";
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
 import { requireTenantContext } from "@/lib/tenant-context";
@@ -62,10 +65,11 @@ export default async function PaymentRulesPage() {
   const settings = await companySettingsByTenant(tenantId);
   const year = settings?.activeYear ?? new Date().getFullYear();
 
-  const [rules, rates, allEmployees] = await Promise.all([
+  const [rules, rates, allEmployees, tenant] = await Promise.all([
     levelPaymentRuleList(tenantId, year),
     quarterlyRateList(tenantId, year),
     employeeListByTenantCodeAsc(tenantId),
+    tenantGetById(tenantId),
   ]);
   /** 레벨 규칙·분기 화면도 사복 계산 화면이라 미대상자는 노출하지 않는다(직원 명부에서만 보임). */
   const employees = welfareEligibleEmployees(allEmployees);
@@ -401,6 +405,27 @@ export default async function PaymentRulesPage() {
     </div>
   );
 
+  /**
+   * 「적립금 · 대부금」 탭 — 자본금 50% 한도 트랙은 지급 규칙과 같은 기준 연도 컨텍스트에서 운용된다.
+   * 두 폼은 합산 정책(적립 + 대부 ≥ 한도 = 완료) 으로 함께 본다 — 세로 한 줄 또는 좁은 화면에서 1열 자동.
+   */
+  const reserveLoanTab = tenant ? (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <TenantReserveBalanceForm
+        tenant={tenant}
+        defaultYear={year}
+        defaultMonth={new Date().getMonth() + 1}
+      />
+      <TenantWorkerLoanBalanceForm
+        tenant={tenant}
+        defaultYear={year}
+        defaultMonth={new Date().getMonth() + 1}
+      />
+    </div>
+  ) : (
+    <p className="text-sm text-[var(--muted)]">거래처 정보를 불러올 수 없습니다.</p>
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -419,6 +444,7 @@ export default async function PaymentRulesPage() {
           { label: "정기 지급 · 분기 요율", content: levelTab },
           { label: "분기 체크", content: quarterlyBulkTab },
           { label: "분기 개별", content: quarterlyEmployeeTab },
+          { label: "적립금 · 대부금", content: reserveLoanTab },
         ]}
       />
     </div>
