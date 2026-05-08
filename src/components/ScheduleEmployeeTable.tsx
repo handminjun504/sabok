@@ -266,7 +266,12 @@ export function ScheduleEmployeeTable({
                   </th>
                 );
               })}
-              <th className="dash-table-th-md text-right">{year}년 합계</th>
+              <th className="dash-table-th-md text-right">
+                <div className="flex flex-col items-end leading-tight">
+                  <span>{year}년 정기·분기</span>
+                  <span className="text-[0.65rem] font-normal text-[var(--muted)]">선택적복지 제외</span>
+                </div>
+              </th>
               <th className="dash-table-th-md w-20 text-center">편집</th>
             </tr>
           </thead>
@@ -361,19 +366,29 @@ export function ScheduleEmployeeTable({
                         );
                       })}
                       <td className="px-2 py-2.5 text-right tabular-nums">
-                        <div className="flex flex-col items-end leading-tight">
-                          <span className="text-sm font-bold text-[var(--accent)]">
-                            {fmt(r.yearlyWelfare)}
-                          </span>
-                          {r.optionalYearlyWelfare != null && r.optionalYearlyWelfare > 0 ? (
-                            <span
-                              className="mt-0.5 text-[0.65rem] font-medium text-[var(--muted)]"
-                              title={`${year}년 선택적복지 합계 — 합계 ${fmt(r.yearlyWelfare)}원 중 선택적복지 ${fmt(r.optionalYearlyWelfare)}원`}
+                        {(() => {
+                          /**
+                           * 위(굵음) = 정기·분기 합 (= yearlyWelfare − 선택적복지). 헤더와 정합.
+                           * 아래(작음) = 선택적복지 단독 합. 음수 보호(잘못된 데이터 안전망) 포함.
+                           */
+                          const optional = r.optionalYearlyWelfare ?? 0;
+                          const scheduledOnly = Math.max(0, r.yearlyWelfare - optional);
+                          return (
+                            <div
+                              className="flex flex-col items-end leading-tight"
+                              title={`${year}년 전체 기금 사용 = 정기·분기 ${fmt(scheduledOnly)}원 + 선택적복지 ${fmt(optional)}원 = ${fmt(r.yearlyWelfare)}원`}
                             >
-                              ㄴ선택 {fmt(r.optionalYearlyWelfare)}
-                            </span>
-                          ) : null}
-                        </div>
+                              <span className="text-sm font-bold text-[var(--accent)]">
+                                {fmt(scheduledOnly)}
+                              </span>
+                              {optional > 0 ? (
+                                <span className="mt-0.5 text-[0.65rem] font-medium text-[var(--muted)]">
+                                  ㄴ선택 {fmt(optional)}
+                                </span>
+                              ) : null}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="text-center">
                         <div className="flex flex-col items-center gap-0.5">
