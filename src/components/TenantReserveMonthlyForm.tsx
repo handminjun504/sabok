@@ -102,36 +102,28 @@ export function TenantReserveMonthlyForm({
 
   return (
     <section className="surface-prominent dash-panel-pad" aria-labelledby="reserve-monthly-heading">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 id="reserve-monthly-heading" className="text-sm font-bold text-[var(--text)]">
-            적립금 월별 입력 — {activeYear}년
-          </h2>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            {editing
-              ? "1~12월 칸에 그달의 적립 금액을 입력한 뒤 저장하세요. 다른 연도 입력값은 그대로 유지됩니다."
-              : "수정하기를 누른 뒤에만 편집할 수 있습니다."}
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="reserve-monthly-heading" className="text-sm font-bold text-[var(--text)]">
+          적립금 — {activeYear}년
+        </h2>
         {!editing ? (
           <button type="button" className="btn btn-primary shrink-0" onClick={() => setEditing(true)}>
-            수정하기
+            수정
           </button>
         ) : null}
       </div>
 
-      {/* 진행도 카드 */}
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2.5">
           <p className="dash-eyebrow">{activeYear}년 합계</p>
           <p className="mt-1 font-bold tabular-nums text-[var(--text)]">{fmt(sumYear)}원</p>
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2.5">
-          <p className="dash-eyebrow">누적 (이전 연도 + 호환값 포함)</p>
+          <p className="dash-eyebrow">누적</p>
           <p className="mt-1 font-bold tabular-nums text-[var(--accent)]">{fmt(accumulated)}원</p>
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-sunken)] px-3 py-2.5">
-          <p className="dash-eyebrow">자본금 50% 한도</p>
+          <p className="dash-eyebrow">한도 (자본금 50%)</p>
           {isCorporate ? (
             cannotAssess ? (
               <p className="mt-1 font-bold tabular-nums text-[var(--warn)]">자본금 미입력</p>
@@ -139,7 +131,7 @@ export function TenantReserveMonthlyForm({
               <p className="mt-1 font-bold tabular-nums text-[var(--text)]">{fmt(capWon!)}원</p>
             )
           ) : (
-            <p className="mt-1 text-xs text-[var(--muted)]">개인사업자 — 한도 없음</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">개인 · 한도 없음</p>
           )}
         </div>
       </div>
@@ -171,7 +163,7 @@ export function TenantReserveMonthlyForm({
           </div>
           {isComplete ? (
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--success-soft,#dcfce7)] px-2.5 py-1 text-xs font-semibold text-[var(--success,#166534)]">
-              ● 자본금 50% 한도 도달 — 추가 적립 종료
+              ● 한도 도달
             </p>
           ) : null}
         </div>
@@ -188,16 +180,15 @@ export function TenantReserveMonthlyForm({
 
         {editing ? (
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="text-[10px] uppercase tracking-wider text-[var(--muted)]">균등 배분</span>
             <button
               type="button"
               className="btn btn-ghost text-xs"
               onClick={() => applyEvenly(sumYear > 0 ? sumYear : 12_000_000)}
             >
-              합계 ÷ 12 적용 (잔차는 12월)
+              ÷ 12 균등
             </button>
             <button type="button" className="btn btn-ghost text-xs" onClick={() => setMonthly(Array(12).fill(0))}>
-              모두 0 으로 비우기
+              모두 0
             </button>
           </div>
         ) : null}

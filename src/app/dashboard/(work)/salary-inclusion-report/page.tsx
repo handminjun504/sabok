@@ -112,7 +112,6 @@ export default async function SalaryInclusionReportPage({
       <PageHeader
         eyebrow={`급여포함신고 · ${year}`}
         title="급여포함신고"
-        description="기금 실적이 사복 한도를 넘는 직원은 초과분이 급여로 포함됩니다 — 누적 지급월까지의 결과를 표시합니다."
         meta={
           <>
             <span className="trust-pill">기준 연도 {year}</span>
@@ -123,15 +122,7 @@ export default async function SalaryInclusionReportPage({
       />
 
       <section className="surface dash-panel-pad" aria-label="누적 지급월 선택">
-        <div className="flex items-baseline justify-between gap-3 mb-3">
-          <h2 className="section-title">누적 지급월</h2>
-          <p className="text-xs text-[var(--muted)]">
-            전사 기본은{" "}
-            <Link href="/dashboard/settings" className="text-[var(--accent)] hover:underline">설정</Link>
-            , 직원별 덮어쓰기는{" "}
-            <Link href="/dashboard/employees" className="text-[var(--accent)] hover:underline">직원</Link>에서.
-          </p>
-        </div>
+        <h2 className="section-title mb-3">누적 지급월</h2>
         <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6 md:grid-cols-12">
           {MONTH_LINKS.map((m) => {
             const active = throughMonth === m;

@@ -59,7 +59,6 @@ export default async function DashboardHomePage() {
       <PageHeader
         eyebrow={`업무 홈 · ${year}`}
         title="복지기금 운영 현황"
-        description="기준 연도와 핵심 지표를 한 눈에 확인하고, 자주 쓰는 화면으로 바로 이동하세요."
         meta={
           <>
             <span className="trust-pill">기준 연도 {year}</span>
@@ -96,7 +95,7 @@ export default async function DashboardHomePage() {
             <p className="kpi-card-label">기준 연도</p>
             <p className="kpi-card-value">{year}<span className="kpi-card-suffix">년</span></p>
             <div className="kpi-card-foot">
-              <span>지급 규칙·요율 적용 연도</span>
+              <span />
               <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
                 규칙 →
               </span>
@@ -110,7 +109,7 @@ export default async function DashboardHomePage() {
               <span className="kpi-card-suffix">월</span>
             </p>
             <div className="kpi-card-foot">
-              <span>정기 지급·스케줄 기준</span>
+              <span />
               <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
                 설정 →
               </span>
@@ -121,12 +120,7 @@ export default async function DashboardHomePage() {
 
       {/* 빠른 가기 ─ 카드 + 아이콘 */}
       <section aria-labelledby="quick-links">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <h2 id="quick-links" className="section-title">바로 가기</h2>
-            <p className="section-sub">자주 쓰는 화면 — 좌측 메뉴와 동일한 경로입니다.</p>
-          </div>
-        </div>
+        <h2 id="quick-links" className="section-title mb-3">바로 가기</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {quickLinks.map((q) => (
             <Link key={q.href} href={q.href} className="quick-tile">
@@ -146,23 +140,13 @@ export default async function DashboardHomePage() {
       {/* 적립 현황 + 연도 전환 ─ 2열 (관리자), 일반은 1열 */}
       <section className={canEdit ? "grid gap-6 lg:grid-cols-[1fr_minmax(20rem,24rem)]" : ""}>
         <div>
-          <div className="mb-3">
-            <h2 className="section-title">추가 적립 현황</h2>
-            <p className="section-sub">
-              {tenant?.clientEntityType === "CORPORATE"
-                ? "법인 자본금의 50% 한도까지 누적된 추가 적립 진행도를 표시합니다."
-                : "출연처별 추가 적립 누적을 표시합니다."}
-            </p>
-          </div>
+          <h2 className="section-title mb-3">추가 적립 현황</h2>
           <DashboardReserveStatusPanel summary={reserveSummary} />
         </div>
 
         {canEdit ? (
           <div>
-            <div className="mb-3">
-              <h2 className="section-title">연도 전환</h2>
-              <p className="section-sub">새 회계연도로 넘어갈 때 사용합니다 — 이전 데이터 복사 옵션 포함.</p>
-            </div>
+            <h2 className="section-title mb-3">연도 전환</h2>
             <YearSwitchPanel currentYear={year} canEdit={canEdit} />
           </div>
         ) : null}

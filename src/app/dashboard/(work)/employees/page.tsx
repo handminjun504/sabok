@@ -47,7 +47,6 @@ export default async function EmployeesPage() {
       <PageHeader
         eyebrow={`직원 · ${activeYear}`}
         title="직원 정보"
-        description={`<${yy}년 사복 진행 조사표> · 창립월 ${foundingMonth}월 · 기준 연도 ${activeYear}년`}
         actions={
           <>
             <EmployeeCsvExportButton />
@@ -63,7 +62,8 @@ export default async function EmployeesPage() {
         }
         meta={
           <>
-            <span className="trust-pill">CODE 순</span>
+            <span className="trust-pill">{yy}년 사복 진행 조사표</span>
+            <span className="trust-pill">창립월 {foundingMonth}월</span>
             <span className="trust-pill">{list.length}명</span>
           </>
         }
@@ -73,7 +73,6 @@ export default async function EmployeesPage() {
         {list.length === 0 ? (
           <EmptyState
             title="등록된 직원이 없습니다."
-            description="우측 상단의 ‘직원 추가’ 또는 CSV 가져오기로 시작하세요."
             icon="👥"
             action={
               canEditEmployees(role) ? (

@@ -76,8 +76,7 @@ export default async function SettingsPage() {
       {canEdit ? (
         <CollapsibleEditorPanel
           title="전사 설정"
-          description="창립월·급여일·기준 연도·정기 지급 월·급여포함신고 표시"
-          triggerLabel="설정 수정하기"
+          triggerLabel="수정"
           defaultOpen={false}
           summary={
             <p className="text-sm text-[var(--text)]">
@@ -139,7 +138,6 @@ export default async function SettingsPage() {
       <PageHeader
         eyebrow={`설정 · ${activeYear}`}
         title="전사 설정"
-        description="기금 운영 방식·창립월·기준 연도·거래처 프로필·적립금을 한 곳에서 관리합니다."
         meta={
           <>
             <span className="trust-pill">기준 연도 {activeYear}</span>

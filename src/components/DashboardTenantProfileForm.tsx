@@ -65,20 +65,13 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
 
   return (
     <section className="surface-prominent dash-panel-pad" aria-labelledby="tenant-reg-info">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 id="tenant-reg-info" className="text-sm font-bold text-[var(--text)]">
-            거래처 등록 정보
-          </h2>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            {editing
-              ? "변경 후 저장하세요. 취소하면 수정 전 내용으로 돌아갑니다."
-              : "수정하기를 누른 뒤에만 편집할 수 있습니다."}
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="tenant-reg-info" className="text-sm font-bold text-[var(--text)]">
+          거래처 등록 정보
+        </h2>
         {!editing ? (
           <button type="button" className="btn btn-primary shrink-0" onClick={() => setEditing(true)}>
-            수정하기
+            수정
           </button>
         ) : null}
       </div>
@@ -123,10 +116,6 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
           </div>
         </div>
 
-        <p className="text-xs text-[var(--muted)]">
-          운영상황 보고서 ①~⑪ 칸은 이곳 값을 그대로 불러와 사용합니다.
-        </p>
-
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label className="dash-eyebrow mb-1 block">
@@ -147,7 +136,6 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
             <div className="input w-full cursor-default border-[var(--border)] bg-[var(--surface-hover)] py-[0.3rem] font-mono text-xs text-[var(--text)]">
               {tenant.code}
             </div>
-            <p className="mt-1 text-[10px] text-[var(--muted)]">코드는 변경할 수 없습니다.</p>
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
             <span className="dash-eyebrow mb-1 block">
@@ -209,9 +197,6 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
               className="input w-full text-xs"
               disabled={fieldsLocked}
             />
-            <p className="mt-1 text-[10px] leading-4 text-[var(--muted)]">
-              자본금의 50% 초과분(㉛)을 자동 산출합니다.
-            </p>
           </div>
           <div>
             <label className="dash-eyebrow mb-1 block">③ 설립등기일</label>
@@ -254,11 +239,8 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
               className="input w-full text-xs"
               defaultValue={tenant.accountingYearStartMonth ?? ""}
               disabled={fieldsLocked}
-              placeholder="예: 1"
+              placeholder="기본 1"
             />
-            <p className="mt-1 text-[10px] leading-4 text-[var(--muted)]">
-              비어 있으면 1월 시작(1.1~12.31)로 간주합니다.
-            </p>
           </div>
           <div>
             <label className="dash-eyebrow mb-1 block">⑦ 대표자</label>
@@ -267,7 +249,7 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
               className="input w-full text-xs"
               defaultValue={tenant.ceoName ?? ""}
               disabled={fieldsLocked}
-              placeholder="비워 두면 position=대표이사 직원을 자동 사용"
+              placeholder="비워두면 대표이사 직원 자동"
               autoComplete="off"
             />
           </div>

@@ -406,7 +406,6 @@ export default async function PaymentRulesPage() {
       <PageHeader
         eyebrow={`지급 규칙 · ${year}`}
         title="지급 규칙"
-        description="레벨별 정기 지급 금액·분기 지원 요율·분기 대상자까지 한 페이지에서 관리합니다."
         meta={
           <>
             <span className="trust-pill">기준 연도 {year}</span>

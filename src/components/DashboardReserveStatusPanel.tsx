@@ -8,27 +8,13 @@ export function DashboardReserveStatusPanel({ summary }: { summary: TenantAdditi
   if (summary.kind === "NO_VENDORS") {
     return (
       <section className="surface-prominent dash-panel-pad" aria-labelledby="reserve-status-heading">
-        <div className="flex items-start gap-3">
-          <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--accent)]"
-            style={{ background: "var(--accent-soft)" }}
-            aria-hidden
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 8v4l2.5 2.5" />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <h2 id="reserve-status-heading" className="text-sm font-bold text-[var(--text)]">
-              적립금 미입력
-            </h2>
-            <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
-              법인은 사업주가 기금에 출연할 때 지출액의{" "}
-              <strong className="text-[var(--text)]">20%를 추가로 적립</strong>해야 하며, 자본금의 50%에 도달하면 추가 적립이 끝납니다.
-              <strong className="text-[var(--text)]"> 설정 ▸ 적립금</strong> 탭에서 1~12월 적립금을 입력하면 여기서 진행 현황을 볼 수 있습니다.
-            </p>
-          </div>
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="reserve-status-heading" className="text-sm font-bold text-[var(--text)]">
+            적립금 미입력
+          </h2>
+          <span className="text-xs text-[var(--muted)]">
+            <strong className="text-[var(--text)]">설정 ▸ 적립금</strong>에서 입력
+          </span>
         </div>
       </section>
     );
@@ -39,21 +25,15 @@ export function DashboardReserveStatusPanel({ summary }: { summary: TenantAdditi
       <section className="surface-prominent dash-panel-pad" aria-labelledby="reserve-status-heading">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="reserve-status-heading" className="text-sm font-bold text-[var(--text)]">
-            추가 적립(출연) 누적
+            추가 적립 누적
           </h2>
-          <span className="badge badge-accent">개인 — 항상 +20% 적립</span>
+          <span className="badge badge-accent">개인 · 한도 없음</span>
         </div>
-        <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-          개인사업자는 출연 시{" "}
-          <strong className="text-[var(--text)]">항상 지출액의 20%가 추가 적립</strong>됩니다. 법인처럼 자본금 50%
-          누적 한도가 없어 누적만 표시합니다.
-        </p>
         <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-sunken)] px-4 py-4">
-          <p className="dash-eyebrow">누적 추가 적립</p>
+          <p className="dash-eyebrow">누적</p>
           <p className="mt-1.5 text-3xl font-extrabold tabular-nums tracking-tight text-[var(--accent)]">
             {fmt(summary.accumulatedTotalWon)}<span className="ml-1 text-base font-bold text-[var(--muted)]">원</span>
           </p>
-          <p className="mt-1 text-xs text-[var(--muted)]">활성 출연처 {summary.activeVendorCount}곳 합산</p>
         </div>
       </section>
     );
@@ -122,9 +102,7 @@ export function DashboardReserveStatusPanel({ summary }: { summary: TenantAdditi
       </dl>
 
       {summary.cannotAssess ? (
-        <p className="mt-3 text-xs text-[var(--warn)]">
-          본사 자본금(거래처 등록 정보) 또는 출연처 사업장 자본금이 없어 50% 한도를 계산할 수 없습니다. 값을 넣으면 적립 완료 여부를 표시합니다.
-        </p>
+        <p className="mt-3 text-xs text-[var(--warn)]">자본금 미입력 — 한도 계산 불가</p>
       ) : null}
     </section>
   );

@@ -36,7 +36,6 @@ export default async function NewEmployeePage() {
       <PageHeader
         eyebrow={`직원 추가 · ${activeYear}`}
         title="직원 추가"
-        description="기본정보·급여·복지·일정·가족까지 한 화면에서 입력합니다."
         actions={
           <Link href="/dashboard/employees" className="btn btn-outline text-sm">
             ← 직원 목록

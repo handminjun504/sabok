@@ -96,11 +96,17 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
       <PageHeader
         eyebrow="직원 상세"
         title={emp.name}
-        description={`${emp.position || "—"} · 사번 ${emp.employeeCode} · Lv.${emp.level}`}
         actions={
           <Link href="/dashboard/employees" className="btn btn-outline text-sm">
             ← 직원 목록
           </Link>
+        }
+        meta={
+          <>
+            <span className="trust-pill">사번 {emp.employeeCode}</span>
+            <span className="trust-pill">Lv.{emp.level}</span>
+            {emp.position ? <span className="trust-pill">{emp.position}</span> : null}
+          </>
         }
       />
 
@@ -124,10 +130,8 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
       {emp.level === 5 && canEditLevelRules(role) && (
         <CollapsibleEditorPanel
           title="레벨 5 · 이벤트별 금액 오버라이드"
-          description="직원별 금액이 레벨 공통보다 우선합니다. 셀에 입력하면 자동 저장되고, 0/빈값이면 공통 금액이 다시 적용됩니다."
-          triggerLabel="오버라이드 열기"
+          triggerLabel="열기"
           defaultOpen={false}
-          summary={<p className="text-sm text-[var(--muted)]">행사별 금액을 표에서 바로 입력·자동 저장합니다.</p>}
         >
           <OverrideMatrix employeeId={emp.id} tenantId={tenantId} year={year} />
         </CollapsibleEditorPanel>

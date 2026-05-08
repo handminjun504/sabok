@@ -234,7 +234,6 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
       <PageHeader
         eyebrow={`운영 보고 · ${year}`}
         title="운영상황 보고"
-        description="회계연도별 핵심 요약과 법인 적립 진행을 확인하고, 보고용 데이터를 입력하세요."
         actions={
           <form className="flex items-center gap-2" method="get">
             <label className="text-xs text-[var(--muted)]">연도</label>
@@ -255,30 +254,18 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
           <div className="kpi-card">
             <p className="kpi-card-label">사복 대상 직원</p>
             <p className="kpi-card-value">{summary.employeeCount}<span className="kpi-card-suffix">명</span></p>
-            <div className="kpi-card-foot">
-              <span className="truncate">{tenant?.name ?? "—"}</span>
-            </div>
           </div>
           <div className="kpi-card">
             <p className="kpi-card-label">연간 기금 지급</p>
             <p className="kpi-card-value text-[var(--accent)]">{format(summary.totalYearlyWelfare)}<span className="kpi-card-suffix">원</span></p>
-            <div className="kpi-card-foot">
-              <span>{view.basic.accountingYearLabel}</span>
-            </div>
           </div>
           <div className="kpi-card">
-            <p className="kpi-card-label">사업주 출연 (자동)</p>
+            <p className="kpi-card-label">사업주 출연</p>
             <p className="kpi-card-value">{format(employerTotal)}<span className="kpi-card-suffix">원</span></p>
-            <div className="kpi-card-foot">
-              <span>거래처 출연 합산</span>
-            </div>
           </div>
           <div className="kpi-card">
-            <p className="kpi-card-label">사업주 외 출연 (자동)</p>
+            <p className="kpi-card-label">그 외 출연</p>
             <p className="kpi-card-value">{format(otherTotal)}<span className="kpi-card-suffix">원</span></p>
-            <div className="kpi-card-foot">
-              <span>비사업주 거래처</span>
-            </div>
           </div>
         </div>
       </section>
@@ -345,10 +332,12 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
         </section>
       ) : reserveSummary.kind === "NO_VENDORS" && tenant?.clientEntityType === "CORPORATE" ? (
         <section className="surface dash-panel-pad">
-          <h2 className="section-title">법인 자본금 50% 한도</h2>
-          <p className="mt-2 text-xs text-[var(--muted)]">
-            출연처가 등록되어 있지 않습니다. 거래처 메뉴에서 등록한 뒤 출연 금액을 입력하면 진행도를 표시합니다.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="section-title">법인 자본금 50% 한도</h2>
+            <span className="text-xs text-[var(--muted)]">
+              <strong className="text-[var(--text)]">설정 ▸ 적립금</strong>에서 입력
+            </span>
+          </div>
         </section>
       ) : null}
 
@@ -456,14 +445,15 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
               <div className="space-y-8">
                 {/* 기본정보 */}
                 <section className="space-y-2">
-                  <h3 className="text-sm font-semibold text-[var(--text)]">① 기본정보 (읽기 전용)</h3>
-                  <p className="text-xs text-[var(--muted)]">
-                    수정은{" "}
-                    <Link href="/dashboard/settings" className="text-[var(--accent)] hover:underline">
-                      대시보드 설정 → 거래처 정보
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-[var(--text)]">① 기본정보 (읽기 전용)</h3>
+                    <Link
+                      href="/dashboard/settings"
+                      className="text-xs text-[var(--accent)] hover:underline"
+                    >
+                      설정 ▸ 거래처 정보에서 수정
                     </Link>
-                    에서 합니다.
-                  </p>
+                  </div>
                   <div className="overflow-x-auto rounded-md border border-[var(--border)]">
                     <table className="w-full border-collapse text-xs">
                       <tbody>
@@ -485,7 +475,6 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
                 {/* 기본재산 */}
                 <section className="space-y-2 border-t border-[var(--border)] pt-6">
                   <h3 className="text-sm font-semibold text-[var(--text)]">② 기본재산 변동 ⑫~⑳</h3>
-                  <p className="text-xs text-[var(--muted)]">사업주 출연·기본재산 사용은 자동 집계됩니다.</p>
                   <BaseAssetAnnualForm
                     year={year}
                     record={baseAsset}

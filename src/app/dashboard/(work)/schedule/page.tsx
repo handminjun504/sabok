@@ -674,8 +674,7 @@ export default async function SchedulePage() {
       {canNote ? (
         <CollapsibleEditorPanel
           title="선택적 복지·메모"
-          description="직원·월 단위로 선택 복지 금액·사복 인센 지급액·메모를 함께 저장합니다."
-          triggerLabel="작성·수정 열기"
+          triggerLabel="열기"
           defaultOpen={false}
         >
           <form action={saveMonthlyNoteFormAction} className="space-y-3">
@@ -743,7 +742,6 @@ export default async function SchedulePage() {
       <PageHeader
         eyebrow={`월별 스케줄 · ${year}`}
         title="월별 지급 스케줄"
-        description="정기 지급(귀속월) + 분기 지원(지급월) + 선택 복지를 같은 칸에 합산해 표시합니다."
         meta={
           <>
             <span className="trust-pill">기준 연도 {year}</span>
@@ -751,12 +749,6 @@ export default async function SchedulePage() {
           </>
         }
       />
-      <p className="text-sm text-[var(--muted)] leading-relaxed">
-        카카오·문자 안내문은 <span className="font-semibold text-[var(--text)]">「안내 멘트」</span>,
-        월별 발생 인센·선택 복지·메모는 <span className="font-semibold text-[var(--text)]">「월별 메모」</span>,
-        자본금 50% 한도·추가 적립 누적은 <span className="font-semibold text-[var(--text)]">「적립금」</span>,
-        조정연봉 어긋남 점검은 <span className="font-semibold text-[var(--text)]">「조정연봉 점검」</span> 탭에서 확인합니다.
-      </p>
 
       {quarterlyEmpty ? (
         <Alert tone="info" title="분기 지원이 아직 등록되지 않았습니다">
