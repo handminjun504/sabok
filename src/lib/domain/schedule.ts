@@ -131,6 +131,46 @@ export function employeeStatusForYear(
   return { kind: "ACTIVE_FULL_YEAR" };
 }
 
+/**
+ * 「안내 멘트(announcement)」 용 활성 범위 — 퇴사월 사복 지급 토글과 무관하게 **항상 퇴사월 자체까지 활성**.
+ *
+ * 사용자 정책(2026-05): "퇴사해도 퇴사월 당일까지는 급여안내 해줘야 해, (사복) 지급분 없더라도".
+ * 즉 「퇴사월 사복 지급」 토글이 false 라서 사복 = 0 이 되더라도, 안내 메시지의 「급여」 라인은
+ * 그 달까지 노출되어야 한다. 사복 계산 자체는 기존 `employeeStatusForYear` 그대로 가서 0 이 박힌다.
+ *
+ * 규칙:
+ *   - resignYear 가 없으면 → ACTIVE_FULL_YEAR
+ *   - year > resignYear → AFTER_RESIGN
+ *   - year < resignYear → ACTIVE_FULL_YEAR(아직 재직)
+ *   - year === resignYear, resignMonth ∈ [1..11] → ACTIVE_PARTIAL { 1..resignMonth }
+ *   - year === resignYear, resignMonth == 12 → ACTIVE_FULL_YEAR
+ *   - resignMonth 만 있고 resignYear 가 없으면 → 무시(전체 활성).
+ *
+ * `flagPayWelfareOnResignMonth` 는 의도적으로 보지 않는다 — 그게 본 함수의 핵심 차이점.
+ */
+export function announcementStatusForYear(
+  employee: Pick<Employee, "resignYear" | "resignMonth">,
+  year: number,
+): EmployeeStatusForYear {
+  const resignY = employee.resignYear ?? null;
+
+  if (resignY != null && year > resignY) {
+    return { kind: "AFTER_RESIGN", resignYear: resignY, resignMonth: employee.resignMonth ?? null };
+  }
+
+  if (resignY != null && year === resignY && employee.resignMonth != null) {
+    const m = Math.round(Number(employee.resignMonth));
+    if (Number.isFinite(m) && m >= 1 && m <= 12) {
+      if (m < 12) {
+        return { kind: "ACTIVE_PARTIAL", range: { fromMonth: 1, toMonth: m } };
+      }
+      /** m === 12 인 경우 → FULL_YEAR. */
+    }
+  }
+
+  return { kind: "ACTIVE_FULL_YEAR" };
+}
+
 /** 활성 연도에 직원이 “전혀 활성이 아니다(0원)”인지 한 줄로 확인 */
 export function employeeIsInactiveForYear(
   employee: Pick<Employee, "resignYear" | "resignMonth">,

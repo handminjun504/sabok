@@ -19,6 +19,7 @@ import {
 } from "@/lib/domain/payment-events";
 import {
   activeMonthsSortedForYear,
+  announcementStatusForYear,
   buildMonthlyBreakdown,
   computeActualWelfareThroughPaidMonth,
   employeeStatusForYear,
@@ -164,7 +165,16 @@ export default async function AnnouncementPage() {
       fixedEventMonths,
       overrideMap,
     );
+    /**
+     * 두 가지 status 를 분리해서 사용:
+     *  - `empStatus` (기존, 사복 계산용): 「퇴사월 사복 지급」 토글 반영. 토글이 false 면 퇴사월 비활성 → 사복 0.
+     *  - `announcementStatus` (안내 멘트용): 항상 퇴사월까지 활성. 토글이 false 라도 그 달의 「급여 안내」 라인은
+     *    노출되어야 하기 때문(2026-05 사용자 정책: "퇴사해도 퇴사월 당일까지는 급여안내 해줘야 해, 지급분 없더라도").
+     *
+     * 사복 계산은 그대로 empStatus 를 따라 그 달 0 으로 박히고, 급여 안내만 announcementStatus 로 한 달 더 노출된다.
+     */
     const empStatus = employeeStatusForYear(emp, year);
+    const announcementStatus = announcementStatusForYear(emp, year);
 
     /** 선택적복지(노트) 월별 합 — 활성 월만 합산. */
     const noteByMonth = new Map<number, number>();
@@ -218,7 +228,11 @@ export default async function AnnouncementPage() {
       salaryAnnualForNotice = Math.round(monthlySalaryPortion(emp) * 12);
     }
 
-    const salaryActiveMonths = activeMonthsSortedForYear(empStatus);
+    /**
+     * 「급여 안내」 의 활성 월 — `announcementStatus` 기준이라 「퇴사월 사복 지급」 토글이 false 이어도
+     * 퇴사월 자체는 활성으로 잡힌다. 사복 계산은 별개라 그 달에 0 이 박히지만, 급여 라인은 그대로 노출된다.
+     */
+    const salaryActiveMonths = activeMonthsSortedForYear(announcementStatus);
     const lastSalaryActiveMonth =
       salaryActiveMonths.length > 0 ? salaryActiveMonths[salaryActiveMonths.length - 1]! : null;
     /**
@@ -260,7 +274,8 @@ export default async function AnnouncementPage() {
     ) as Pick<Employee, "adjustedSalary" | "baseSalary">;
     const announcementSalaryByMonth: number[] = Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
-      if (!monthIsActive(empStatus, m)) return 0;
+      /** 안내용 활성 — 퇴사월 자체까지 노출. 사복 토글과 무관. */
+      if (!monthIsActive(announcementStatus, m)) return 0;
       return resolveEffectiveAdjustedSalaryForMonth(
         noticeEmpProxy,
         year,

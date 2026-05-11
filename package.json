@@ -20,6 +20,7 @@
     "test:optional-welfare-announcement": "tsx scripts/test-optional-welfare-announcement.ts",
     "test:optional-welfare-grid": "tsx scripts/test-optional-welfare-grid.ts",
     "test:incentive-accrual-limit": "tsx scripts/test-incentive-accrual-limit.ts",
+    "test:announcement-resign-month": "tsx scripts/test-announcement-resign-month.ts",
     "pb:seed": "tsx scripts/pb-seed.ts",
     "pb:create-user": "tsx scripts/pb-create-user.ts",
     "pb:fix-employees-schema": "node scripts/pb-fix-employees-schema.mjs",
