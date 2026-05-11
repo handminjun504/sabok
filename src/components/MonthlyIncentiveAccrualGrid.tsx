@@ -77,6 +77,12 @@ function cellKey(employeeId: string, month: number): CellKey {
 
 const MEMO_MAX_LEN = 500;
 
+/**
+ * 「한도 임박」 경고 임계값 — 잔여(예상 − 누적) 가 이 값 이하면 행 끝에 「한도 임박」 라벨을 띄운다.
+ * 0 보다 큰 값과 0(딱 맞춤) 까지 포함. overflow(음수) 는 별도 「급여 얹기」 라벨로 처리되며 본 임계값과 무관하다.
+ */
+const NEAR_LIMIT_WON = 100_000;
+
 type CellStatus = "idle" | "pending" | "saved" | "error";
 type MemoStatus = "idle" | "pending" | "saved" | "error";
 type RatioStatus = "idle" | "pending" | "saved" | "error";
@@ -528,6 +534,15 @@ export function MonthlyIncentiveAccrualGrid({
         <strong className="text-[var(--text)]">자동으로 저장</strong>됩니다(저장 버튼 없음). 행 끝의{" "}
         <strong className="text-[var(--text)]">잔여(예상−누적)</strong>가 음수면 발생 인센이 ‘예상 인센’ 한도를
         넘은 것이라, 초과분은 사복으로 다 줄 수 없으므로 <strong className="text-[var(--text)]">급여에 얹어 신고</strong>해야 합니다.
+        잔여가 <strong className="text-[var(--text)]">10만원 이하</strong>로 남으면 행 끝에{" "}
+        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--warn-soft,#fef3c7)] px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-[var(--warn,#b45309)] align-baseline">
+          ● 한도 임박
+        </span>{" "}
+        라벨이 노출됩니다. 한도 초과 시에는{" "}
+        <span className="inline-flex items-center gap-1 px-1 text-[0.65rem] font-bold uppercase tracking-wide text-[var(--danger)] align-baseline">
+          급여 얹기
+        </span>{" "}
+        라벨로 전환됩니다.
       </p>
 
       <div className="rounded-md border border-[var(--border)] bg-[var(--surface-hover)] p-3 text-xs leading-relaxed text-[var(--muted)]">
@@ -684,6 +699,12 @@ export function MonthlyIncentiveAccrualGrid({
             const hasCap = expected > 0;
             const remaining = expected - accrued;
             const overflow = hasCap && remaining < 0;
+            /**
+             * 「한도 임박」 — 누적이 예상에 거의 다다른 상태(잔여 0~10만원).
+             * overflow 가 아니고 한도 산정이 가능한 경우에만 표시한다. 사용자가 「유지시켜줘」 라고 한 정책에 따라
+             * 데이터가 그 범위에 있는 한 그리드를 새로 그릴 때마다 항상 노출된다(별도 dismiss 없음).
+             */
+            const nearLimit = hasCap && !overflow && remaining >= 0 && remaining <= NEAR_LIMIT_WON;
             const ineligible = r.welfareIneligible;
             const stickyBg = ineligible
               ? "bg-[var(--surface-hover)]/40"
@@ -856,24 +877,35 @@ export function MonthlyIncentiveAccrualGrid({
                     "flex flex-col items-end justify-center px-2 py-1.5 text-sm tabular-nums " +
                     (overflow
                       ? "text-[var(--danger)]"
-                      : hasCap && remaining > 0
-                        ? "text-[var(--success)]"
-                        : "text-[var(--muted)]")
+                      : nearLimit
+                        ? "text-[var(--warn,#b45309)]"
+                        : hasCap && remaining > 0
+                          ? "text-[var(--success)]"
+                          : "text-[var(--muted)]")
                   }
                   title={
                     !hasCap
                       ? "직원 폼에 ‘예상 인센’이 비어 있어 잔여를 비교할 수 없습니다."
                       : overflow
                         ? `발생 ${fmt(accrued)} − 예상 ${fmt(expected)} = ${fmt(-remaining)}원 초과. 사복 한도를 넘어 급여 포함으로 신고해야 합니다.`
-                        : `예상 ${fmt(expected)} − 발생 ${fmt(accrued)} = 잔여 ${fmt(remaining)}원`
+                        : nearLimit
+                          ? `잔여 ${fmt(remaining)}원 — 「예상 인센」 한도까지 ${fmt(NEAR_LIMIT_WON)}원 이내로 임박했습니다. 추가 발생 인센 입력 시 한도 초과 가능성 ↑.`
+                          : `예상 ${fmt(expected)} − 발생 ${fmt(accrued)} = 잔여 ${fmt(remaining)}원`
                   }
                 >
-                  <span className={overflow ? "font-bold" : "font-semibold"}>
+                  <span className={overflow ? "font-bold" : nearLimit ? "font-bold" : "font-semibold"}>
                     {!hasCap ? "—" : (remaining >= 0 ? fmt(remaining) : `−${fmt(-remaining)}`)}
                   </span>
                   {overflow ? (
                     <span className="mt-0.5 text-[0.65rem] font-bold uppercase tracking-wide">
                       급여 얹기
+                    </span>
+                  ) : nearLimit ? (
+                    <span
+                      className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[var(--warn-soft,#fef3c7)] px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-[var(--warn,#b45309)]"
+                      aria-label={`한도 임박 — 잔여 ${fmt(remaining)}원`}
+                    >
+                      ● 한도 임박
                     </span>
                   ) : null}
                 </div>
