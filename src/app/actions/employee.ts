@@ -24,8 +24,19 @@ import { parseTenantOperationModeOrNull } from "@/lib/domain/tenant-profile";
 import { toInt0, toIntOrNull, toNum0, toNumOrNull } from "@/lib/util/number";
 import { revalidateEmployeeArtifacts } from "@/lib/util/revalidate";
 
+/**
+ * 체크박스 boolean 판정.
+ *
+ * 핵심 의도: HTML 표준에서 미체크 체크박스는 FormData 에 키 자체가 빠지므로,
+ * 액션이 「키 미동봉 vs 명시적 미체크」 를 구분할 수 없다 → 무심코 기존값을 보존하는 분기가 들어가면
+ * 사용자가 명시적으로 해제한 값이 다시 살아나는 silent-revert 사고가 난다(2026-05 사용자 보고).
+ *
+ * 해결: 폼 측에서 각 체크박스 앞에 hidden sentinel `<input type="hidden" name="<같은 키>" value="" />` 를 두고,
+ * 본 함수는 `getAll(key)` 의 모든 값 중에 "on" 이 있는지 확인. hidden 의 빈 문자열은 false 로 자연 폴백,
+ * 체크된 경우에만 "on" 이 들어가 true. hidden 이 없는 외부 호출부에서도 종전과 동일하게 작동(미체크=false).
+ */
 function chk(formData: FormData, key: string): boolean {
-  return formData.get(key) === "on";
+  return formData.getAll(key).some((v) => v === "on");
 }
 
 const baseSchema = z.object({
@@ -152,18 +163,27 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
      * ‘사복 미대상’ 토글 — 폼에 체크박스로 노출. 신규 폼이라 항상 받지만 상위 화면에서
      * disabled 로 가려진 경우 기존값을 그대로 유지하도록 fallback.
      */
-    flagWelfareIneligible:
-      formData.get("flagWelfareIneligible") != null
-        ? chk(formData, "flagWelfareIneligible")
-        : (existingEmp?.flagWelfareIneligible ?? false),
     /**
-     * ‘퇴사월에 사복 지급 완료’ — 폼 체크박스. 미체크면 퇴사월 자체가 비활성(=그 달 사복 0).
-     * 폼이 없는 경로(과거 호출부)에서 들어와도 기존값을 보존하도록 fallback.
+     * 「사복 미대상」 토글.
+     *
+     * 폼은 항상 hidden sentinel + checkbox 한 쌍으로 키를 동봉하므로 `formData.has(key)` 는 true,
+     * `chk` 가 그대로 명시적 체크/미체크를 반영한다. 외부 호출부에서 키 자체가 빠진 경우에만
+     * 기존 DB 값으로 보존(보수적 안전망) — 이 분기는 EmployeeForm 정상 경로에선 닿지 않는다.
      */
-    flagPayWelfareOnResignMonth:
-      formData.get("flagPayWelfareOnResignMonth") != null
-        ? chk(formData, "flagPayWelfareOnResignMonth")
-        : (existingEmp?.flagPayWelfareOnResignMonth ?? false),
+    flagWelfareIneligible: formData.has("flagWelfareIneligible")
+      ? chk(formData, "flagWelfareIneligible")
+      : (existingEmp?.flagWelfareIneligible ?? false),
+    /**
+     * 「퇴사월 사복 지급」 토글 — 미체크면 퇴사월 자체가 비활성(=그 달 사복 0).
+     *
+     * 2026-05 회귀 보고: 「퇴사월 사복 지급 체크해제 후 저장 → 다시 체크된 상태로 복원」.
+     * 원인은 HTML 체크박스 미체크 시 키 자체가 FormData 에 빠져 위 fallback 분기로 빠지면서
+     * `existingEmp.flagPayWelfareOnResignMonth = true` 가 그대로 살아남는 패턴이었다.
+     * → 폼에 hidden sentinel 을 동봉하도록 했고, 본 분기는 외부 호출부에서만 의미를 가진다.
+     */
+    flagPayWelfareOnResignMonth: formData.has("flagPayWelfareOnResignMonth")
+      ? chk(formData, "flagPayWelfareOnResignMonth")
+      : (existingEmp?.flagPayWelfareOnResignMonth ?? false),
     salaryInclusionVarianceMode: parseSalaryInclusionVarianceModeOrNull(formData.get("salaryInclusionVarianceMode")),
   };
 

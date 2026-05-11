@@ -777,10 +777,34 @@ export function EmployeeForm({
               <th>플래그</th>
               <td>
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[0.8125rem]">
+                  {/*
+                   * HTML 체크박스는 미체크 시 FormData 에 키 자체가 빠진다. 액션이 「키 미동봉 → 기존값 보존」
+                   * fallback 을 가질 때 사용자의 명시적 해제가 silent 하게 무시되는 사고가 났다(2026-05 회귀).
+                   * 모든 boolean 체크박스 앞에 같은 name 의 hidden sentinel(value="")을 둬서 FormData 에
+                   * 키가 항상 존재하도록 보장한다. 액션의 `chk` 는 `getAll().includes("on")` 으로
+                   * hidden 의 빈 문자열은 false 로, 체크된 경우의 "on" 은 true 로 정확히 구분한다.
+                   */}
+                  <input type="hidden" name="flagAutoAmount" value="" />
                   <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagAutoAmount" defaultChecked={employee?.flagAutoAmount} />알아서금액(자동)</label>
-                  {surveyShowRepReturn && <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagRepReturn" defaultChecked={employee?.flagRepReturn} />대표반환</label>}
-                  {surveyShowSpouseReceipt && <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagSpouseReceipt" defaultChecked={employee?.flagSpouseReceipt} />배우자수령</label>}
-                  {surveyShowWorkerNet && <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagWorkerNet" defaultChecked={employee?.flagWorkerNet} />근로자 실질수령</label>}
+                  {surveyShowRepReturn && (
+                    <>
+                      <input type="hidden" name="flagRepReturn" value="" />
+                      <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagRepReturn" defaultChecked={employee?.flagRepReturn} />대표반환</label>
+                    </>
+                  )}
+                  {surveyShowSpouseReceipt && (
+                    <>
+                      <input type="hidden" name="flagSpouseReceipt" value="" />
+                      <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagSpouseReceipt" defaultChecked={employee?.flagSpouseReceipt} />배우자수령</label>
+                    </>
+                  )}
+                  {surveyShowWorkerNet && (
+                    <>
+                      <input type="hidden" name="flagWorkerNet" value="" />
+                      <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagWorkerNet" defaultChecked={employee?.flagWorkerNet} />근로자 실질수령</label>
+                    </>
+                  )}
+                  <input type="hidden" name="flagWelfareIneligible" value="" />
                   <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagWelfareIneligible" defaultChecked={employee?.flagWelfareIneligible ?? false} />사복 미대상</label>
                 </div>
               </td>
@@ -813,6 +837,11 @@ export function EmployeeForm({
                     options={makeYearOptions(activeYear)}
                   />
                   <MonthSelectCell label="월" name="resignMonth" defaultValue={employee?.resignMonth ?? null} />
+                  {/*
+                   * hidden sentinel + checkbox 페어 — 미체크여도 FormData 에 키가 동봉되어,
+                   * 액션이 「폼이 명시한 미체크」를 정확히 false 로 받는다(silent revert 차단).
+                   */}
+                  <input type="hidden" name="flagPayWelfareOnResignMonth" value="" />
                   <label className="flex cursor-pointer items-center gap-1.5 pb-2 text-xs">
                     <input type="checkbox" name="flagPayWelfareOnResignMonth" defaultChecked={employee?.flagPayWelfareOnResignMonth ?? false} />
                     퇴사월 사복 지급
