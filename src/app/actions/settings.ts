@@ -32,9 +32,6 @@ const schema = z.object({
   quarterlyPayMonths: z
     .record(z.string(), z.array(z.number().int().min(1).max(12)))
     .nullable(),
-  repReturnSchedule: z
-    .record(z.string(), z.record(z.string(), z.number().int().min(0)))
-    .nullable(),
   /**
    * 월별 발생 인센 자동 변환 비율(세후 비율, %). 빈값/0/100 초과/유한수 아님 → null(변환 비활성).
    * 폼에서 비워 두면 null 로 저장되어 그리드는 사용자가 적은 값을 그대로 보존한다.
@@ -89,29 +86,12 @@ function pickQuarterlyPayMonths(formData: FormData): Record<string, number[]> | 
 }
 
 /**
- * 대표반환 월별 금액 폼 파싱.
- * 입력 name 형식: `repReturn_${employeeId}_${month}` (1~12)
- * 0 또는 빈값은 저장하지 않는다.
+ * NOTE — 「대표반환·배우자수령·알아서금액·+ 반환 추가」 월별 금액 일정은
+ * 이 액션이 아닌 「월별 스케줄」 페이지의 `updateCompanyMonthlySchedules*` 계열
+ * partial-update 액션에서만 다룹니다. 회사 설정 폼은 해당 필드를 절대 다루지 않으며,
+ * 과거에는 본 액션이 `repReturnSchedule: null` 을 강제로 동봉해 「전사 설정」 저장 한 번에
+ * 다른 탭에서 입력한 대표반환 일정이 전부 날아가는 회귀가 있었습니다(2026-05).
  */
-function pickRepReturnSchedule(formData: FormData): Record<string, Partial<Record<string, number>>> | null {
-  const out: Record<string, Partial<Record<string, number>>> = {};
-  for (const [name, value] of formData.entries()) {
-    if (!name.startsWith("repReturn_")) continue;
-    const parts = name.split("_");
-    if (parts.length !== 3) continue;
-    const empId = parts[1];
-    const monthStr = parts[2];
-    const mNum = parseInt(monthStr, 10);
-    if (!empId || !Number.isFinite(mNum) || mNum < 1 || mNum > 12) continue;
-    const raw = String(value).replace(/,/g, "").trim();
-    if (!raw) continue;
-    const amt = Math.round(Number(raw));
-    if (!Number.isFinite(amt) || amt <= 0) continue;
-    if (!out[empId]) out[empId] = {};
-    out[empId][monthStr] = amt;
-  }
-  return Object.keys(out).length ? out : null;
-}
 
 const FIXED_EVENT_DEFAULTS: Record<"NEW_YEAR_FEB" | "FAMILY_MAY" | "CHUSEOK_AUG" | "YEAR_END_NOV", number> = {
   NEW_YEAR_FEB: 2,
@@ -210,7 +190,6 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
 
   const fixedEventMonths = pickFixedEventMonths(formData);
   const quarterlyPayMonths = pickQuarterlyPayMonths(formData);
-  const repReturnSchedule = pickRepReturnSchedule(formData);
   const parsed = schema.safeParse({
     foundingMonth: formData.get("foundingMonth"),
     defaultPayDay: formData.get("defaultPayDay"),
@@ -221,7 +200,6 @@ export async function saveCompanySettingsAction(_: SettingsState, formData: Form
     surveyShowWorkerNet: formData.get("surveyShowWorkerNet") === "on",
     fixedEventMonths,
     quarterlyPayMonths,
-    repReturnSchedule,
     incentiveNetRatioPercent: pickIncentiveNetRatioPercent(formData),
     feeRatePercent: pickFeeRatePercent(formData),
     feeBillingMode: pickFeeBillingMode(formData),

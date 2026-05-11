@@ -1067,8 +1067,17 @@ export async function companySettingsUpsert(
   /**
    * 사용 중단된 `accrualCurrentMonthPayNext` PB 컬럼이 남아 있는 환경 호환을 위해 false 를 항상 동봉.
    * 이미 컬럼이 삭제된 환경에서는 unknown 컬럼 응답을 받아 자동으로 키를 빼고 다시 시도한다.
+   *
+   * NOTE — 명시적 `null` 은 「그 컬럼을 null 로 patch」 의미(예: 사용자가 비운 fixedEventMonths) 이고
+   * `undefined` 는 「이 액션이 다루지 않음 = 기존값 보존」 의미다. 호출자가 옵셔널 키를 보내지 않은
+   * 경우(`undefined`) PB.update 가 키를 그대로 전송하지 않도록 객체에서 미리 제거한다.
+   * 과거 「전사 설정 저장 한 번에 다른 탭의 일정이 전부 날아가는」 회귀(2026-05) 의 재발 차단 가드.
    */
-  const dataWithLegacy = withLegacyAccrual(data as Record<string, unknown>);
+  const dataSanitized: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (v !== undefined) dataSanitized[k] = v;
+  }
+  const dataWithLegacy = withLegacyAccrual(dataSanitized);
   if (existing) {
     try {
       await pb.collection(C.companySettings).update(existing.id, dataWithLegacy);
