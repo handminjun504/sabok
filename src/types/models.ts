@@ -7,6 +7,12 @@ import type {
   TenantOperationMode,
 } from "@/lib/domain/tenant-profile";
 
+/**
+ * 도메인 타입 재노출 — 컴포넌트·매퍼·테스트 등 외부에서 `@/types/models` 한 곳에서
+ * 모든 도메인 모델을 import 할 수 있도록 한다(`Employee.operationMode` 타입의 일관성을 위해).
+ */
+export type { TenantOperationMode, TenantClientEntityType, AnnouncementMode };
+
 /** 급여포함신고·스케줄에서 상한 대비 초과/미달 표시 방식 — PB `salaryInclusionVarianceMode` */
 export type SalaryInclusionVarianceMode = "BOTH" | "OVER_ONLY" | "UNDER_ONLY";
 
@@ -69,6 +75,16 @@ export type Employee = {
   flagPayWelfareOnResignMonth: boolean;
   /** 급여포함신고·스케줄 상한 초과/미달 열 표시. null 이면 전사 `CompanySettings.salaryInclusionVarianceMode` */
   salaryInclusionVarianceMode: SalaryInclusionVarianceMode | null;
+  /**
+   * 「직원별 운영 모드」 — 거래처(테넌트) `operationMode` 를 직원 단위로 override.
+   * `null` 이면 거래처 모드를 그대로 따른다(가장 흔한 케이스).
+   *
+   * 특히 `INCENTIVE_WELFARE` 직원은 「발생 인센」 한도가 「예상 인센」(`incentiveAmount`) 이 아닌
+   * 「연 사복 스케줄 합계(정기+분기+선택적복지+오버라이드)」 로 동적 전환되어, 그 합계를 넘는
+   * 발생 인센이 들어오면 「사복 금액 초과 — 사복으로 처리 불가」 안내가 즉시 노출된다.
+   * PB `operationMode` (text).
+   */
+  operationMode: TenantOperationMode | null;
 };
 
 export type LevelPaymentRule = {

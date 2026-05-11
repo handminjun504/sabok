@@ -90,6 +90,12 @@ const CATALOG = {
     { name: "flagWorkerNet", type: "bool" },
     { name: "flagWelfareIneligible", type: "bool" },
     { name: "flagPayWelfareOnResignMonth", type: "bool" },
+    /**
+     * 「직원별 운영 모드」(거래처 operationMode override) — TenantOperationMode 4값 중 하나 또는 빈 문자열.
+     * 빈 값이면 거래처 모드를 그대로 따른다. `INCENTIVE_WELFARE` 직원은 인센 그리드 한도가
+     * 「연 사복 스케줄 합계」 로 동적 전환되어, 그 합계를 넘는 발생 인센이 들어오면 즉시 안내된다.
+     */
+    { name: "operationMode", type: "text" },
   ],
   sabok_company_settings: [
     // 활성/회계 연도

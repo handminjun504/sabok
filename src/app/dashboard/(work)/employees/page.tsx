@@ -7,7 +7,9 @@ import {
   levelTargetList,
   monthlyNoteListByTenantYear,
   quarterlyEmployeeConfigListByTenantYear,
+  tenantGetById,
 } from "@/lib/pb/repository";
+import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees } from "@/lib/permissions";
 import { CsvImportClient } from "@/components/CsvImportClient";
@@ -20,10 +22,12 @@ import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
 
 export default async function EmployeesPage() {
   const { tenantId, role } = await requireTenantContext();
-  const [settings, list] = await Promise.all([
+  const [settings, list, tenant] = await Promise.all([
     companySettingsByTenant(tenantId),
     employeeListByTenantCodeAsc(tenantId),
+    tenantGetById(tenantId),
   ]);
+  const tenantOperationMode = parseTenantOperationMode(tenant?.operationMode);
   const activeYear = settings?.activeYear ?? new Date().getFullYear();
   const foundingMonth = settings?.foundingMonth ?? 1;
   const ids = list.map((e) => e.id);
@@ -103,6 +107,7 @@ export default async function EmployeesPage() {
               foundingMonth,
               minimumAnnualSalaryWon,
               tenantSalaryInclusionVarianceMode: settings?.salaryInclusionVarianceMode ?? "BOTH",
+              tenantOperationMode,
               surveyShowRepReturn: colRepReturn,
               surveyShowSpouseReceipt: colSpouseReceipt,
               surveyShowWorkerNet: colWorkerNet,

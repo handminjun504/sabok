@@ -7,6 +7,10 @@ import type {
   setMonthlyIncentiveAccrualCellAction,
   setMonthlyOptionalWelfareTextAction,
 } from "@/app/actions/quarterly";
+import {
+  effectiveIncentiveAccrualLimitWon,
+  incentiveAccrualLimitBasisLabel,
+} from "@/lib/domain/incentive-accrual-limit";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
@@ -68,6 +72,18 @@ export type MonthlyIncentiveAccrualGridRow = {
    * 코드 옆에 작은 ‘사복 미대상’ 배지 + 행 전체를 살짝 dim 으로 시각 구분.
    */
   welfareIneligible: boolean;
+  /**
+   * 「effective 운영 모드」 — `effectiveEmployeeOperationMode(employee, tenant)` 결과.
+   * `INCENTIVE_WELFARE` 인 행은 한도 비교 기준이 `welfareScheduleTotalWon` 으로 동적 전환된다.
+   * 호출부(schedule/page.tsx) 에서 매핑하여 전달. 빠지면 `GENERAL` 로 가정해 기존 동작 유지.
+   */
+  effectiveOperationMode?: import("@/types/models").TenantOperationMode;
+  /**
+   * 「연 사복 스케줄 합계」 — 정기 + 분기 + 선택적복지 + 월별 오버라이드.
+   * INCENTIVE_WELFARE 모드 직원의 발생 인센 한도가 이 값으로 동적 전환된다.
+   * 0/null 이면 한도 산정 불가(잔여/초과 라벨 비활성). 그 외 모드에서는 사용되지 않으나 표시·디버깅에 쓸 수 있다.
+   */
+  welfareScheduleTotalWon?: number | null;
 };
 
 type CellKey = `${string}:${number}`;
@@ -691,20 +707,35 @@ export function MonthlyIncentiveAccrualGrid({
           {rows.map((r) => {
             const status = rowStatus(r.employeeId);
             const errMsg = rowErrorMessage(r.employeeId);
-            const expected =
-              r.incentiveAmount != null && Number.isFinite(Number(r.incentiveAmount))
-                ? Math.max(0, Math.round(Number(r.incentiveAmount)))
-                : 0;
+            /**
+             * 「effective 한도」 — 직원 운영 모드(혹은 거래처 폴백)에 따라 한도 기준이 동적으로 바뀐다.
+             *   - INCENTIVE_WELFARE → 연 사복 스케줄 합계(welfareScheduleTotalWon).
+             *   - 그 외(GENERAL/SALARY_WELFARE/COMBINED) → 직원 마스터의 「예상 인센」(incentiveAmount).
+             * 한도 산정 불가(0/null/이상값) 인 경우 hasCap=false 로 잔여/임박/초과 라벨을 모두 숨긴다.
+             */
+            const limit = effectiveIncentiveAccrualLimitWon({
+              mode: r.effectiveOperationMode ?? "GENERAL",
+              incentiveAmount: r.incentiveAmount,
+              welfareScheduleTotalWon: r.welfareScheduleTotalWon ?? null,
+            });
+            const hasCap = limit.limitWon != null;
+            const expected = hasCap ? limit.limitWon! : 0;
             const accrued = rowAccrualSum(r.employeeId);
-            const hasCap = expected > 0;
             const remaining = expected - accrued;
             const overflow = hasCap && remaining < 0;
             /**
-             * 「한도 임박」 — 누적이 예상에 거의 다다른 상태(잔여 0~10만원).
+             * 「한도 임박」 — 누적이 한도에 거의 다다른 상태(잔여 0~10만원).
              * overflow 가 아니고 한도 산정이 가능한 경우에만 표시한다. 사용자가 「유지시켜줘」 라고 한 정책에 따라
              * 데이터가 그 범위에 있는 한 그리드를 새로 그릴 때마다 항상 노출된다(별도 dismiss 없음).
              */
             const nearLimit = hasCap && !overflow && remaining >= 0 && remaining <= NEAR_LIMIT_WON;
+            const limitBasisShort = incentiveAccrualLimitBasisLabel(limit.source);
+            /**
+             * 「사복 한도」(INCENTIVE_WELFARE) 와 「예상 인센 한도」(그 외) 는 사용자 메시지가 달라야 한다.
+             *  - 초과: 사복 한도면 「사복으로 처리 불가 — 사복 한도 초과」, 예상 인센이면 「급여 얹기」(기존).
+             *  - 임박: 어떤 기준에 임박했는지 라벨에 명시.
+             */
+            const isWelfareCap = limit.source === "welfare_schedule";
             const ineligible = r.welfareIneligible;
             const stickyBg = ineligible
               ? "bg-[var(--surface-hover)]/40"
@@ -861,10 +892,19 @@ export function MonthlyIncentiveAccrualGrid({
                   );
                 })}
                 <div
-                  className="flex items-center justify-end px-2 py-1.5 text-sm tabular-nums text-[var(--muted)]"
-                  title="직원 폼의 ‘예상 인센’ — 사복으로 줄 수 있는 한도"
+                  className="flex flex-col items-end justify-center px-2 py-1.5 text-sm tabular-nums text-[var(--muted)]"
+                  title={
+                    isWelfareCap
+                      ? "이 직원의 「연 사복 스케줄 합계」(정기+분기+선택적복지+오버라이드) — 인센지급 모드의 사복 한도"
+                      : "직원 폼의 ‘예상 인센’ — 사복으로 줄 수 있는 한도"
+                  }
                 >
-                  {hasCap ? fmt(expected) : "—"}
+                  <span>{hasCap ? fmt(expected) : "—"}</span>
+                  {hasCap ? (
+                    <span className="mt-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-[var(--muted)]/80">
+                      {limitBasisShort}
+                    </span>
+                  ) : null}
                 </div>
                 <div
                   className="flex items-center justify-end px-2 py-1.5 text-sm font-semibold tabular-nums text-[var(--text)]"
@@ -885,27 +925,31 @@ export function MonthlyIncentiveAccrualGrid({
                   }
                   title={
                     !hasCap
-                      ? "직원 폼에 ‘예상 인센’이 비어 있어 잔여를 비교할 수 없습니다."
+                      ? isWelfareCap
+                        ? "「연 사복 스케줄 합계」가 0 이라 잔여를 비교할 수 없습니다. 스케줄 입력 후 다시 확인하세요."
+                        : "직원 폼에 ‘예상 인센’이 비어 있어 잔여를 비교할 수 없습니다."
                       : overflow
-                        ? `발생 ${fmt(accrued)} − 예상 ${fmt(expected)} = ${fmt(-remaining)}원 초과. 사복 한도를 넘어 급여 포함으로 신고해야 합니다.`
+                        ? isWelfareCap
+                          ? `발생 ${fmt(accrued)} − 사복 한도 ${fmt(expected)} = ${fmt(-remaining)}원 초과. 「인센지급」 모드는 발생 인센이 사복 한도를 넘으면 사복으로 처리 불가 — 초과분은 일반 급여/별도 처리 필요.`
+                          : `발생 ${fmt(accrued)} − 예상 ${fmt(expected)} = ${fmt(-remaining)}원 초과. 사복 한도를 넘어 급여 포함으로 신고해야 합니다.`
                         : nearLimit
-                          ? `잔여 ${fmt(remaining)}원 — 「예상 인센」 한도까지 ${fmt(NEAR_LIMIT_WON)}원 이내로 임박했습니다. 추가 발생 인센 입력 시 한도 초과 가능성 ↑.`
-                          : `예상 ${fmt(expected)} − 발생 ${fmt(accrued)} = 잔여 ${fmt(remaining)}원`
+                          ? `잔여 ${fmt(remaining)}원 — 「${limitBasisShort}」까지 ${fmt(NEAR_LIMIT_WON)}원 이내로 임박했습니다. 추가 발생 인센 입력 시 한도 초과 가능성 ↑.`
+                          : `${isWelfareCap ? "사복 한도" : "예상"} ${fmt(expected)} − 발생 ${fmt(accrued)} = 잔여 ${fmt(remaining)}원`
                   }
                 >
                   <span className={overflow ? "font-bold" : nearLimit ? "font-bold" : "font-semibold"}>
                     {!hasCap ? "—" : (remaining >= 0 ? fmt(remaining) : `−${fmt(-remaining)}`)}
                   </span>
                   {overflow ? (
-                    <span className="mt-0.5 text-[0.65rem] font-bold uppercase tracking-wide">
-                      급여 얹기
+                    <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[var(--danger)]/10 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-[var(--danger)]">
+                      ● {isWelfareCap ? "사복 한도 초과 (사복 처리 불가)" : "급여 얹기"}
                     </span>
                   ) : nearLimit ? (
                     <span
                       className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[var(--warn-soft,#fef3c7)] px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-[var(--warn,#b45309)]"
                       aria-label={`한도 임박 — 잔여 ${fmt(remaining)}원`}
                     >
-                      ● 한도 임박
+                      ● 한도 임박 ({limitBasisShort})
                     </span>
                   ) : null}
                 </div>

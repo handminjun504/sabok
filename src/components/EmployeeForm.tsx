@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { employeePositionSelectValues } from "@/lib/domain/employee-positions";
 import type { Employee, LevelTarget, SalaryInclusionVarianceMode } from "@/types/models";
 import { SALARY_INCLUSION_VARIANCE_MODES } from "@/lib/domain/salary-inclusion-display";
+import { TENANT_OPERATION_MODES, tenantOperationModeLabel } from "@/lib/domain/tenant-profile";
 import {
   deleteEmployeeFormAction,
   saveEmployeeAction,
@@ -394,6 +395,7 @@ export function EmployeeForm({
   foundingMonth,
   minimumAnnualSalaryWon,
   tenantSalaryInclusionVarianceMode,
+  tenantOperationMode,
   surveyShowRepReturn = false,
   surveyShowSpouseReceipt = false,
   surveyShowWorkerNet = false,
@@ -409,6 +411,12 @@ export function EmployeeForm({
   defaultEditorOpen?: boolean;
   /** 전사 기본 급여포함신고 표시 방식 — 직원이 비우면 동일 적용 */
   tenantSalaryInclusionVarianceMode: SalaryInclusionVarianceMode;
+  /**
+   * 거래처 기본 운영 모드 — 직원이 비우면 거래처 기본을 따른다.
+   * 빈 옵션 라벨에 거래처 기본 라벨을 함께 보여 사용자가 "지금 비우면 어디로 가는지" 즉시 알 수 있도록.
+   * GENERAL/SALARY_WELFARE/INCENTIVE_WELFARE/COMBINED 4 값 중 하나.
+   */
+  tenantOperationMode: import("@/types/models").TenantOperationMode;
   /** 전사 설정 — 꺼지면 해당 체크는 폼에 없고 저장 시 DB 값 유지 */
   surveyShowRepReturn?: boolean;
   surveyShowSpouseReceipt?: boolean;
@@ -741,6 +749,28 @@ export function EmployeeForm({
                   <option value="">전사 기본</option>
                   {SALARY_INCLUSION_VARIANCE_MODES.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
+              </td>
+            </tr>
+            <tr>
+              <th>운영 모드</th>
+              <td>
+                <select
+                  name="operationMode"
+                  className={inputClass}
+                  defaultValue={employee?.operationMode ?? ""}
+                  title="비우면 거래처 기본 운영 모드를 따른다. 직원별로 다른 모드(예: 인센만)를 적용하려면 명시적으로 선택."
+                >
+                  <option value="">거래처 기본 ({tenantOperationModeLabel(tenantOperationMode)})</option>
+                  {TENANT_OPERATION_MODES.map((opt) => (
+                    <option key={opt.value} value={opt.value} title={opt.hint}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[0.6875rem] leading-snug text-[var(--muted)]">
+                  「인센티브 지급」 선택 시 — 인센 그리드의 한도는 이 직원의 <strong>연 사복 스케줄 합계</strong>로 동적 전환되고,
+                  발생 인센이 그 합계를 넘으면 즉시 「사복 한도 초과」 안내가 표시됩니다.
+                </p>
               </td>
             </tr>
             <tr>

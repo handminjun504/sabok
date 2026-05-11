@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { EmployeeForm } from "@/components/EmployeeForm";
-import type { LevelTarget, SalaryInclusionVarianceMode } from "@/types/models";
+import type { LevelTarget, SalaryInclusionVarianceMode, TenantOperationMode } from "@/types/models";
 import type {
   Employee,
   Level5Override,
@@ -80,6 +80,8 @@ export type EmployeeDirectoryEditContext = {
   foundingMonth: number;
   minimumAnnualSalaryWon: number;
   tenantSalaryInclusionVarianceMode: SalaryInclusionVarianceMode;
+  /** 거래처 기본 운영 모드 — 직원 폼이 "거래처 기본 (...)" 라벨로 그대로 표시. */
+  tenantOperationMode: TenantOperationMode;
   surveyShowRepReturn: boolean;
   surveyShowSpouseReceipt: boolean;
   surveyShowWorkerNet: boolean;
@@ -334,6 +336,7 @@ export function EmployeeDirectoryTable({
                             foundingMonth={editContext.foundingMonth}
                             minimumAnnualSalaryWon={editContext.minimumAnnualSalaryWon}
                             tenantSalaryInclusionVarianceMode={editContext.tenantSalaryInclusionVarianceMode}
+                            tenantOperationMode={editContext.tenantOperationMode}
                             surveyShowRepReturn={editContext.surveyShowRepReturn}
                             surveyShowSpouseReceipt={editContext.surveyShowSpouseReceipt}
                             surveyShowWorkerNet={editContext.surveyShowWorkerNet}

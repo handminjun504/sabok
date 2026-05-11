@@ -33,6 +33,40 @@ export function parseTenantOperationMode(v: unknown): TenantOperationMode {
   return "GENERAL";
 }
 
+/**
+ * 「직원별 운영 모드」 매핑용 — 빈 문자열·null·undefined·잘못된 값은 모두 null 로 정규화.
+ *
+ * 직원 모드의 의미는 「거래처 모드의 override」 라서, null = 「override 없음 → 거래처 기본 모드 적용」.
+ * `parseTenantOperationMode` 와 달리 GENERAL 로 강제 캐스팅하지 않는다 — 운영자가 명시적으로 GENERAL 을 골라
+ * 「거래처 모드와 무관하게 일반으로 두기」 의도를 표현할 수 있도록 차원을 보존한다.
+ */
+export function parseTenantOperationModeOrNull(v: unknown): TenantOperationMode | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (s === "") return null;
+  if (s === "GENERAL" || s === "SALARY_WELFARE" || s === "INCENTIVE_WELFARE" || s === "COMBINED") return s;
+  return null;
+}
+
+/**
+ * 직원 모드(있으면 우선) → 거래처 모드 폴백 → 최종 GENERAL.
+ *
+ * 이 함수는 「실제 운영에 적용될 effective 모드」 를 계산하는 단일 진실 함수다.
+ * 직원 모드가 null/undefined 면 거래처 모드를 그대로 따른다.
+ */
+export function effectiveEmployeeOperationMode(
+  employeeMode: TenantOperationMode | null | undefined,
+  tenantMode: TenantOperationMode | null | undefined,
+): TenantOperationMode {
+  if (employeeMode === "GENERAL" || employeeMode === "SALARY_WELFARE" || employeeMode === "INCENTIVE_WELFARE" || employeeMode === "COMBINED") {
+    return employeeMode;
+  }
+  if (tenantMode === "GENERAL" || tenantMode === "SALARY_WELFARE" || tenantMode === "INCENTIVE_WELFARE" || tenantMode === "COMBINED") {
+    return tenantMode;
+  }
+  return "GENERAL";
+}
+
 /** 카드·목록용 — 거래처 최초 등록 시 정한 개인·법인 적립 구분 */
 export function tenantClientEntityLabel(t: TenantClientEntityType): string {
   return t === "CORPORATE" ? "법인 적립" : "개인 적립";

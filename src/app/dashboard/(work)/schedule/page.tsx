@@ -47,7 +47,7 @@ import {
   computeLoweredSalaryPartialYearTrueUpWon,
   resolveEffectiveAdjustedSalaryForMonth,
 } from "@/lib/domain/salary-inclusion";
-import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
+import { effectiveEmployeeOperationMode, parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 import {
   summarizeTenantAdditionalReserve,
   tenantReserveTotalSumWon,
@@ -634,7 +634,15 @@ export default async function SchedulePage() {
   /**
    * 월별 발생 인센 그리드는 사복 대상·미대상 모두 노출. 미대상은 시각적 구분을 위해 행 끝으로 모은다.
    * 같은 그룹 내에서는 기존 employeeCode 순서를 유지(allEmployees 가 이미 코드 오름차순).
+   *
+   * 「INCENTIVE_WELFARE」 모드 직원의 한도(연 사복 스케줄 합계) 계산을 위해, 위에서 이미 계산된
+   * `rows[].yearlyWelfare` 를 employeeId 기준 맵으로 변환하여 그리드 row prop 에 그대로 흘려보낸다.
+   * 사복 미대상은 rows 에 없으므로 0 fallback → 한도 산정 불가로 자연스럽게 비활성된다.
    */
+  const welfareScheduleTotalByEmployeeId = new Map<string, number>();
+  for (const r of rows) {
+    welfareScheduleTotalByEmployeeId.set(r.emp.id, r.yearlyWelfare);
+  }
   const incentiveAccrualRows = [
     ...allEmployees.filter((e) => !e.flagWelfareIneligible),
     ...allEmployees.filter((e) => e.flagWelfareIneligible),
@@ -647,16 +655,24 @@ export default async function SchedulePage() {
       incentiveAccrualByMonth[m] = hit?.incentiveAccrualAmount ?? null;
       optionalWelfareTextByMonth[m] = hit?.optionalWelfareText ?? null;
     }
+    /**
+     * effective 운영 모드 — 직원 override 가 있으면 그것, 없으면 거래처 기본.
+     * 한도 계산기는 INCENTIVE_WELFARE 일 때만 welfareScheduleTotalWon 을 쓰고 그 외엔 incentiveAmount 로 폴백한다.
+     */
+    const effectiveOperationMode = effectiveEmployeeOperationMode(emp.operationMode, tenantOperationMode);
     return {
       employeeId: emp.id,
       employeeCode: emp.employeeCode,
       name: emp.name,
       incentiveAccrualByMonth,
       optionalWelfareTextByMonth,
-      /** 직원 마스터의 ‘예상 인센’ — 행 끝 ‘잔여(예상−누적)’ 비교에 사용 */
+      /** 직원 마스터의 ‘예상 인센’ — INCENTIVE_WELFARE 외 모드에서 잔여 비교에 사용 */
       incentiveAmount: emp.incentiveAmount,
       /** 사복 미대상 — 행 끝 정렬·배지 표시에만 사용. 인센 기록 자체에는 영향 없음. */
       welfareIneligible: emp.flagWelfareIneligible,
+      effectiveOperationMode,
+      /** INCENTIVE_WELFARE 모드 직원의 사복 한도. 미대상/스케줄 없음이면 0(→ 한도 없음으로 폴백). */
+      welfareScheduleTotalWon: welfareScheduleTotalByEmployeeId.get(emp.id) ?? 0,
     };
   });
 

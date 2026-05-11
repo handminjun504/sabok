@@ -20,6 +20,7 @@ import {
   pocketBaseRecordErrorMessage,
 } from "@/lib/pb/client-error-log";
 import { parseSalaryInclusionVarianceModeOrNull } from "@/lib/domain/salary-inclusion-display";
+import { parseTenantOperationModeOrNull } from "@/lib/domain/tenant-profile";
 import { toInt0, toIntOrNull, toNum0, toNumOrNull } from "@/lib/util/number";
 import { revalidateEmployeeArtifacts } from "@/lib/util/revalidate";
 
@@ -166,6 +167,20 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     salaryInclusionVarianceMode: parseSalaryInclusionVarianceModeOrNull(formData.get("salaryInclusionVarianceMode")),
   };
 
+  /**
+   * 「직원별 운영 모드」 — 폼에 input 이 실제로 존재할 때만 update 페이로드에 추가한다.
+   * 의도:
+   *   - 폼 입력 있음 + 값이 "" (=빈 옵션 "기본") → `null` 로 명시 update → override 해제(거래처 모드 따름).
+   *   - 폼 입력 있음 + 값이 4모드 중 하나 → 그 모드로 명시 update.
+   *   - 폼 입력 자체가 없음(다른 폼·과거 호출부) → 키 미동봉 → 기존 값 보존.
+   *
+   * 이 분기 덕분에 직원 폼이 아닌 다른 호출부에서 saveEmployeeAction 을 쓰더라도
+   * 이미 저장된 override 가 silent 하게 null 로 날아가지 않는다(2026-05 회귀 류 사고 차단).
+   */
+  if (formData.has("operationMode")) {
+    data.operationMode = parseTenantOperationModeOrNull(formData.get("operationMode"));
+  }
+
   /** 신규 생성 시 선택 필드가 null이면 키 자체를 빼서 PB 검증 오류를 줄임 */
   function bodyForCreate(): Record<string, unknown> {
     const o = { ...data };
@@ -184,6 +199,8 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
       "weddingMonth",
       "payDay",
       "salaryInclusionVarianceMode",
+      /** 직원별 운영 모드 — null = override 해제. 생성 시점에선 키를 빼서 PB 기본값 흐름 보존. */
+      "operationMode",
     ] as const;
     for (const k of dropIfNull) {
       if (o[k] === null) delete o[k];

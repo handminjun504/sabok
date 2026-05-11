@@ -6,7 +6,9 @@ import {
   level5OverrideListByEmployeeYear,
   levelPaymentRuleList,
   levelTargetList,
+  tenantGetById,
 } from "@/lib/pb/repository";
+import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 import { koreaMinimumAnnualSalaryWon } from "@/lib/domain/korea-minimum-wage";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { canEditEmployees, canEditLevelRules } from "@/lib/permissions";
@@ -76,9 +78,10 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   const emp = await employeeFindFirst(id, tenantId);
   if (!emp) notFound();
 
-  const [settings, allEmployees] = await Promise.all([
+  const [settings, allEmployees, tenant] = await Promise.all([
     companySettingsByTenant(tenantId),
     employeeListByTenantCodeAsc(tenantId),
+    tenantGetById(tenantId),
   ]);
   const year = settings?.activeYear ?? new Date().getFullYear();
   const minimumAnnualSalaryWon = koreaMinimumAnnualSalaryWon(year);
@@ -117,6 +120,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           foundingMonth={settings?.foundingMonth ?? 1}
           minimumAnnualSalaryWon={minimumAnnualSalaryWon}
           tenantSalaryInclusionVarianceMode={settings?.salaryInclusionVarianceMode ?? "BOTH"}
+          tenantOperationMode={parseTenantOperationMode(tenant?.operationMode)}
           surveyShowRepReturn={settings?.surveyShowRepReturn ?? false}
           surveyShowSpouseReceipt={settings?.surveyShowSpouseReceipt ?? false}
           surveyShowWorkerNet={settings?.surveyShowWorkerNet ?? false}

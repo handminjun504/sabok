@@ -1,4 +1,5 @@
 import { parseSalaryInclusionVarianceMode, parseSalaryInclusionVarianceModeOrNull } from "@/lib/domain/salary-inclusion-display";
+import { parseTenantOperationModeOrNull } from "@/lib/domain/tenant-profile";
 import type {
   BaseAssetAnnual,
   BizResultAnnual,
@@ -108,6 +109,11 @@ export function mapEmployee(r: Record<string, unknown>): Employee {
    */
   flagPayWelfareOnResignMonth: bool(r.flagPayWelfareOnResignMonth),
   salaryInclusionVarianceMode: parseSalaryInclusionVarianceModeOrNull(r.salaryInclusionVarianceMode),
+  /**
+   * 「직원별 운영 모드」 — PB 컬럼이 없거나 빈 문자열·잘못된 값이면 null 로 안전하게 fallback.
+   * null 은 「거래처 모드를 그대로 따른다」 의미라, 신규 컬럼 환경에서도 회귀 없이 작동.
+   */
+  operationMode: parseTenantOperationModeOrNull(r.operationMode),
   };
 }
 

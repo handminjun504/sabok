@@ -62,6 +62,7 @@ function minimalEmployee(over: Partial<Employee> = {}): Employee {
     flagWelfareIneligible: false,
     flagPayWelfareOnResignMonth: false,
     salaryInclusionVarianceMode: null,
+    operationMode: null,
     ...over,
   };
 }
