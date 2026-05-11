@@ -22,6 +22,7 @@
     "test:incentive-accrual-limit": "tsx scripts/test-incentive-accrual-limit.ts",
     "test:announcement-resign-month": "tsx scripts/test-announcement-resign-month.ts",
     "test:announcement-trueup": "tsx scripts/test-announcement-trueup.ts",
+    "test:employee-status-label": "tsx scripts/test-employee-status-label.ts",
     "pb:seed": "tsx scripts/pb-seed.ts",
     "pb:create-user": "tsx scripts/pb-create-user.ts",
     "pb:fix-employees-schema": "node scripts/pb-fix-employees-schema.mjs",

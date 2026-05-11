@@ -14,6 +14,10 @@ import {
   employeeStatusForYear,
   type CustomPaymentScheduleDef,
 } from "@/lib/domain/schedule";
+import {
+  employeeStatusLabelBadgeClass,
+  employeeStatusLabelForYear,
+} from "@/lib/domain/employee-status-label";
 import { effectiveWelfareAllocationWon } from "@/lib/domain/salary-inclusion";
 import { formatWon, yn } from "@/lib/spreadsheet-format";
 
@@ -100,19 +104,14 @@ export function EmployeeDirectoryGrid({
         const status =
           payrollYearContext != null ? employeeStatusForYear(e, payrollYearContext.activeYear) : null;
         const statusBadge = (() => {
-          if (!status) return null;
-          if (status.kind === "ACTIVE_FULL_YEAR") {
-            return <span className="badge badge-success">재직</span>;
-          }
-          if (status.kind === "ACTIVE_PARTIAL") {
-            const { fromMonth, toMonth } = status.range;
-            const label =
-              fromMonth === 1 ? `~${toMonth}월 재직` : toMonth === 12 ? `${fromMonth}월~ 재직` : `${fromMonth}~${toMonth}월 재직`;
-            return <span className="badge badge-warn">{label}</span>;
-          }
+          if (payrollYearContext == null) return null;
+          const label = employeeStatusLabelForYear(e, payrollYearContext.activeYear);
           return (
-            <span className="badge badge-neutral">
-              {status.resignYear}년{status.resignMonth ? ` ${status.resignMonth}월` : ""} 퇴사
+            <span
+              className={employeeStatusLabelBadgeClass(label)}
+              title={label.detail ?? undefined}
+            >
+              {label.label}
             </span>
           );
         })();

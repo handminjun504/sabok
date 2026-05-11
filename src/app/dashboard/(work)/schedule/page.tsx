@@ -48,6 +48,7 @@ import {
   resolveEffectiveAdjustedSalaryForMonth,
 } from "@/lib/domain/salary-inclusion";
 import { effectiveEmployeeOperationMode, parseTenantOperationMode } from "@/lib/domain/tenant-profile";
+import { employeeStatusLabelForYear } from "@/lib/domain/employee-status-label";
 import {
   summarizeTenantAdditionalReserve,
   tenantReserveTotalSumWon,
@@ -628,7 +629,12 @@ export default async function SchedulePage() {
         : status.kind === "AFTER_RESIGN"
           ? { kind: "AFTER_RESIGN", resignYear: status.resignYear, resignMonth: status.resignMonth }
           : { kind: "ACTIVE_FULL_YEAR" };
-    return { ...card, status: tableStatus };
+    /**
+     * 인사 정보 우선 라벨(예: 「5월 퇴사」) + 사복 활성 범위가 다르면 detail tooltip 으로.
+     * 폼에서 「퇴사월 사복 지급」 OFF 시 활성 범위가 {1..4} 가 되어 기존 라벨이 「~4월 재직」 으로 보이던 혼란 제거.
+     */
+    const statusLabel = employeeStatusLabelForYear(r.emp, year);
+    return { ...card, status: tableStatus, statusLabel };
   });
 
   /**

@@ -9,6 +9,10 @@ import {
   type ScheduleEditMonthEvent,
 } from "@/components/ScheduleEmployeeEditModal";
 import type { setMonthPaidConfirmedAction } from "@/app/actions/quarterly";
+import {
+  employeeStatusLabelBadgeClass,
+  type EmployeeStatusLabel,
+} from "@/lib/domain/employee-status-label";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
@@ -39,6 +43,11 @@ export type ScheduleTableRow = {
   level: number;
   /** 활성 연도 기준 직원 상태 — 퇴사자 취소선/비활성 월 셀 처리에 사용 */
   status: ScheduleTableEmploymentStatus;
+  /**
+   * 상태 badge 라벨 — 인사 정보(`joinYear/joinMonth`, `resignYear/resignMonth`) 우선.
+   * 누락 시 안전 폴백으로 `status` 만으로 라벨을 만든다(legacy 호출자 회귀 방지).
+   */
+  statusLabel?: EmployeeStatusLabel;
   welfareByMonth: Record<number, number>;
   linesByMonth: Record<number, ScheduleWelfareLine[]>;
   yearlyWelfare: number;
@@ -67,8 +76,22 @@ function fmt(n: number): string {
   return n.toLocaleString("ko-KR");
 }
 
-function statusBadge(status: ScheduleTableEmploymentStatus): ReactNode {
+function statusBadge(
+  status: ScheduleTableEmploymentStatus,
+  statusLabel: EmployeeStatusLabel | undefined,
+): ReactNode {
   /** 좁은 셀에서도 “1~6월 / 재직” 처럼 두 줄로 끊기지 않도록 whitespace-nowrap. */
+  if (statusLabel) {
+    return (
+      <span
+        className={`${employeeStatusLabelBadgeClass(statusLabel)} whitespace-nowrap`}
+        title={statusLabel.detail ?? undefined}
+      >
+        {statusLabel.label}
+      </span>
+    );
+  }
+  /** 폴백 — `statusLabel` 미전달 호출자(legacy) 호환. */
   if (status.kind === "ACTIVE_FULL_YEAR") {
     return <span className="badge badge-success whitespace-nowrap">재직</span>;
   }
@@ -320,7 +343,7 @@ export function ScheduleEmployeeTable({
                           >
                             {r.name}
                           </span>
-                          {statusBadge(r.status)}
+                          {statusBadge(r.status, r.statusLabel)}
                         </div>
                       </td>
                       <td className="px-2 py-2.5 text-center text-xs font-semibold tabular-nums text-[var(--muted)]">

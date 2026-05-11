@@ -17,8 +17,11 @@ import {
   effectiveAnnualSalaryWon,
   employeeStatusForYear,
   type CustomPaymentScheduleDef,
-  type EmployeeStatusForYear,
 } from "@/lib/domain/schedule";
+import {
+  employeeStatusLabelBadgeClass,
+  employeeStatusLabelForYear,
+} from "@/lib/domain/employee-status-label";
 import { effectiveWelfareAllocationWon } from "@/lib/domain/salary-inclusion";
 import { computeAdjustedSalaryAudit } from "@/lib/domain/adjusted-salary-audit";
 import { formatWon, yn } from "@/lib/spreadsheet-format";
@@ -45,18 +48,15 @@ function monthLabel(m: number | null | undefined): string {
   return m != null ? `${m}월` : EM;
 }
 
-function statusBadge(status: EmployeeStatusForYear | null): ReactNode {
-  if (!status) return null;
-  if (status.kind === "ACTIVE_FULL_YEAR") return <span className="badge badge-success">재직</span>;
-  if (status.kind === "ACTIVE_PARTIAL") {
-    const { fromMonth, toMonth } = status.range;
-    const label =
-      fromMonth === 1 ? `~${toMonth}월 재직` : toMonth === 12 ? `${fromMonth}월~ 재직` : `${fromMonth}~${toMonth}월 재직`;
-    return <span className="badge badge-warn">{label}</span>;
-  }
+function statusBadge(employee: Employee, year: number | null): ReactNode {
+  if (year == null) return null;
+  const label = employeeStatusLabelForYear(employee, year);
   return (
-    <span className="badge badge-neutral">
-      {status.resignYear}년{status.resignMonth ? ` ${status.resignMonth}월` : ""} 퇴사
+    <span
+      className={employeeStatusLabelBadgeClass(label)}
+      title={label.detail ?? undefined}
+    >
+      {label.label}
     </span>
   );
 }
@@ -268,7 +268,9 @@ export function EmployeeDirectoryTable({
                     <td className="px-2 py-2.5 text-center text-xs font-semibold tabular-nums text-[var(--muted)]">
                       Lv.{e.level}
                     </td>
-                    <td className="px-2 py-2.5">{statusBadge(r.status)}</td>
+                    <td className="px-2 py-2.5">
+                      {statusBadge(e, payrollYearContext?.activeYear ?? null)}
+                    </td>
                     {hasCtx ? (
                       <td
                         className="px-2 py-2.5 text-right text-sm font-bold tabular-nums text-[var(--text)]"
