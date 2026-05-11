@@ -42,7 +42,8 @@ function chk(formData: FormData, key: string): boolean {
 const baseSchema = z.object({
   name: z.string().min(1, "이름 필수"),
   position: z.string().min(1, "직급 필수"),
-  level: z.coerce.number().min(1).max(5),
+  /** 0 = 사복 미대상(2026-05 정책 — `flagWelfareIneligible` 자동 동기화). 1~5 = 일반 레벨. */
+  level: z.coerce.number().int().min(0).max(5),
 });
 
 const CEO_POSITION = "대표이사";
@@ -170,9 +171,17 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
      * `chk` 가 그대로 명시적 체크/미체크를 반영한다. 외부 호출부에서 키 자체가 빠진 경우에만
      * 기존 DB 값으로 보존(보수적 안전망) — 이 분기는 EmployeeForm 정상 경로에선 닿지 않는다.
      */
-    flagWelfareIneligible: formData.has("flagWelfareIneligible")
-      ? chk(formData, "flagWelfareIneligible")
-      : (existingEmp?.flagWelfareIneligible ?? false),
+    /**
+     * 「사복 미대상」 — 2026-05 부터는 「레벨 0」 으로 일원화. 폼은 별도 토글을 보내지 않으므로
+     * `formData.has("flagWelfareIneligible")` 는 보통 false → 기존 DB 값 보존(legacy 호환).
+     * level === 0 이면 무조건 true 로 강제 동기화한다(소스 오브 트루스를 한 곳으로 통일).
+     */
+    flagWelfareIneligible:
+      level === 0
+        ? true
+        : formData.has("flagWelfareIneligible")
+          ? chk(formData, "flagWelfareIneligible")
+          : (existingEmp?.flagWelfareIneligible ?? false),
     /**
      * 「퇴사월 사복 지급」 토글 — 미체크면 퇴사월 자체가 비활성(=그 달 사복 0).
      *

@@ -681,7 +681,25 @@ export function EmployeeForm({
             <tr>
               <th>레벨 <span className="text-[var(--danger)]">*</span></th>
               <td>
-                <input id={levelId} className={numCellClass} name="level" type="number" min={1} max={5} value={levelStr} onChange={(e) => setLevelStr(e.target.value)} required />
+                <select
+                  id={levelId}
+                  className={numCellClass}
+                  name="level"
+                  value={levelStr}
+                  onChange={(e) => setLevelStr(e.target.value)}
+                  required
+                  aria-describedby={`${levelId}-help`}
+                >
+                  <option value="0">0 · 사복 미대상</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                </select>
+                <span id={`${levelId}-help`} className="ml-2 text-[10px] text-[var(--muted)]">
+                  0 = 사복 미대상 (모든 사복 0원, 인센만 가능)
+                </span>
               </td>
             </tr>
           </tbody>
@@ -830,8 +848,12 @@ export function EmployeeForm({
                       <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagWorkerNet" defaultChecked={employee?.flagWorkerNet} />근로자 실질수령</label>
                     </>
                   )}
-                  <input type="hidden" name="flagWelfareIneligible" value="" />
-                  <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" name="flagWelfareIneligible" defaultChecked={employee?.flagWelfareIneligible ?? false} />사복 미대상</label>
+                  {/*
+                   * 「사복 미대상」 토글은 별도 체크박스를 제거하고 「레벨 0」 으로 일원화(2026-05).
+                   * 저장 액션이 `level === 0` 일 때 자동으로 `flagWelfareIneligible=true` 를 박는다.
+                   * 폼은 키를 보내지 않으므로 action 의 fallback 이 기존 DB 값을 보존 →
+                   * 「레벨>0 인데 미대상으로 잡혀 있던 legacy 직원」 도 무사고로 그대로 유지.
+                   */}
                 </div>
               </td>
             </tr>

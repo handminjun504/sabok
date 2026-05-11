@@ -35,6 +35,7 @@ export {
   type SalaryInclusionCapBlock,
   type SalaryInclusionCapSource,
 } from "./salary-inclusion";
+import { employeeWelfareEligible } from "./employee-welfare-eligibility";
 
 /** 테넌트 추가 정기 행사(귀속 월) */
 export type CustomPaymentScheduleDef = { eventKey: string; accrualMonth: number };
@@ -206,16 +207,16 @@ export function activeMonthsSortedForYear(status: EmployeeStatusForYear): readon
 /**
  * 사복(사내근로복지기금) 계산·표시 대상 직원만 추리는 헬퍼.
  *
- * `flagWelfareIneligible === true` 인 직원은:
- *   - 월별 스케줄, 운영 보고서, 급여포함신고, 안내문, 적립·환류 합산 등 사복 관련 모든 화면·계산에서 제외.
- *   - 단 직원 명부와 ‘월별 발생 인센’ 그리드는 별도 호출로 전체 직원을 그대로 사용 — 미대상자도 인센 기록만 가능하도록.
+ * 「미대상」 판정은 `employeeWelfareIneligible` 헬퍼에 일원화 — `level === 0` 또는
+ * `flagWelfareIneligible === true` 중 하나라도 성립하면 모든 사복 화면(스케줄·운영보고·안내·신고)에서 제외.
  *
+ * 직원 명부와 ‘월별 발생 인센’ 그리드는 별도 호출로 전체 직원을 그대로 사용 — 미대상자도 인센 기록만 가능하도록.
  * 한 군데에서 정의한 뒤 호출부에서 일관 사용해, 한 화면에서만 빠뜨리는 사고를 방지한다.
  */
-export function welfareEligibleEmployees<T extends Pick<Employee, "flagWelfareIneligible">>(
+export function welfareEligibleEmployees<T extends Pick<Employee, "level" | "flagWelfareIneligible">>(
   employees: readonly T[],
 ): T[] {
-  return employees.filter((e) => !e.flagWelfareIneligible);
+  return employees.filter((e) => employeeWelfareEligible(e));
 }
 
 /** 해당 연도·레벨의 정기(레벨/행사) 규칙 금액 합 — 모든 행사가 한 번씩 발생한다고 가정한 표준 연간 합 */

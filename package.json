@@ -23,6 +23,7 @@
     "test:announcement-resign-month": "tsx scripts/test-announcement-resign-month.ts",
     "test:announcement-trueup": "tsx scripts/test-announcement-trueup.ts",
     "test:employee-status-label": "tsx scripts/test-employee-status-label.ts",
+    "test:employee-welfare-eligibility": "tsx scripts/test-employee-welfare-eligibility.ts",
     "pb:seed": "tsx scripts/pb-seed.ts",
     "pb:create-user": "tsx scripts/pb-create-user.ts",
     "pb:fix-employees-schema": "node scripts/pb-fix-employees-schema.mjs",
