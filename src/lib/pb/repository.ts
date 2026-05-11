@@ -1959,6 +1959,63 @@ export async function monthlyNoteUpsert(data: {
 }
 
 /**
+ * 「선택적복지·메모·인센 두 필드」 partial-patch 전용.
+ *
+ * `monthlyNoteUpsert` 와 달리 호출자가 `undefined` 로 둔 키는 PB 페이로드에 절대 포함되지 않으며
+ * 명시적 `null` 만이 「그 필드를 비우기」 의미를 갖는다. 「단일 폼」 처럼 4 필드를 한 화면에서 다루지만
+ * 일부 필드만 채워 저장하는 케이스에서, 비어 있는 필드가 기존 값을 통째로 덮어쓰는 사고를 차단한다.
+ *
+ * 노트가 없고 어떤 키도 비-undefined 값이 없다면 no-op (빈 row 생성 방지).
+ * 노트가 없고 일부 키만 들어오면 생성하되 생략된 키는 null 로 둔다.
+ *
+ * 2026-05 회귀 「단일 폼 저장 한 번에 인센 메모가 통째로 사라지는」 사고의 구조적 가드.
+ */
+export async function monthlyNoteUpsertPartial(data: {
+  employeeId: string;
+  year: number;
+  month: number;
+  optionalWelfareText?: string | null;
+  optionalExtraAmount?: number | null;
+  incentiveAccrualAmount?: number | null;
+  incentiveWelfarePaymentAmount?: number | null;
+}): Promise<void> {
+  const f = `employeeId="${esc(data.employeeId)}" && year=${data.year} && month=${data.month}`;
+  const existing = await firstByFilterStrict(C.monthlyEmployeeNotes, f);
+  const pb = await getAdminPb();
+
+  const patch: Record<string, unknown> = {};
+  if (data.optionalWelfareText !== undefined) {
+    patch.optionalWelfareText = data.optionalWelfareText;
+  }
+  if (data.optionalExtraAmount !== undefined) {
+    patch.optionalExtraAmount = data.optionalExtraAmount;
+  }
+  if (data.incentiveAccrualAmount !== undefined) {
+    patch.incentiveAccrualAmount = data.incentiveAccrualAmount;
+  }
+  if (data.incentiveWelfarePaymentAmount !== undefined) {
+    patch.incentiveWelfarePaymentAmount = data.incentiveWelfarePaymentAmount;
+  }
+
+  if (existing?.id) {
+    if (Object.keys(patch).length === 0) return;
+    await pb.collection(C.monthlyEmployeeNotes).update(String(existing.id), patch);
+    return;
+  }
+
+  if (Object.keys(patch).length === 0) return;
+  await pb.collection(C.monthlyEmployeeNotes).create({
+    employeeId: data.employeeId,
+    year: data.year,
+    month: data.month,
+    optionalWelfareText: data.optionalWelfareText ?? null,
+    optionalExtraAmount: data.optionalExtraAmount ?? null,
+    incentiveAccrualAmount: data.incentiveAccrualAmount ?? null,
+    incentiveWelfarePaymentAmount: data.incentiveWelfarePaymentAmount ?? null,
+  });
+}
+
+/**
  * 「선택적 복지 금액」 한 셀(직원×월) 부분 업데이트 전용 함수.
  *
  * - `optionalExtraAmount` 만 덮어쓰고 다른 필드(메모/인센/오버라이드 등) 는 **절대 건드리지 않는다**.

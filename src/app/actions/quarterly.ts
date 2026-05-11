@@ -9,6 +9,7 @@ import {
   employeeFindFirst,
   monthlyNoteListByEmployeeYear,
   monthlyNoteUpsert,
+  monthlyNoteUpsertPartial,
   monthlyPaymentStatusSet,
   quarterlyEmployeeConfigDelete,
   quarterlyEmployeeConfigGetById,
@@ -592,6 +593,15 @@ export async function setMonthPaidConfirmedAction(
   return { ok: true };
 }
 
+/**
+ * 「선택적복지·메모 (단일 폼)」 — partial-patch.
+ *
+ * 핵심 원칙: 「폼에 input 필드가 존재하고 값이 빈 문자열이 아닐 때만」 그 키를 PB 페이로드에 동봉한다.
+ * - 빈 input 은 "이번 저장에서는 이 필드를 다루지 않음 → 기존 값 보존" 을 의미.
+ * - 「의도적으로 비우기」 가 필요하다면 별도 키(`__clear_<field>=1`) 로 명시한다(향후 확장).
+ *
+ * 2026-05 회귀 「단일 폼 저장 한 번에 인센 메모가 통째로 사라지는」 사고 차단.
+ */
 export async function saveMonthlyNoteAction(_: QState, formData: FormData): Promise<QState> {
   const ctx = await resolveActionTenant();
   if (!ctx.ok) return { 오류: ctx.message };
@@ -600,10 +610,6 @@ export async function saveMonthlyNoteAction(_: QState, formData: FormData): Prom
   const employeeId = String(formData.get("employeeId") ?? "");
   const year = parseInt(String(formData.get("year") ?? ""), 10);
   const month = parseInt(String(formData.get("month") ?? ""), 10);
-  const optionalWelfareText = String(formData.get("optionalWelfareText") ?? "") || null;
-  const optionalExtraAmount = toNumOrNull(formData.get("optionalExtraAmount"));
-  const incentiveAccrualAmount = toNumOrNull(formData.get("incentiveAccrualAmount"));
-  const incentiveWelfarePaymentAmount = toNumOrNull(formData.get("incentiveWelfarePaymentAmount"));
 
   if (!employeeId || !Number.isFinite(year) || month < 1 || month > 12) {
     return { 오류: "입력 오류" };
@@ -612,15 +618,45 @@ export async function saveMonthlyNoteAction(_: QState, formData: FormData): Prom
   const emp = await employeeFindFirst(employeeId, ctx.tenantId);
   if (!emp) return { 오류: "직원을 찾을 수 없습니다." };
 
-  await monthlyNoteUpsert({
+  /** 폼에 input 자체가 존재하고 trim 결과가 비지 않은 경우에만 patch 키 동봉. 그 외는 undefined → 기존값 보존. */
+  const hasField = (key: string): boolean => {
+    const v = formData.get(key);
+    return v != null && String(v).trim().length > 0;
+  };
+  const explicitClear = (key: string): boolean => formData.get(`__clear_${key}`) === "1";
+
+  const patch: Parameters<typeof monthlyNoteUpsertPartial>[0] = {
     employeeId: emp.id,
     year,
     month,
-    optionalWelfareText,
-    optionalExtraAmount,
-    incentiveAccrualAmount,
-    incentiveWelfarePaymentAmount,
-  });
+  };
+
+  /** 텍스트 메모 — 명시적 clear 플래그가 있으면 null, 입력값이 있으면 그 값, 아니면 undefined(보존). */
+  if (explicitClear("optionalWelfareText")) {
+    patch.optionalWelfareText = null;
+  } else if (hasField("optionalWelfareText")) {
+    patch.optionalWelfareText = String(formData.get("optionalWelfareText") ?? "");
+  }
+
+  if (explicitClear("optionalExtraAmount")) {
+    patch.optionalExtraAmount = null;
+  } else if (hasField("optionalExtraAmount")) {
+    patch.optionalExtraAmount = toNumOrNull(formData.get("optionalExtraAmount"));
+  }
+
+  if (explicitClear("incentiveAccrualAmount")) {
+    patch.incentiveAccrualAmount = null;
+  } else if (hasField("incentiveAccrualAmount")) {
+    patch.incentiveAccrualAmount = toNumOrNull(formData.get("incentiveAccrualAmount"));
+  }
+
+  if (explicitClear("incentiveWelfarePaymentAmount")) {
+    patch.incentiveWelfarePaymentAmount = null;
+  } else if (hasField("incentiveWelfarePaymentAmount")) {
+    patch.incentiveWelfarePaymentAmount = toNumOrNull(formData.get("incentiveWelfarePaymentAmount"));
+  }
+
+  await monthlyNoteUpsertPartial(patch);
   revalidateScheduleArtifacts();
   return { 성공: true };
 }
