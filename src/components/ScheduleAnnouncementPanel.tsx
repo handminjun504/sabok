@@ -145,6 +145,11 @@ export function ScheduleAnnouncementPanel({
         }
         return r.salaryMonth;
       })(),
+      /**
+       * 「퇴사자 안내 정산 내역 요약」 — focusMonth 가 그 직원의 true-up 월과 일치할 때만 한 줄로 전달.
+       * 다른 달에는 null 이라 빌더가 자연스럽게 무시한다(=재직자·다른 달 안내는 회귀 없음).
+       */
+      trueUpBreakdownLine: r.trueUp != null && r.trueUp.month === focusMonth ? r.trueUp.breakdown : null,
       flagRepReturn: r.flagRepReturn,
       repReturnAmount: r.repReturnByMonth[focusMonth] ?? 0,
       spouseReceiptAmount: r.spouseReceiptByMonth[focusMonth] ?? 0,

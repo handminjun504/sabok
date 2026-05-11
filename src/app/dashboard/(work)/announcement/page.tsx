@@ -29,10 +29,11 @@ import {
   welfareByScheduleDisplayMonth,
   welfareEligibleEmployees,
 } from "@/lib/domain/schedule";
+import { resolveEffectiveAdjustedSalaryForMonth } from "@/lib/domain/salary-inclusion";
 import {
-  computeLoweredSalaryPartialYearTrueUpWon,
-  resolveEffectiveAdjustedSalaryForMonth,
-} from "@/lib/domain/salary-inclusion";
+  computeAnnouncementTrueUpDetail,
+  formatAnnouncementTrueUpBreakdownLine,
+} from "@/lib/domain/announcement-trueup";
 import { parseTenantOperationMode } from "@/lib/domain/tenant-profile";
 import {
   additionalReserveStatus,
@@ -242,7 +243,17 @@ export default async function AnnouncementPage() {
      */
     let announcementTrueUpApplied = 0;
     let announcementTrueUpMonth: number | null = null;
-    if (lastSalaryActiveMonth != null && salaryActiveMonths.length < 12) {
+    let announcementTrueUpBreakdown: string | null = null;
+    /**
+     * 「퇴사자 안내 정산 — 급여 추가 지급(true-up)」 새 식.
+     *
+     * 적용 범위: SALARY_WELFARE/COMBINED 운영 + 활성 월 < 12개월(=퇴사자/부분년도) 인 직원에만.
+     * 재직자(=12개월) 와 INCENTIVE_WELFARE/GENERAL 직원에는 적용하지 않는다(기존 기본 멘트 그대로).
+     *
+     * 새 식: trueUp = max(0, (낮춘급여 누적) + (발생인센 누적) − (사복 지급 누적) − (운영자 차감)).
+     * 안내 본문에 「차액 한 줄(=급여에 합산)」 + 「내역 요약 한 줄(들여)」 로 노출된다.
+     */
+    if (isSalaryLowering && lastSalaryActiveMonth != null && salaryActiveMonths.length < 12) {
       const welfareYtdThroughLast = computeActualWelfareThroughPaidMonth(
         emp,
         year,
@@ -255,15 +266,27 @@ export default async function AnnouncementPage() {
         customSchedule,
         fixedEventMonths,
       );
-      const announcementTrueUp = computeLoweredSalaryPartialYearTrueUpWon({
+      /**
+       * 「발생 인센 누적」 — 활성 월의 `incentiveAccrualAmount` (이미 세후 변환 적용된 저장값) 합.
+       * 사복으로 지급된 인센이 아니라 「발생」 자체. 사용자 예시: 86.4 + 92.8 + 65.9 + 53.1 = 2,982,400.
+       */
+      let incentiveAccrualYtd = 0;
+      for (const n of empNotes) {
+        if (n.year !== year) continue;
+        if (!monthIsActive(announcementStatus, n.month)) continue;
+        const v = n.incentiveAccrualAmount != null ? Number(n.incentiveAccrualAmount) : 0;
+        if (Number.isFinite(v) && v > 0) incentiveAccrualYtd += Math.round(v);
+      }
+      const detail = computeAnnouncementTrueUpDetail({
         employee: emp,
-        activeMonthsSorted: salaryActiveMonths,
-        welfareYtdThroughLastPaidMonth: welfareYtdThroughLast,
-        hasAdjustedSalaryOverride: false,
+        activeMonthsCount: salaryActiveMonths.length,
+        incentiveAccrualYtdWon: incentiveAccrualYtd,
+        welfarePaidYtdWon: welfareYtdThroughLast,
       });
-      if (announcementTrueUp > 0) {
-        announcementTrueUpApplied = announcementTrueUp;
+      if (detail.trueUpWon > 0) {
+        announcementTrueUpApplied = detail.trueUpWon;
         announcementTrueUpMonth = lastSalaryActiveMonth;
+        announcementTrueUpBreakdown = formatAnnouncementTrueUpBreakdownLine(detail);
       }
     }
 
@@ -301,6 +324,15 @@ export default async function AnnouncementPage() {
       spouseReceiptByMonth: monthlyRecordFor(spouseReceiptSchedule, emp.id),
       discretionaryByMonth: monthlyRecordFor(discretionarySchedule, emp.id),
       customReturnsByMonth: customReturnsByMonthFor(emp.id),
+      /**
+       * 「퇴사자 안내 정산 — true-up」 동봉 (와이어로 직렬화).
+       * 패널이 그 직원의 마지막 활성 월(=퇴사월) 안내에서 「ㄴ내역: ...」 한 줄로 노출한다.
+       * null = 적용 불필요(재직자, 사복 단독 운영, 차액 0).
+       */
+      trueUp:
+        announcementTrueUpMonth != null && announcementTrueUpBreakdown
+          ? { month: announcementTrueUpMonth, breakdown: announcementTrueUpBreakdown }
+          : null,
     };
   });
 

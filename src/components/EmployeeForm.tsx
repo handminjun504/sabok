@@ -774,6 +774,32 @@ export function EmployeeForm({
               </td>
             </tr>
             <tr>
+              <th>급여 추가지급<br/>차감액</th>
+              <td>
+                <div className="flex flex-col gap-1.5">
+                  <LabeledCommaWon
+                    name="salaryTrueUpDeductionWon"
+                    label=""
+                    defaultValue={employee?.salaryTrueUpDeductionWon ?? undefined}
+                    optional
+                  />
+                  <input
+                    type="text"
+                    name="salaryTrueUpDeductionMemo"
+                    defaultValue={employee?.salaryTrueUpDeductionMemo ?? ""}
+                    placeholder="예) 주 4일 근무 차감분 (125만원 → 세후)"
+                    maxLength={200}
+                    className={inputClass + " text-xs"}
+                  />
+                  <p className="text-[0.6875rem] leading-snug text-[var(--muted)]">
+                    퇴사자(SALARY_WELFARE/COMBINED) 안내 정산식의 <strong>차감 항목</strong>에 합산됩니다.
+                    식: (낮춘급여 + 인센 누적) − (사복 지급 누적 + 이 차감액).
+                    비워두면 차감 없음.
+                  </p>
+                </div>
+              </td>
+            </tr>
+            <tr>
               <th>플래그</th>
               <td>
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[0.8125rem]">

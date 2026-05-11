@@ -114,6 +114,13 @@ export function mapEmployee(r: Record<string, unknown>): Employee {
    * null 은 「거래처 모드를 그대로 따른다」 의미라, 신규 컬럼 환경에서도 회귀 없이 작동.
    */
   operationMode: parseTenantOperationModeOrNull(r.operationMode),
+  /** 「true-up 차감액」 — 0 도 의미 있는 값(차감 없음)이라 numNull. PB 컬럼 누락 시 null 로 안전 fallback. */
+  salaryTrueUpDeductionWon: numNull(r.salaryTrueUpDeductionWon),
+  /** 차감 메모 — 길이 가드는 액션·UI 단에서. PB 컬럼 누락 시 null. */
+  salaryTrueUpDeductionMemo:
+    typeof r.salaryTrueUpDeductionMemo === "string" && r.salaryTrueUpDeductionMemo.trim().length > 0
+      ? r.salaryTrueUpDeductionMemo
+      : null,
   };
 }
 

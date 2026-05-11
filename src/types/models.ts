@@ -85,6 +85,15 @@ export type Employee = {
    * PB `operationMode` (text).
    */
   operationMode: TenantOperationMode | null;
+  /**
+   * 「급여 추가 지급(true-up) 차감액」 — 안내 메시지 정산식의 차감 항목.
+   * 예: 「주 4일 근무 차감분(125만원 → 세후) 1,000,000원」.
+   * SALARY_WELFARE/COMBINED 운영 + 퇴사자 안내 멘트에서 (낮춘급여 + 인센) − (사복지급 + 차감) 식의
+   * 「차감」 으로 합산된다. PB `salaryTrueUpDeductionWon`. null/0 이면 차감 없음.
+   */
+  salaryTrueUpDeductionWon: number | null;
+  /** 위 차감의 사유 메모 — 안내 멘트의 「내역 요약」 라인에 함께 노출. PB `salaryTrueUpDeductionMemo`. */
+  salaryTrueUpDeductionMemo: string | null;
 };
 
 export type LevelPaymentRule = {

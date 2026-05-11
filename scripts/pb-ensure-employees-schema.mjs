@@ -96,6 +96,14 @@ const CATALOG = {
      * 「연 사복 스케줄 합계」 로 동적 전환되어, 그 합계를 넘는 발생 인센이 들어오면 즉시 안내된다.
      */
     { name: "operationMode", type: "text" },
+    /**
+     * 「급여 추가 지급(true-up) 차감액」 — 안내 메시지의 정산식에서 차감 항목으로 합산.
+     * 예: 「주 4일 근무 차감분(125만원 → 세후) 1,000,000원」 같은 임의 차감.
+     * SALARY_WELFARE/COMBINED 운영 + 퇴사자에 한해 안내 멘트에 반영. 0/빈값은 차감 없음.
+     */
+    { name: "salaryTrueUpDeductionWon", type: "number" },
+    /** 위 차감의 사유 메모 — 안내 메시지의 「내역 요약」 라인에 함께 노출(짧은 한 줄). */
+    { name: "salaryTrueUpDeductionMemo", type: "text" },
   ],
   sabok_company_settings: [
     // 활성/회계 연도

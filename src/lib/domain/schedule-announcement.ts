@@ -10,6 +10,12 @@ export type AnnouncementRowInput = {
   name: string;
   welfareMonth: number;
   salaryMonth: number;
+  /**
+   * 「퇴사자 안내 정산 — true-up 내역 요약」 한 줄. 패널이 focusMonth === trueUp.month 일 때만 채워서 넘긴다.
+   * 빈 문자열/undefined 면 노출하지 않는다(재직자·내역 없음 케이스 호환).
+   * 예: "내역: 낮춘급여 7,000,000 + 인센 2,982,400 − 사복지급 6,000,000 − 차감 1,000,000(주4일)"
+   */
+  trueUpBreakdownLine?: string | null;
   flagRepReturn: boolean;
   /**
    * 「대표반환·배우자수령·알아서금액」 — 모두 안내 멘트의 직원 라인 아래
@@ -176,7 +182,18 @@ export function buildSalaryPortionNotice(
   const included = sorted.filter((r) => r.salaryMonth > 0);
   if (included.length === 0) return null;
   const head = [`${month}월 급여분 안내드립니다.`, ``];
-  const body = included.map((r) => `${r.name} ${formatWonLine(Math.round(r.salaryMonth))} 원`);
+  /**
+   * 직원 라인 다음에 「퇴사자 안내 정산 내역 요약」 한 줄을 들여서 출력.
+   * - `trueUpBreakdownLine` 이 비어 있지 않을 때만 노출(재직자·내역 없음 케이스는 자연 폴백).
+   * - 형식 예: "ㄴ내역: 낮춘급여 7,000,000 + 인센 2,982,400 − 사복지급 6,000,000 − 차감 1,000,000(주4일)"
+   *   → 운영자가 한눈에 「왜 이 달 급여가 평소보다 큰지」 확인 가능.
+   */
+  const body: string[] = [];
+  for (const r of included) {
+    body.push(`${r.name} ${formatWonLine(Math.round(r.salaryMonth))} 원`);
+    const breakdown = (r.trueUpBreakdownLine ?? "").trim();
+    if (breakdown.length > 0) body.push(`ㄴ${breakdown}`);
+  }
   return [...head, ...body].join("\n");
 }
 

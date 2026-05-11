@@ -201,6 +201,20 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
     data.operationMode = parseTenantOperationModeOrNull(formData.get("operationMode"));
   }
 
+  /**
+   * 「급여 추가 지급(true-up) 차감액」·「차감 메모」 — 직원 폼 입력이 실제로 존재할 때만 update 페이로드에 추가한다.
+   *
+   * 빈 입력은 null 로 매핑해 「차감 해제」 의도를 명시적으로 PB 에 반영(0 과 null 둘 다 차감 없음).
+   * 메모는 공백만 들어오면 null. 폼 외 호출부는 키 미동봉으로 기존값을 보존한다.
+   */
+  if (formData.has("salaryTrueUpDeductionWon")) {
+    data.salaryTrueUpDeductionWon = toNumOrNull(formData.get("salaryTrueUpDeductionWon"));
+  }
+  if (formData.has("salaryTrueUpDeductionMemo")) {
+    const memoRaw = String(formData.get("salaryTrueUpDeductionMemo") ?? "").trim();
+    data.salaryTrueUpDeductionMemo = memoRaw.length > 0 ? memoRaw.slice(0, 200) : null;
+  }
+
   /** 신규 생성 시 선택 필드가 null이면 키 자체를 빼서 PB 검증 오류를 줄임 */
   function bodyForCreate(): Record<string, unknown> {
     const o = { ...data };
@@ -221,6 +235,9 @@ export async function saveEmployeeAction(_prev: EmployeeActionState, formData: F
       "salaryInclusionVarianceMode",
       /** 직원별 운영 모드 — null = override 해제. 생성 시점에선 키를 빼서 PB 기본값 흐름 보존. */
       "operationMode",
+      /** true-up 차감 — null/0 동치. 생성 시 키 미동봉 → PB 기본값(빈) 흐름. */
+      "salaryTrueUpDeductionWon",
+      "salaryTrueUpDeductionMemo",
     ] as const;
     for (const k of dropIfNull) {
       if (o[k] === null) delete o[k];
