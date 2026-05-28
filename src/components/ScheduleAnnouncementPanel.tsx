@@ -261,11 +261,6 @@ export function ScheduleAnnouncementPanel({
   return (
     <div className="space-y-4" id="announcement-copy">
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <p className="text-sm leading-relaxed text-[var(--muted)]">
-          월별 스케줄과 동일한 기준(N월 칸 = N월 귀속분, 분기는 지정한 지급 월)으로 합계를 계산합니다. 아래에서 월을 바꾸면
-          멘트가 갱신됩니다. 급여분(월 환산)은 「급여낮추기」 회사는 조정연봉÷12, 그 외에는 기존연봉÷12 의 절사값입니다.
-          중도 입·퇴사로 활성월이 12개월 미만이면 마지막 근무월에 정산액(받아야 할 누적 − 급여·사복 누적)을 자동 가산합니다.
-        </p>
         <p
           className={
             "mt-2 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold " +
@@ -324,10 +319,6 @@ export function ScheduleAnnouncementPanel({
               ))}
             </select>
           </label>
-          <p className="max-w-md pb-1 text-[0.7rem] leading-snug text-[var(--muted)]">
-            직원별로 월별 지급액만 합산해 통장 이체 총액과 &ldquo;N월: 금액&rdquo; 블록을 만듭니다. 아래 4번 복사본을
-            사용하세요.
-          </p>
         </div>
       </div>
 
@@ -347,23 +338,18 @@ export function ScheduleAnnouncementPanel({
               <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
                 <p className="dash-eyebrow">근로자 지급 합계 (참고)</p>
                 <p className="mt-1 text-xl font-extrabold tabular-nums text-[var(--text)]">{fmt(welfareSum)}원</p>
-                <p className="mt-1 text-xs text-[var(--muted)]">근로자에게 실제로 나가는 총액입니다.</p>
               </div>
             </>
           ) : (
             <div className="rounded-lg border border-[var(--accent)]/40 bg-[var(--surface)] p-3">
               <p className="dash-eyebrow">통장 입금액 (적립금 가산 없음)</p>
               <p className="mt-1 text-xl font-extrabold tabular-nums text-[var(--accent)]">{fmt(welfareSum)}원</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">
-                자본금 50% 적립 완료 — 근로자 지급 합계로 입금하시면 됩니다.
-              </p>
             </div>
           )}
           {showSalaryPortionNoticeMode(operationMode) && salarySum > 0 ? (
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
               <p className="dash-eyebrow">급여분(월 환산) 합계</p>
               <p className="mt-1 text-xl font-extrabold tabular-nums text-[var(--text)]">{fmt(salarySum)}원</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">급여 이체·지급 시 참고 금액입니다.</p>
             </div>
           ) : null}
         </div>
@@ -376,13 +362,6 @@ export function ScheduleAnnouncementPanel({
         <h2 id="announcement-copy-blocks" className="text-base font-bold text-[var(--text)]">
           복사용 멘트
         </h2>
-        <p className="mt-1 text-xs text-[var(--muted)]">
-          거래처 기본 모드:{" "}
-          <strong className="text-[var(--text)]">
-            {batchedPreferred ? "묶음 안내" : "단일월 안내"}
-          </strong>{" "}
-          — 거래처 등록·프로필에서 변경할 수 있습니다.
-        </p>
         <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-2">
           {batchedPreferred ? (
             <CopyTextBlock

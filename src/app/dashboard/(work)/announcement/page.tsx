@@ -43,7 +43,6 @@ import {
 import { encodeAnnouncementPanelPayloadJson } from "@/lib/domain/schedule-announcement-payload";
 import { AnnouncementPanelClient } from "@/components/AnnouncementPanelClient";
 import { PageHeader } from "@/components/ui/PageHeader";
-import Link from "next/link";
 
 /**
  * 「월별 안내」 메뉴 — 안내 멘트(급여분·사복) 생성·복사 전용 화면.
@@ -350,13 +349,6 @@ export default async function AnnouncementPage() {
           </>
         }
       />
-      <p className="text-xs leading-relaxed text-[var(--muted)]">
-        본 화면은 안내 멘트만 생성·복사합니다. 금액 입력(선택적복지·대표반환·배우자수령·알아서금액·발생 인센 등) 은 모두{" "}
-        <Link href="/dashboard/schedule" className="font-semibold text-[var(--accent)] hover:underline">
-          월별 스케줄
-        </Link>{" "}
-        화면에 모여 있습니다.
-      </p>
       <AnnouncementPanelClient
         year={year}
         payloadJson={announcementPayloadJson}

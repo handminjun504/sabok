@@ -208,11 +208,6 @@ export function TenantCreateForm({
 
         <div className="sm:col-span-2">
           <p className="dash-eyebrow mb-2">안내 멘트 기본 방식</p>
-          <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
-            대시보드 → 월별 스케줄 → 「안내 멘트」 탭에서 어떤 양식을 기본으로 보여줄지 정합니다.
-            <strong className="text-[var(--text)]"> 묶음</strong>은 여러 달을 한 번에 안내(개인사업자 등),
-            <strong className="text-[var(--text)]"> 단일월</strong>은 매 달 하나씩 안내(법인 일반).
-          </p>
           <div className="space-y-2">
             {ANNOUNCEMENT_MODES.map((opt) => (
               <label

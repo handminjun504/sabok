@@ -246,12 +246,6 @@ function TenantCard({
               </select>
             </label>
           ) : null}
-          {yearChanged && !lockedYearControl ? (
-            <p className="rounded-md border border-[var(--accent-soft,#a7f3d0)] bg-[var(--accent-bg,#ecfdf5)] px-2.5 py-1.5 text-[11px] leading-snug text-[var(--accent,#047857)]">
-              <strong className="font-semibold">{selectedYear}년</strong>으로 입장하면 거래처 기준 연도가 함께 갱신됩니다. 이전
-              연도({t.activeYear}년) 의 레벨 규칙·목표액·분기 요율·월별 메모 자료는 그대로 보존됩니다.
-            </p>
-          ) : null}
           {lockedYearControl ? (
             <p className="text-[11px] leading-snug text-[var(--muted)]">
               연도 변경은 선임·관리자 권한이 필요합니다. 현재 기준 연도({t.activeYear}년) 로 입장합니다.

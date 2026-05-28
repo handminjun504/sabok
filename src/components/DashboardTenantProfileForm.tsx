@@ -279,9 +279,6 @@ export function DashboardTenantProfileForm({ tenant }: { tenant: Tenant }) {
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
             <span className="mb-2 block text-sm font-medium text-[var(--muted)]">안내 멘트 기본 방식</span>
-            <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
-              월별 스케줄 →「안내 멘트」탭이 처음 열릴 때 어떤 양식을 기본으로 보여줄지 정합니다.
-            </p>
             <div className="space-y-2" role="radiogroup" aria-label="안내 멘트 기본 방식">
               {ANNOUNCEMENT_MODES.map((opt) => (
                 <label

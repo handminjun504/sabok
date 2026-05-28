@@ -544,23 +544,6 @@ export function MonthlyIncentiveAccrualGrid({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs leading-relaxed text-[var(--muted)]">
-        각 칸은 해당 <strong className="text-[var(--text)]">지급월</strong> 월별 노트의「발생 인센」과 같습니다. 입력
-        후 잠시 멈추거나 다른 칸을 누르면{" "}
-        <strong className="text-[var(--text)]">자동으로 저장</strong>됩니다(저장 버튼 없음). 행 끝의{" "}
-        <strong className="text-[var(--text)]">잔여(예상−누적)</strong>가 음수면 발생 인센이 ‘예상 인센’ 한도를
-        넘은 것이라, 초과분은 사복으로 다 줄 수 없으므로 <strong className="text-[var(--text)]">급여에 얹어 신고</strong>해야 합니다.
-        잔여가 <strong className="text-[var(--text)]">10만원 이하</strong>로 남으면 행 끝에{" "}
-        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--warn-soft,#fef3c7)] px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-[var(--warn,#b45309)] align-baseline">
-          ● 한도 임박
-        </span>{" "}
-        라벨이 노출됩니다. 한도 초과 시에는{" "}
-        <span className="inline-flex items-center gap-1 px-1 text-[0.65rem] font-bold uppercase tracking-wide text-[var(--danger)] align-baseline">
-          급여 얹기
-        </span>{" "}
-        라벨로 전환됩니다.
-      </p>
-
       <div className="rounded-md border border-[var(--border)] bg-[var(--surface-hover)] p-3 text-xs leading-relaxed text-[var(--muted)]">
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="incentiveNetRatioPercent" className="font-semibold text-[var(--text)]">

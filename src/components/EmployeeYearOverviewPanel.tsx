@@ -296,11 +296,7 @@ export function EmployeeYearOverviewPanel({
             <CopyTextBlock title={`${month}월 사복 안내`} body={welfareNotice} />
             {salaryNotice ? (
               <CopyTextBlock title={`${month}월 급여분 안내`} body={salaryNotice} />
-            ) : (
-              <p className="self-center text-xs text-[var(--muted)]">
-                현재 운영모드에서는 「급여분 안내」 멘트가 노출되지 않습니다.
-              </p>
-            )}
+            ) : null}
           </div>
         )}
       </div>

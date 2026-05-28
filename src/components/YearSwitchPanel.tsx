@@ -24,14 +24,6 @@ export function YearSwitchPanel({
 
   return (
     <form action={formAction} className="surface dash-panel-pad space-y-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm leading-relaxed text-[var(--muted)]">
-          현재{" "}
-          <strong className="text-[var(--text)] font-bold tabular-nums text-base">{currentYear}년</strong>
-          {" "}— 새 연도를 선택하면 스케줄·지급 규칙·운영 보고 전체가 해당 연도 기준으로 바뀝니다.
-        </p>
-      </div>
-
       <div className="grid gap-3">
         <div>
           <label className="dash-field-label">새 기준 연도</label>
@@ -58,9 +50,6 @@ export function YearSwitchPanel({
           />
           <span className="min-w-0">
             <span className="font-semibold text-[var(--text)]">{currentYear}년 데이터 복사</span>
-            <span className="block mt-0.5 text-[11px] leading-snug text-[var(--muted)]">
-              레벨 규칙·목표액·분기 요율·분기 대상자 — 직원 정보는 연도와 무관하게 유지됩니다.
-            </span>
           </span>
         </label>
       </div>

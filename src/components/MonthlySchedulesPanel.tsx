@@ -242,9 +242,6 @@ export function MonthlySchedulesPanel({
           <h2 className="text-sm font-bold text-[var(--text)]">
             대표반환·배우자수령·알아서금액 — {activeYear}년
           </h2>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            저장된 월별 금액은 안내 멘트의 직원 라인 아래에 자동으로 들어갑니다. 「+ 반환 추가」 로 사용자 정의 반환 항목도 만들 수 있습니다.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
           <span>대표반환 합계 <strong className="tabular-nums text-[var(--text)]">{fmt(sectionTotals.repReturn)}</strong>원</span>
@@ -276,10 +273,7 @@ export function MonthlySchedulesPanel({
           return (
             <div key={sectionKey} className="surface overflow-hidden">
               <div className="dash-panel-toolbar border-b border-[var(--border)] bg-[var(--surface-hover)]/40">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm font-semibold text-[var(--text)]">{meta.title}</p>
-                  <span className="text-xs text-[var(--muted)]">{meta.hint}</span>
-                </div>
+                <p className="text-sm font-semibold text-[var(--text)]">{meta.title}</p>
               </div>
               {list.length === 0 ? (
                 <p className="px-4 py-6 text-center text-xs text-[var(--muted)]">
@@ -355,9 +349,6 @@ export function MonthlySchedulesPanel({
           <div className="space-y-3">
             <div className="flex items-baseline justify-between gap-2">
               <p className="text-xs font-semibold text-[var(--muted)]">추가 반환 — 사용자 정의</p>
-              <p className="text-[10px] text-[var(--muted)]">
-                안내 멘트의 직원 줄 아래 「ㄴ카테고리명: 금액」 으로 노출됩니다.
-              </p>
             </div>
             {customCategories.map((cat, catIdx) => {
               const total = customCategoryTotals[catIdx] ?? 0;

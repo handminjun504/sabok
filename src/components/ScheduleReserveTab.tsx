@@ -71,12 +71,6 @@ export function ScheduleReserveTab({
             </h2>
             <span className="badge badge-accent">항상 +20% 적립</span>
           </div>
-          <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-            개인사업자는 통장 입금 시{" "}
-            <strong className="text-[var(--text)]">항상 +20% 추가 적립</strong>이 자동으로 적용됩니다. 법인처럼 자본금
-            50% 같은 한도가 없어 별도 “적립 진행 메모”나 “남은 한도 계산”이 필요하지 않습니다 — 그래서 이 화면에서는
-            누적 합만 보여드립니다.
-          </p>
         </div>
 
         <DashboardReserveStatusPanel summary={summary} />
@@ -94,10 +88,6 @@ export function ScheduleReserveTab({
       ) : null}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
         <h2 className="text-base font-bold text-[var(--text)]">적립 구분·자본금</h2>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          거래처 등록 시 정한 <span className="font-semibold text-[var(--text)]">{tenantClientEntityLabel(clientEntityType)}</span>
-          이 통장 입금 시 추가 적립(20%)을 더할지·언제까지 더할지 결정합니다.
-        </p>
         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-[var(--muted)]">본사 자본금(등록 정보)</dt>
@@ -110,7 +100,7 @@ export function ScheduleReserveTab({
           <div>
             <dt className="text-[var(--muted)]">법인 추가 적립 상한 참고(자본금의 50%)</dt>
             <dd className="font-semibold tabular-nums text-[var(--text)]">
-              {capHalf != null ? `${capHalf.toLocaleString("ko-KR")}원까지 적립 한도로 자주 쓰입니다.` : "자본금을 넣으면 여기에 계산됩니다."}
+              {capHalf != null ? `${capHalf.toLocaleString("ko-KR")}원` : "—"}
             </dd>
           </div>
         </dl>
@@ -127,10 +117,6 @@ export function ScheduleReserveTab({
 
       <section className="surface-prominent dash-panel-pad">
         <h2 className="text-base font-bold text-[var(--text)]">적립 계획 메모</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          예: &ldquo;2500만 원 한도 중 800만 원 적립 완료, 남은 1700만 원은 분기별로&rdquo; 처럼 직접 적어 두세요. 안내
-          멘트의 통장 입금액과는 별개입니다.
-        </p>
         {state?.오류 ? <p className="mt-2 text-sm text-[var(--danger)]">{state.오류}</p> : null}
         {state?.성공 ? <p className="mt-2 text-sm text-[var(--success)]">저장되었습니다.</p> : null}
         <form key={key} action={formAction} className="mt-3 space-y-2">

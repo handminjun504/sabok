@@ -227,12 +227,6 @@ export function CompanySettingsForm({
       </div>
       <fieldset className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
         <legend className="dash-field-label px-1">월별 발생 인센 — 세후 자동 변환 비율 (%)</legend>
-        <p className="mb-2 text-xs leading-relaxed text-[var(--muted)]">
-          월별 스케줄 → <strong className="text-[var(--text)]">월별 발생 인센</strong> 그리드에서 셀에 적은 금액을 자동으로
-          이 비율만큼만 적용해 저장합니다. 예: <strong className="text-[var(--text)]">80</strong> 입력 시{" "}
-          <strong className="text-[var(--text)]">1,000,000원 → 800,000원</strong>으로 저장. 비워 두거나 100 이면 변환 OFF.
-          비율 변경은 <strong className="text-[var(--text)]">새 입력부터</strong> 적용되며, 이미 저장된 셀은 그대로 유지됩니다.
-        </p>
         <div className="flex items-baseline gap-1">
           <input
             name="incentiveNetRatioPercent"
@@ -250,10 +244,6 @@ export function CompanySettingsForm({
 
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
         <p className="dash-field-label mb-2">정기 지급 4종 — 귀속(=지급) 월</p>
-        <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
-          업체별로 행사 월을 다르게 잡고 싶을 때 사용합니다. <strong className="text-[var(--text)]">비워 두면 기본값</strong>(2/5/8/11)이 적용됩니다.
-          여기서 바꾼 월은 월별 스케줄·운영 보고·연간 합 모두에 즉시 반영됩니다.
-        </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {FIXED_EVENT_FIELDS.map((f) => {
             const cur = fixedEventMonths?.[f.key];
@@ -281,10 +271,6 @@ export function CompanySettingsForm({
       </div>
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
         <p className="dash-field-label mb-2">조사표 표시 항목</p>
-        <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
-          끄면 직원 목록·조사표 CSV·직원 상세에서 해당 열·입력이 숨겨집니다. 월별 금액 입력은{" "}
-          <strong className="text-[var(--text)]">월별 스케줄 ▸ 「대표반환·배우자·알아서」 탭</strong>에서.
-        </p>
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs">
           <label className="flex cursor-pointer items-center gap-2">
             <input
@@ -330,11 +316,6 @@ export function CompanySettingsForm({
       </div>
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
         <p className="dash-field-label mb-2">분기 지원 항목별 지급 월</p>
-        <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
-          항목별로 어느 달에 지급할지 선택합니다. 빈 칸(미선택)이면 기본값{" "}
-          <strong className="text-[var(--text)]">3·6·9·12월</strong>이 적용됩니다.
-          여기서 설정한 달이 분기 지원금 대상자 체크 화면의 기본 지급 월로 사용됩니다.
-        </p>
         <div className="space-y-3">
           {ALL_QUARTERLY_KEYS.map((key) => {
             const saved = quarterlyPayMonths?.[key];
@@ -369,16 +350,6 @@ export function CompanySettingsForm({
 
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-hover)]/50 p-3">
         <p className="dash-field-label mb-2">사복 운영 수수료</p>
-        <p className="mb-3 text-xs leading-relaxed text-[var(--muted)]">
-          요율(%) 을 비우면 거래처 구분 디폴트(개인 10% / 법인 2%) 가 적용됩니다.
-          연중에 사복 금액이 바뀌어 청구액이 달라지면, 아래 「수수료 변경점」에 「N월부터 X%」을 추가해 구간별로 적용됩니다.
-        </p>
-        <p className="mb-3 rounded-lg bg-[var(--surface)] px-2.5 py-1.5 text-[0.7rem] leading-relaxed text-[var(--muted)]">
-          <span className="font-semibold text-[var(--text)]">청구 방식 안내 —</span>{" "}
-          <span className="font-semibold text-[var(--text)]">수수료 A</span>(선택적복지) 는 정책상
-          항상 <span className="text-[var(--text)]">연말 12월 일시 청구</span> 로 고정됩니다.
-          아래 청구 방식 선택은 <span className="font-semibold text-[var(--text)]">수수료 B</span>(정기·분기) 에만 적용됩니다.
-        </p>
         <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
           <div>
             <label className="dash-field-label" htmlFor="feeRatePercent">수수료 요율 (%)</label>
@@ -444,11 +415,6 @@ export function CompanySettingsForm({
               + 변경점 추가
             </button>
           </div>
-          <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--muted)]">
-            「{1}월~」 은 위 「수수료 요율」 입력란이 자동으로 시작 요율로 사용됩니다. 여기에 추가하는 행은 그 이후
-            구간(2월~12월 시작) 에 새 요율을 덮어쓰는 변경점입니다. EVEN_12 모드는 각 구간을 별도 균등 분배(rolling),
-            ON_PAY_MONTH 모드는 그 달 요율로 청구합니다.
-          </p>
           {extraBreakpoints.length === 0 ? (
             <p className="mt-2 text-[0.7rem] text-[var(--muted)]">— 변경점 없음. 1월 요율이 12개월 내내 적용됩니다.</p>
           ) : (

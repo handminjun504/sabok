@@ -126,10 +126,6 @@ export function OptionalWelfareGridPanel({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-sm font-bold text-[var(--text)]">선택적 복지 — {activeYear}년</h2>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            직원·월 단위로 선택적 복지 금액(원) 을 입력합니다. 0 / 빈칸은 「해당 셀 해제」로 저장되며,
-            노트의 다른 필드(메모·인센·오버라이드) 는 건드리지 않습니다. 단일 폼(직원·월 한 건씩) 입력은 아래 「월별 노트 입력」을 그대로 사용 가능.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]">
           <span>
@@ -247,9 +243,6 @@ export function OptionalWelfareGridPanel({
             <button type="submit" className="btn btn-primary" disabled={pending}>
               {pending ? "저장 중…" : "선택적 복지 저장"}
             </button>
-            <span className="text-[0.7rem] text-[var(--muted)]">
-              변경된 셀만 노트의 `optionalExtraAmount` 가 갱신됩니다.
-            </span>
           </div>
         ) : (
           <p className="text-xs text-[var(--warn)]">조회 전용입니다. 선임·관리자만 수정할 수 있습니다.</p>

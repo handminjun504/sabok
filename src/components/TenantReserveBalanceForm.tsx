@@ -270,10 +270,7 @@ export function TenantReserveBalanceForm({
         </fieldset>
 
         {editing ? (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-[var(--muted)]">
-              잔고를 0원으로 저장하면 「잔고 0 원」 으로 명시되며, 입력칸을 비우고 저장하면 잔고 미입력 상태로 초기화됩니다.
-            </p>
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
             <div className="flex gap-2">
               <button type="button" className="btn btn-ghost" onClick={cancelEdit}>
                 취소

@@ -117,10 +117,6 @@ export function ScheduleEmployeeLevelAssignments({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs leading-relaxed text-[var(--muted)]">
-        지급 예정액은 아래 레벨별 정기(규칙) 연간 합과 비교해 가장 가까운 레벨을 추천합니다. 입사·생일·창립월 등에 따라 실제
-        스케줄 연간 기금은 달라질 수 있습니다.
-      </p>
       <p className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[0.7rem] tabular-nums text-[var(--text)]">
         {totalsLine}
       </p>

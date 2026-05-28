@@ -190,11 +190,6 @@ export function QuarterlyRatesMatrixForm({
       {globalError && (
         <p className="rounded-lg bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">{globalError}</p>
       )}
-      <p className="text-xs leading-relaxed text-[var(--muted)]">
-        공통(기본) 칸을 채우면 레벨별 칸이 비어있을 때 자동으로 fallback 됩니다.
-        레벨별 칸에 값을 입력하면 해당 레벨 직원에게는 그 단가가 우선 적용됩니다.
-        셀을 벗어나면 자동 저장됩니다.
-      </p>
       <div className="overflow-x-auto">
         <table className="min-w-max border-collapse text-sm">
           <thead>

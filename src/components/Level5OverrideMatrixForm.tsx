@@ -45,11 +45,6 @@ export function Level5OverrideMatrixForm({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs leading-relaxed text-[var(--muted)]">
-        직원 금액이 레벨 5 공통보다 우선합니다. 셀을 비우거나 <strong className="text-[var(--text)]">0</strong> 으로 두면
-        오버라이드가 자동 삭제되어 공통 금액(괄호)이 다시 적용됩니다.
-      </p>
-
       <div className="surface overflow-x-auto px-2 py-2 sm:px-3 sm:py-2.5">
         {cellError ? (
           <p className="mb-2 text-sm text-[var(--danger)]" role="alert">
