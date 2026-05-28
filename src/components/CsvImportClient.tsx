@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { withBasePath } from "@/lib/base-path";
 
 type ImportRow = { row: number; employeeCode: string; 상태: string; 메시지?: string };
 
@@ -39,7 +40,7 @@ export function CsvImportClient() {
     setBusy(true);
     setResults(null);
     setErrMsg(null);
-    const res = await fetch("/api/employees/import", {
+    const res = await fetch(withBasePath("/api/employees/import"), {
       method: "POST",
       headers: { "Content-Type": "text/csv; charset=utf-8" },
       body: text,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { withBasePath } from "@/lib/base-path";
 
 /**
  * `<a href="/api/...">` 직링크 다운로드는 HTTP 환경에서 브라우저가
@@ -16,7 +17,7 @@ export function EmployeeCsvExportButton() {
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch("/api/employees/export", { credentials: "same-origin" });
+      const res = await fetch(withBasePath("/api/employees/export"), { credentials: "same-origin" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setErr(typeof data.오류 === "string" ? data.오류 : `오류 (${res.status})`);

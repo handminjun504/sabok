@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { withBasePath } from "@/lib/base-path";
 
 /**
  * 미들웨어는 Edge runtime 에서 실행되므로 모듈 초기화 시점에 throw 하면 매 요청 500 이 떨어진다.
@@ -22,16 +23,17 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get("sabok_session")?.value;
   const secret = process.env.SESSION_SECRET;
   if (!checkSecret(secret) || !token) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    return NextResponse.redirect(new URL(withBasePath("/login"), req.url));
   }
   try {
     await jwtVerify(token, new TextEncoder().encode(secret));
     return NextResponse.next();
   } catch {
-    return NextResponse.redirect(new URL("/login", req.url));
+    return NextResponse.redirect(new URL(withBasePath("/login"), req.url));
   }
 }
 
 export const config = {
+  /** matcher 는 basePath 없이 작성한다. Next.js 가 런타임에 basePath 를 자동 prefix. */
   matcher: ["/dashboard/:path*"],
 };

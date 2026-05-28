@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { withBasePath } from "@/lib/base-path";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,7 +15,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const res = await fetch("/api/auth/login", {
+    const res = await fetch(withBasePath("/api/auth/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -27,7 +28,7 @@ export default function LoginPage() {
     }
     /** App Router 클라이언트 전환만 하면 Set-Cookie 직후 첫 /dashboard 요청에 쿠키가 빠지는 경우가 있어 전체 네비게이션으로 맞춘다. */
     const next = data.업체선택필요 === true ? "/dashboard/select-tenant" : "/dashboard";
-    window.location.assign(next);
+    window.location.assign(withBasePath(next));
   }
 
   return (
