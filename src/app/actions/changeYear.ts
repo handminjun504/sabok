@@ -42,7 +42,9 @@ export async function changeActiveYearAction(
   const copy = formData.get("copy") === "on";
 
   const settings = await companySettingsByTenant(ctx.tenantId);
-  const prevYear = settings?.activeYear ?? newYear - 1;
+  if (!settings?.id) return { ok: false, 오류: "전사 설정이 없습니다. 설정 페이지에서 먼저 저장하세요." };
+
+  const prevYear = settings.activeYear ?? newYear - 1;
 
   if (copy && prevYear !== newYear) {
     const [rules, targets, rates, employees] = await Promise.all([
@@ -108,10 +110,8 @@ export async function changeActiveYearAction(
   }
 
   /* 기준 연도 업데이트 — activeYear 만 단건 갱신 */
-  const existing = await companySettingsByTenant(ctx.tenantId);
-  if (!existing?.id) return { ok: false, 오류: "전사 설정이 없습니다. 설정 페이지에서 먼저 저장하세요." };
   const pb = await getAdminPb();
-  await pb.collection("sabok_company_settings").update(existing.id, { activeYear: newYear });
+  await pb.collection("sabok_company_settings").update(settings.id, { activeYear: newYear });
 
   revalidatePath("/dashboard", "layout");
   return { ok: true, year: newYear, copied: copy };

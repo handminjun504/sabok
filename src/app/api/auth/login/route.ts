@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { userLoadWithTenantsByEmail, tenantFindFirstActive } from "@/lib/pb/repository";
+import { getAdminPb } from "@/lib/pb/admin-client";
 import { resolveLoginTenantState } from "@/lib/resolve-login-tenant";
 import { singleTenantIdFromEnv } from "@/lib/single-tenant";
 import { createSessionToken, setSessionCookie } from "@/lib/session";
@@ -35,6 +36,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ 오류: "요청 형식이 올바르지 않습니다." }, { status: 400 });
     }
     const { email, password } = parsed.data;
+
+    /**
+     * firstByFilter는 PB 연결 오류를 null로 삼켜 호출부에서 "사용자 없음"과 구분 불가.
+     * 여기서 먼저 getAdminPb()를 호출해 연결 실패 시 catch 블록으로 에러를 전달한다.
+     * 인증 성공 후에는 싱글턴이 재사용되므로 이중 인증 요청은 발생하지 않는다.
+     */
+    await getAdminPb();
+
     const user = await userLoadWithTenantsByEmail(email);
     if (!user) {
       return NextResponse.json({ 오류: "이메일 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });

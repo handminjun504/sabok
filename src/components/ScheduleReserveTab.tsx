@@ -6,9 +6,12 @@ import {
   type ReserveNoteState,
 } from "@/app/actions/reserve-progress";
 import { DashboardReserveStatusPanel } from "@/components/DashboardReserveStatusPanel";
+import { TenantReserveBalanceForm } from "@/components/TenantReserveBalanceForm";
+import { TenantWorkerLoanBalanceForm } from "@/components/TenantWorkerLoanBalanceForm";
 import type { TenantAdditionalReserveSummary } from "@/lib/domain/vendor-reserve";
 import { tenantClientEntityLabel } from "@/lib/domain/tenant-profile";
 import type { TenantClientEntityType } from "@/lib/domain/tenant-profile";
+import type { Tenant } from "@/types/models";
 
 export function ScheduleReserveTab({
   summary,
@@ -17,6 +20,8 @@ export function ScheduleReserveTab({
   initialNote,
   canEdit,
   settingsMissing,
+  tenant,
+  defaultYear,
 }: {
   summary: TenantAdditionalReserveSummary;
   clientEntityType: TenantClientEntityType;
@@ -25,6 +30,8 @@ export function ScheduleReserveTab({
   canEdit: boolean;
   /** true면 전사 설정 레코드 없음 → 메모 저장 불가 */
   settingsMissing?: boolean;
+  tenant: Tenant | null;
+  defaultYear: number;
 }) {
   const [state, formAction] = useActionState<ReserveNoteState, FormData>(saveReserveProgressNoteAction, null);
   const [key, setKey] = useState(0);
@@ -110,6 +117,13 @@ export function ScheduleReserveTab({
       </div>
 
       <DashboardReserveStatusPanel summary={summary} />
+
+      {tenant ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <TenantReserveBalanceForm tenant={tenant} defaultYear={defaultYear} defaultMonth={new Date().getMonth() + 1} />
+          <TenantWorkerLoanBalanceForm tenant={tenant} defaultYear={defaultYear} defaultMonth={new Date().getMonth() + 1} />
+        </div>
+      ) : null}
 
       <section className="surface-prominent dash-panel-pad">
         <h2 className="text-base font-bold text-[var(--text)]">적립 계획 메모</h2>

@@ -701,6 +701,8 @@ export default async function SchedulePage() {
         initialNote={settings?.reserveProgressNote ?? null}
         canEdit={canEditReserveNote}
         settingsMissing={!settings}
+        tenant={tenantRow}
+        defaultYear={year}
       />
     ) : (
       <p className="text-sm text-[var(--muted)]">거래처 정보를 불러올 수 없습니다.</p>

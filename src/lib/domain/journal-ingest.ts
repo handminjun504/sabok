@@ -121,14 +121,32 @@ function yearFromPeriod(text: string): number | null {
  * 관찰된 두 포맷 모두 수용:
  *   - "01/2100001보    통    예    금9,729,000"
  *   - "01/21 00001 보 통 예 금 9,729,000"
+ *
+ * 확장 지원:
+ *   - 비패딩 날짜: "1/21", "1/5" 등
+ *   - 전표번호 자릿수 3~7 (더존 외 ERP 대응)
  */
 function parseEntryStart(line: string): { mm: string; dd: string; entryNo: string; rest: string } | null {
-  /** 패턴1: 공백 없이 밀착 */
-  const m1 = /^(\d{2})\/(\d{2})(\d{5})(.*)$/.exec(line.trim());
-  if (m1) return { mm: m1[1], dd: m1[2], entryNo: m1[3], rest: m1[4] ?? "" };
-  /** 패턴2: 공백 구분 */
-  const m2 = /^(\d{2})\/(\d{2})\s+(\d{3,6})\b(.*)$/.exec(line.trim());
-  if (m2) return { mm: m2[1], dd: m2[2], entryNo: m2[3], rest: m2[4] ?? "" };
+  /** 패턴1: 공백 없이 밀착 (날짜 비패딩 허용) */
+  const m1 = /^(\d{1,2})\/(\d{1,2})(\d{3,7})(.*)$/.exec(line.trim());
+  if (m1) {
+    return {
+      mm: m1[1].padStart(2, "0"),
+      dd: m1[2].padStart(2, "0"),
+      entryNo: m1[3],
+      rest: m1[4] ?? "",
+    };
+  }
+  /** 패턴2: 공백 구분 (날짜 비패딩 허용) */
+  const m2 = /^(\d{1,2})\/(\d{1,2})\s+(\d{3,7})\b(.*)$/.exec(line.trim());
+  if (m2) {
+    return {
+      mm: m2[1].padStart(2, "0"),
+      dd: m2[2].padStart(2, "0"),
+      entryNo: m2[3],
+      rest: m2[4] ?? "",
+    };
+  }
   return null;
 }
 
@@ -275,9 +293,10 @@ export function parsePdfJournalText(text: string): {
     /**
      * (c) 계정명만 있고 금액이 없는 라인(다음 줄이 금액).
      * "(판)"·"장려금" 등 명사성 어미로 끝나면 계정 후보, 아니면 거래처.
+     * 실무 복지비 계정명(대여금·경조사비·체력단련비 등) 추가.
      */
     const looksLikeAccount =
-      /(판)$|장려금$|지원금$|지원$|자금$|수익$|수입$|비용$|수수료$|준비금전입수입$|양지원금$|학금지원$|료비용$/.test(trimmed) ||
+      /(판)$|장려금$|지원금$|지원$|자금$|수익$|수입$|비용$|수수료$|준비금전입수입$|양지원금$|학금지원$|료비용$|대여금$|경조사비$|체력단련비$|의료비$|보육비$|식대$|급식비$|복리후생비$|통신비$|보험료$|건강보험$|문화비$|여비$|교육비$|훈련비$|포상금$|장의비$|재해위로금$/.test(trimmed) ||
       /\(판\)\s*$/.test(trimmed);
     if (looksLikeAccount) {
       cur.pendingCreditAccount = normalizeAccountName(trimmed);
@@ -694,7 +713,7 @@ const MAPPING_RULES: MappingRule[] = [
   /** 현금 흐름 계정(차변 보통예금 등) — 집계 제외 */
   { keywords: ["보통예금", "현금", "당좌예금", "정기예금", "현금성자산"], target: { kind: "CASH_FLOW" }, reason: "현금성 자산 이동" },
   /** ⑬ 사업주 출연 */
-  { keywords: ["고유목적사업준비금전입수입", "출연금수입", "출연금", "기부금수입"], target: { kind: "EMPLOYER_CONTRIBUTION" }, reason: "사업주 출연 수입" },
+  { keywords: ["고유목적사업준비금전입수입", "고유목적사업준비금", "출연금수입", "출연금", "기부금수입"], target: { kind: "EMPLOYER_CONTRIBUTION" }, reason: "사업주 출연 수입" },
   /** ㉙ 기금운용 수익금 */
   { keywords: ["이자수익", "수입이자", "배당금수익", "운용수익", "잡수익"], target: { kind: "INTEREST_INCOME" }, reason: "기금운용 수익금" },
   /** 57 주택구입·임차자금 */
@@ -710,13 +729,13 @@ const MAPPING_RULES: MappingRule[] = [
   /** 63 모성보호 */
   { keywords: ["모성보호", "출산지원", "육아지원"], target: { kind: "BIZ", code: 63 }, reason: "모성보호·일가정양립" },
   /** 64 근로자의 날 */
-  { keywords: ["근로자의날", "창립기념일", "사내행사"], target: { kind: "BIZ", code: 64 }, reason: "근로자의 날·창립기념" },
+  { keywords: ["근로자의날", "창립기념일", "창립기념", "입사기념", "입사축하", "사내행사", "기념행사"], target: { kind: "BIZ", code: 64 }, reason: "근로자의 날·창립기념" },
   /** 65 복지시설 */
   { keywords: ["복지시설", "사내구판장", "콘도", "보육시설"], target: { kind: "BIZ", code: 65 }, reason: "근로복지시설" },
   /** 66 그 밖의 복지비 */
-  { keywords: ["부모봉양지원금", "부모봉양", "보험및대출지원금", "보험지원", "대출지원", "대출이자지원", "경조사비", "기타복지"], target: { kind: "BIZ", code: 66 }, reason: "그 밖의 복지비" },
-  /** 59 생활안정자금 (품위유지비·명절상품권·명절지원금 포함 — 부모봉양보다 뒤에 배치하지 않도록 주의) */
-  { keywords: ["품위유지비", "명절상품권", "명절지원금", "명절지원", "생활안정", "생일축하금", "생일지원금"], target: { kind: "BIZ", code: 59 }, reason: "생활안정자금" },
+  { keywords: ["부모봉양지원금", "부모봉양", "보험및대출지원금", "보험지원", "대출지원", "대출이자지원", "경조사비", "결혼기념", "결혼축하", "기타복지"], target: { kind: "BIZ", code: 66 }, reason: "그 밖의 복지비" },
+  /** 59 생활안정자금 (명절복지비·연말기념복지금 포함 — 명절 관련 복지는 생활안정으로 분류) */
+  { keywords: ["품위유지비", "명절상품권", "명절지원금", "명절지원", "명절복지비", "명절기념", "명절및연말", "명절", "연말복지", "연말기념복지", "기념복지금", "생활안정", "생일축하금", "생일지원금"], target: { kind: "BIZ", code: 59 }, reason: "생활안정자금" },
   /** 68 기금 운영비 */
   { keywords: ["수수료비용", "수수료", "세금과공과금", "세금과공과", "통신비", "운영비", "지급수수료"], target: { kind: "OPERATION_COST" }, reason: "기금 운영비" },
 ];

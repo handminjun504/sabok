@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,12 +25,9 @@ export default function LoginPage() {
       setError(typeof data.오류 === "string" ? data.오류 : "로그인에 실패했습니다.");
       return;
     }
-    if (data.업체선택필요 === true) {
-      router.push("/dashboard/select-tenant");
-    } else {
-      router.push("/dashboard");
-    }
-    router.refresh();
+    /** App Router 클라이언트 전환만 하면 Set-Cookie 직후 첫 /dashboard 요청에 쿠키가 빠지는 경우가 있어 전체 네비게이션으로 맞춘다. */
+    const next = data.업체선택필요 === true ? "/dashboard/select-tenant" : "/dashboard";
+    window.location.assign(next);
   }
 
   return (

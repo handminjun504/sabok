@@ -93,7 +93,14 @@ export async function parseUploadedFilesAction(
         const pdfParseModule = await import("pdf-parse");
         const pdfParse = pdfParseModule.default ?? pdfParseModule;
         const text = (await pdfParse(buf)).text;
-        if (kind === "JOURNAL_PDF") {
+
+        /** 스캔 이미지 PDF 감지 — 텍스트가 거의 없으면 OCR 필요 안내 */
+        if (text.replace(/\s/g, "").length < 50) {
+          fileWarnings.push(
+            "이 PDF는 스캔 이미지로 보입니다. pdf-parse 로 텍스트를 추출할 수 없습니다. " +
+              "회계 프로그램에서 텍스트 PDF로 다시 출력하거나 XLSX로 내보내 주세요.",
+          );
+        } else if (kind === "JOURNAL_PDF") {
           const j = parsePdfJournalText(text);
           /** 분개장이 한 건이라도 추출되면 분개장으로 인정 */
           if (j.entries.length > 0) {
@@ -132,10 +139,40 @@ export async function parseUploadedFilesAction(
               hasJournal = true;
             }
             fileWarnings.push(...r.warnings);
-          } else if (sheetKind === "BALANCE" || (kind === "BALANCE_XLSX" && sheetKind === "UNKNOWN")) {
+          } else if (sheetKind === "TRIAL_BALANCE") {
+            /**
+             * XLSX 합계잔액시산표: 계정과목+차변+대변 칼럼 구조이므로 분개장 파서를 먼저 시도.
+             * 분개장 파서가 헤더를 인식하면 그대로 사용하고, 실패하면 잔액표 파서로 fallback.
+             */
+            const rj = parseXlsxJournal(rows);
+            if (rj.entries.length > 0) {
+              trialBalanceFallback = trialBalanceFallback.concat(rj.entries);
+            } else {
+              const rb = parseXlsxBalance(rows);
+              trialBalanceFallback = trialBalanceFallback.concat(rb.entries);
+              fileWarnings.push(...rb.warnings);
+            }
+            fileWarnings.push(...rj.warnings);
+          } else if (sheetKind === "BALANCE") {
             const r = parseXlsxBalance(rows);
             trialBalanceFallback = trialBalanceFallback.concat(r.entries);
             fileWarnings.push(...r.warnings);
+          } else if (sheetKind === "UNKNOWN") {
+            /**
+             * 시트명에서 종류를 판별할 수 없는 경우: 분개장 파서를 먼저 시도.
+             * 분개장 헤더(계정과목+차변/대변)가 감지되면 journal 로 처리.
+             * 그렇지 않으면 잔액표 파서로 fallback (기존 BALANCE_XLSX 기본 동작 유지).
+             */
+            const rj = parseXlsxJournal(rows);
+            if (rj.entries.length > 0) {
+              entries = entries.concat(rj.entries);
+              hasJournal = true;
+              fileWarnings.push(...rj.warnings);
+            } else {
+              const rb = parseXlsxBalance(rows);
+              trialBalanceFallback = trialBalanceFallback.concat(rb.entries);
+              fileWarnings.push(...rb.warnings);
+            }
           }
         }
       } else {
