@@ -130,10 +130,10 @@ export default async function SelectTenantPage() {
   if (cards.length === 0) {
     if (session.isPlatformAdmin) {
       return (
-        <div className="mx-auto max-w-5xl space-y-8">
-          <div className="min-w-0">
+        <div className="mx-auto max-w-7xl space-y-5">
+          <div className="page-header">
             <p className="page-eyebrow">시작하기</p>
-            <h1 className="page-hero-title mt-2 neu-title-gradient">거래처 선택</h1>
+            <h1 className="page-hero-title neu-title-gradient">거래처 선택</h1>
           </div>
           <SelectTenantClient tenants={[]} isPlatformAdmin />
         </div>
@@ -148,10 +148,10 @@ export default async function SelectTenantPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
-      <div className="min-w-0">
+    <div className="mx-auto max-w-7xl space-y-5">
+      <div className="page-header">
         <p className="page-eyebrow">업체 전환</p>
-        <h1 className="page-hero-title mt-2 neu-title-gradient">거래처 선택</h1>
+        <h1 className="page-hero-title neu-title-gradient">거래처 선택</h1>
       </div>
       <SelectTenantClient tenants={cards} isPlatformAdmin={session.isPlatformAdmin} />
     </div>

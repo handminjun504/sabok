@@ -231,7 +231,7 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
       : null;
 
   return (
-    <div className="space-y-8">
+    <div className="page-shell">
       <PageHeader
         eyebrow={`운영 보고 · ${year}`}
         title="운영상황 보고"
@@ -443,7 +443,7 @@ export default async function OperatingReportPage({ searchParams }: PageProps) {
           {
             label: "데이터 입력",
             content: (
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {/* 기본정보 */}
                 <section className="space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-3">

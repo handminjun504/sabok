@@ -7,6 +7,30 @@ import { logoutAction } from "@/app/actions/auth";
 import type { NavGroup } from "@/lib/dashboard-nav";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { NavIcon } from "@/components/ui/NavIcon";
+import { CommandPalette, type CommandItem } from "@/components/CommandPalette";
+
+function openCommandPalette() {
+  window.dispatchEvent(new Event("open-command-palette"));
+}
+
+/** 사이드바 상단 — ⌘K 빠른 이동 트리거 */
+function QuickJumpButton() {
+  return (
+    <button
+      type="button"
+      onClick={openCommandPalette}
+      className="mt-3 flex w-full items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-sunken)] px-2.5 py-1.5 text-[var(--muted)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+      aria-label="빠른 이동 (Command K)"
+    >
+      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden>
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.2-3.2" strokeLinecap="round" />
+      </svg>
+      <span className="flex-1 text-left text-xs">빠른 이동…</span>
+      <kbd className="rounded border border-[var(--border-strong)] px-1 py-0.5 text-[10px] font-semibold leading-none">⌘K</kbd>
+    </button>
+  );
+}
 
 function navLinkActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") {
@@ -93,6 +117,11 @@ export function DashboardShell({
 
   /** 업체 미선택 일반 사용자: 업체 선택 화면만(사이드 메뉴 없음) */
   const pickerOnly = !hasActiveTenant && !isPlatformAdmin;
+
+  /** 커맨드 팔레트(⌘K) 검색 대상 — 전 메뉴를 평탄화 */
+  const commandItems: CommandItem[] = groups.flatMap((g) =>
+    g.items.map((it) => ({ label: it.label, href: it.href, group: g.title, icon: it.icon })),
+  );
 
   useEffect(() => {
     setMobileOpen(false);
@@ -181,6 +210,7 @@ export function DashboardShell({
               ) : null}
             </div>
           ) : null}
+          {commandItems.length > 0 ? <QuickJumpButton /> : null}
         </div>
         <div className="border-t border-[var(--border)]" />
         <NavBody groups={groups} pathname={pathname} />
@@ -207,6 +237,19 @@ export function DashboardShell({
             <p className="neu-title-gradient truncate text-base font-semibold">사내근로복지기금</p>
             {tenantLine ? <p className="truncate text-sm text-[var(--muted)]">{tenantLine}</p> : null}
           </div>
+          {commandItems.length > 0 ? (
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              className="btn btn-outline h-10 px-2.5"
+              aria-label="빠른 이동"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden>
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.2-3.2" strokeLinecap="round" />
+              </svg>
+            </button>
+          ) : null}
           <ThemeToggle />
           {showTenantSwitch ? (
             <Link
@@ -264,11 +307,13 @@ export function DashboardShell({
 
         <main
           id="main-content"
-          className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-5 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12"
+          className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-4 py-6 sm:px-6 sm:py-7 lg:px-8 lg:py-8"
         >
           {children}
         </main>
       </div>
+
+      {commandItems.length > 0 ? <CommandPalette items={commandItems} /> : null}
     </div>
   );
 }

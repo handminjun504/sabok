@@ -251,9 +251,9 @@ export function EmployeeDirectoryTable({
                     <td className="px-2 py-2.5 font-mono text-xs tabular-nums text-[var(--muted)]">
                       {e.employeeCode}
                     </td>
-                    <td className="px-2 py-2.5 text-sm font-bold text-[var(--text)]">
+                    <td className="px-2 py-2.5 whitespace-nowrap text-sm font-bold text-[var(--text)]">
                       <span className="inline-flex items-center gap-1.5">
-                        <span>{e.name}</span>
+                        <span className="whitespace-nowrap">{e.name}</span>
                         {e.flagWelfareIneligible ? (
                           <span
                             className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-hover)] px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted)]"
@@ -264,7 +264,7 @@ export function EmployeeDirectoryTable({
                         ) : null}
                       </span>
                     </td>
-                    <td className="px-2 py-2.5 text-xs text-[var(--muted)]">{e.position || EM}</td>
+                    <td className="px-2 py-2.5 whitespace-nowrap text-xs text-[var(--muted)]">{e.position || EM}</td>
                     <td className="px-2 py-2.5 text-center text-xs font-semibold tabular-nums text-[var(--muted)]">
                       Lv.{e.level}
                     </td>

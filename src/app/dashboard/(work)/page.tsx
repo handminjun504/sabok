@@ -150,7 +150,7 @@ export default async function DashboardHomePage() {
   const canEdit = canEditCompanySettings(role);
 
   return (
-    <div className="space-y-10">
+    <div className="page-shell">
       <PageHeader
         eyebrow={`업무 홈 · ${year}`}
         title="복지기금 운영 현황"
@@ -168,55 +168,40 @@ export default async function DashboardHomePage() {
         }
       />
 
-      {/* KPI 카드 ─ 핵심 숫자 3개 */}
+      {/* 요약 지표 ─ 한 줄 컴팩트 스트립 */}
       <section aria-labelledby="dash-kpi">
         <h2 id="dash-kpi" className="sr-only">요약 지표</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Link href="/dashboard/employees" className="kpi-card group">
-            <p className="kpi-card-label">{year}년 재직 직원</p>
-            <p className="kpi-card-value">
-              {activeCount}
-              <span className="kpi-card-suffix">명</span>
+        <div className="stat-strip">
+          <Link href="/dashboard/employees" className="stat-cell stat-cell-link">
+            <p className="stat-cell-label">{year}년 재직</p>
+            <p className="stat-cell-value">
+              {activeCount}<span className="unit">명</span>
             </p>
-            <div className="kpi-card-foot">
-              <span>전체 {employees.length}명{inactiveCount > 0 ? ` · 비활성 ${inactiveCount}` : ""}</span>
-              <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
-                직원 →
-              </span>
-            </div>
+            <p className="stat-cell-sub">
+              전체 {employees.length}명{inactiveCount > 0 ? ` · 비활성 ${inactiveCount}` : ""}
+            </p>
           </Link>
 
-          <Link href="/dashboard/rules" className="kpi-card group">
-            <p className="kpi-card-label">기준 연도</p>
-            <p className="kpi-card-value">{year}<span className="kpi-card-suffix">년</span></p>
-            <div className="kpi-card-foot">
-              <span />
-              <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
-                규칙 →
-              </span>
-            </div>
+          <Link href="/dashboard/rules" className="stat-cell stat-cell-link">
+            <p className="stat-cell-label">기준 연도</p>
+            <p className="stat-cell-value">{year}<span className="unit">년</span></p>
+            <p className="stat-cell-sub">지급 규칙 매트릭스</p>
           </Link>
 
-          <Link href="/dashboard/settings" className="kpi-card group">
-            <p className="kpi-card-label">창립월</p>
-            <p className="kpi-card-value">
-              {settings?.foundingMonth ?? "—"}
-              <span className="kpi-card-suffix">월</span>
+          <Link href="/dashboard/settings" className="stat-cell stat-cell-link">
+            <p className="stat-cell-label">창립월</p>
+            <p className="stat-cell-value">
+              {settings?.foundingMonth ?? "—"}<span className="unit">월</span>
             </p>
-            <div className="kpi-card-foot">
-              <span />
-              <span className="font-semibold text-[var(--accent)] group-hover:translate-x-0.5 transition-transform" aria-hidden>
-                설정 →
-              </span>
-            </div>
+            <p className="stat-cell-sub">전사 설정</p>
           </Link>
         </div>
       </section>
 
       {/* 사복 집행·수수료 KPI 4종 */}
       <section aria-labelledby="dash-fee">
-        <h2 id="dash-fee" className="section-title mb-3">사복 집행 및 수수료</h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <h2 id="dash-fee" className="section-title mb-2">사복 집행 및 수수료</h2>
+        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
           <Link href="/dashboard/schedule" className="kpi-card group">
             <p className="kpi-card-label">사복 총 집행 ({year}년)</p>
             <p className="kpi-card-value">
@@ -395,15 +380,15 @@ export default async function DashboardHomePage() {
       </section>
 
       {/* 적립 현황 + 연도 전환 ─ 2열 (관리자), 일반은 1열 */}
-      <section className={canEdit ? "grid gap-6 lg:grid-cols-[1fr_minmax(20rem,24rem)]" : ""}>
+      <section className={canEdit ? "grid gap-4 lg:grid-cols-[1fr_minmax(20rem,24rem)]" : ""}>
         <div>
-          <h2 className="section-title mb-3">추가 적립 현황</h2>
+          <h2 className="section-title mb-2">추가 적립 현황</h2>
           <DashboardReserveStatusPanel summary={reserveSummary} />
         </div>
 
         {canEdit ? (
           <div>
-            <h2 className="section-title mb-3">연도 전환</h2>
+            <h2 className="section-title mb-2">연도 전환</h2>
             <YearSwitchPanel currentYear={year} canEdit={canEdit} />
           </div>
         ) : null}

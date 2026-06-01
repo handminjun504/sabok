@@ -75,7 +75,7 @@ export function SelectTenantClient({ tenants, isPlatformAdmin }: Props) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {isPlatformAdmin && !isEmpty ? (
         <div className="flex justify-end">
           <button type="button" onClick={openCreate} className={fabClass} aria-label="새 거래처 추가">
@@ -95,7 +95,7 @@ export function SelectTenantClient({ tenants, isPlatformAdmin }: Props) {
           <p className="text-center text-sm text-[var(--muted)]">접근 가능한 거래처가 없습니다.</p>
         )
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {tenants.map((t) => (
             <TenantCard key={t.id} tenant={t} isPlatformAdmin={isPlatformAdmin} />
           ))}
@@ -178,7 +178,7 @@ function TenantCard({
   return (
     <div
       className={
-        "surface-prominent flex h-full flex-col p-5 text-left " +
+        "surface-prominent flex h-full flex-col p-4 text-left " +
         (t.active ? "surface-hoverable group" : "opacity-90")
       }
     >
@@ -251,7 +251,7 @@ function TenantCard({
               연도 변경은 선임·관리자 권한이 필요합니다. 현재 기준 연도({t.activeYear}년) 로 입장합니다.
             </p>
           ) : null}
-          <button type="submit" className="btn btn-primary w-full py-2.5 text-sm">
+          <button type="submit" className="btn btn-primary w-full text-sm">
             {buttonLabel}
           </button>
         </form>

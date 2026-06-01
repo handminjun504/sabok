@@ -20,15 +20,17 @@ type Props = {
 export function PageHeader({ eyebrow, title, description, actions, meta }: Props) {
   return (
     <header className="page-header">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
         <div className="min-w-0">
           {eyebrow ? <p className="page-eyebrow">{eyebrow}</p> : null}
-          <h1 className="page-hero-title mt-2 neu-title-gradient">{title}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="page-hero-title neu-title-gradient">{title}</h1>
+            {meta ? <div className="flex flex-wrap items-center gap-1.5">{meta}</div> : null}
+          </div>
           {description ? <p className="page-hero-sub">{description}</p> : null}
         </div>
         {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
-      {meta ? <div className="flex flex-wrap items-center gap-2">{meta}</div> : null}
     </header>
   );
 }

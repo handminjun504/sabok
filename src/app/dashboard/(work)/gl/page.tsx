@@ -25,7 +25,7 @@ export default async function GlPage() {
   })();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-5">
       <div>
         <h1 className="text-2xl font-bold">GL 동기화 (MCP 연동 준비)</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">요청만 큐에 넣습니다. GL 연동은 추후.</p>
